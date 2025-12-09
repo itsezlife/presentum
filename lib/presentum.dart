@@ -1,5 +1,9 @@
-// library presentum;
+/// A declarative cross-platform Flutter engine with focus on state to display
+/// presentations, such as campaigns, banners, notifications, etc., anywhere,
+/// anytime.
+library;
 
+export 'src/controller/bindings.dart';
 export 'src/controller/controller.dart';
 export 'src/controller/engine.dart';
 export 'src/controller/guard.dart';
