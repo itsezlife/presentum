@@ -208,7 +208,7 @@ class CampaignGuard
       final existing = state.slots[surface]?.active;
       if (existing == null || candidate.priority > existing.priority) {
         state.setActive(surface, candidate);
-        // maube queue others...
+        // maybe queue others...
       }
     }
 
@@ -217,7 +217,7 @@ class CampaignGuard
 }
 ```
 
-Guards can can subscribe to external changes using the optional `refresh` `Listenable`; when `notifyListeners` is called, the engine re‑runs all guards against the current state.
+Guards can subscribe to external changes using the optional `refresh` `Listenable`; when `notifyListeners` is called, the engine re‑runs all guards against the current state.
 
 ### Architecture overview
 
@@ -381,7 +381,7 @@ final presentum = Presentum.of<ResolvedCampaign, AppSurface>(context);
 
 ### 6. Feed candidates into the engine
 
-You collect candidates (for example from the Firebase Remote config), process diff agains already existing candidates, and passes updated candidates to the engine. A typical pattern is to do this from a `Bloc`, `ChangeNotifier` or custom service:
+You collect candidates (for example from the Firebase Remote config), process diff against already existing candidates, and passes updated candidates to the engine. A typical pattern is to do this from a `Bloc`, `ChangeNotifier` or custom service:
 
 ```dart
 Future<void> updateCampaigns(
