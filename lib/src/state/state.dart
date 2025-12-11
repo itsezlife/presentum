@@ -572,7 +572,7 @@ final class PresentumState$Mutable<
   }
 
   /// Returns true if any slot contains an item with the given [id].
-  bool containsId(Object id, {S? surface}) {
+  bool containsId(String id, {S? surface}) {
     if (surface != null) {
       final slot = slots[surface];
       if (slot == null) return false;
@@ -580,13 +580,15 @@ final class PresentumState$Mutable<
       return slot.queue.any((item) => item.id == id);
     }
 
-    return foldSlots<bool>(
-      false,
-      (found, s, slot) =>
-          found ||
-          slot.active?.id == id ||
-          slot.queue.any((item) => item.id == id),
-    );
+    var found = false;
+    visitSlots((s, slot) {
+      if (slot.active?.id == id || slot.queue.any((item) => item.id == id)) {
+        found = true;
+        return false; // Stop the walk
+      }
+      return true; // Continue the walk
+    });
+    return found;
   }
 }
 

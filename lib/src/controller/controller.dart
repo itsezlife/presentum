@@ -114,13 +114,4 @@ abstract interface class Presentum<
   ///
   /// If [surface] is provided, removal is limited to that surface.
   Future<void> removeById(String id, {S? surface});
-
-  /// Mark an item as shown by its [id] using current state.
-  Future<void> markShownById(Object id);
-
-  /// Mark an item as dismissed by its [id] using current state.
-  Future<void> markDismissedById(Object id);
-
-  /// Mark an item as converted by its [id] using current state.
-  Future<void> markConvertedById(Object id);
 }

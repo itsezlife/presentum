@@ -65,9 +65,10 @@ gen: codegen
 .PHONY: fix
 fix: get ## format and fix code
 	$(call print-target)
-	@fvm dart format --fix -l 80 lib/ test/
+	@fvm dart format -l 80 lib test .
 	@fvm dart fix --apply lib/
 	@fvm dart fix --apply test/
+	@fvm dart fix --apply .
 
 .PHONY: format
 format: fix

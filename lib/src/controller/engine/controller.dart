@@ -217,39 +217,7 @@ final class Presentum$EngineImpl<
     );
   }
 
-  TResolved? _findById(Object id) =>
-      state.foldSlots<TResolved?>(null, (found, surface, slot) {
-        if (found != null) return found;
-        final active = slot.active;
-        if (active != null && active.id == id) return active;
-        for (final item in slot.queue) {
-          if (item.id == id) return item;
-        }
-        return null;
-      });
-
   @override
   Future<void> removeById(String id, {S? surface}) =>
       setState((state) => state..removeById(id, surface: surface));
-
-  @override
-  Future<void> markShownById(Object id) async {
-    final item = _findById(id);
-    if (item == null) return;
-    await markShown(item);
-  }
-
-  @override
-  Future<void> markDismissedById(Object id) async {
-    final item = _findById(id);
-    if (item == null) return;
-    await markDismissed(item);
-  }
-
-  @override
-  Future<void> markConvertedById(Object id) async {
-    final item = _findById(id);
-    if (item == null) return;
-    await markConverted(item);
-  }
 }
