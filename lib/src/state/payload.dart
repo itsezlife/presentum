@@ -72,6 +72,12 @@ class PresentumVariant<S extends PresentumSurface, V extends Enum> {
     alwaysOnIfEligible,
     isDismissible,
   );
+
+  @override
+  String toString() =>
+      'PresentumVariant(surface: $surface, variant: $variant, stage: $stage, '
+      'maxImpressions: $maxImpressions, cooldownMinutes: $cooldownMinutes, '
+      'alwaysOnIfEligible: $alwaysOnIfEligible, isDismissible: $isDismissible)';
 }
 
 /// {@template presentum_payload}
@@ -92,6 +98,11 @@ abstract class PresentumPayload<S extends PresentumSurface, V extends Enum>
 
   /// All possible variants of this item.
   abstract final List<PresentumVariant<S, V>> variants;
+
+  @override
+  String toString() =>
+      'PresentumPayload(id: $id, priority: $priority, metadata: $metadata, '
+      'variants: $variants)';
 }
 
 /// {@template resolved_presentum_variant}
@@ -144,4 +155,8 @@ class ResolvedPresentumVariant<
 
   @override
   int get hashCode => Object.hash(payload, variant);
+
+  @override
+  String toString() =>
+      'ResolvedPresentumVariant(payload: $payload, variant: $variant)';
 }
