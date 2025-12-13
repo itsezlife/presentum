@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:developer' as dev;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,7 @@ import 'package:presentum/src/controller/config.dart';
 import 'package:presentum/src/controller/controller.dart';
 import 'package:presentum/src/controller/engine/engine.dart';
 import 'package:presentum/src/controller/engine/observer.dart';
+import 'package:presentum/src/controller/event_handler.dart';
 import 'package:presentum/src/controller/guard.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/controller/storage.dart';
@@ -21,13 +23,17 @@ final class Presentum$EngineImpl<
 >
     implements Presentum<TResolved, S, V> {
   factory Presentum$EngineImpl({
-    required PresentumStorage storage,
+    PresentumStorage<S, V>? storage,
+    List<IPresentumEventHandler<TResolved, S, V>>? eventHandlers,
     Map<S, PresentumSlot<TResolved, S, V>>? slots,
     List<IPresentumGuard<TResolved, S, V>>? guards,
     PresentumState<TResolved, S, V>? initialState,
     List<PresentumHistoryEntry<TResolved, S, V>>? history,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) {
+    final resolvedStorage = storage ?? NoOpPresentumStorage<S, V>();
+    final resolvedEventHandlers =
+        eventHandlers ?? <IPresentumEventHandler<TResolved, S, V>>[];
     final observer = PresentumStateObserver$EngineImpl(
       initialState?.freeze() ??
           PresentumState$Immutable<TResolved, S, V>(
@@ -39,35 +45,41 @@ final class Presentum$EngineImpl<
     final engine = PresentumEngine$Impl(
       observer: observer,
       guards: guards,
-      storage: storage,
+      storage: resolvedStorage,
       onError: onError,
     );
     final controller = Presentum$EngineImpl._(
-      storage: storage,
+      storage: resolvedStorage,
+      eventHandlers: resolvedEventHandlers,
       observer: observer,
       engine: engine,
+      onError: onError,
     );
     engine.$presentum = WeakReference(controller);
     return controller;
   }
 
   Presentum$EngineImpl._({
-    required PresentumStorage storage,
+    required PresentumStorage<S, V> storage,
+    required List<IPresentumEventHandler<TResolved, S, V>> eventHandlers,
     required PresentumEngine$Impl<TResolved, S, V> engine,
     required PresentumStateObserver<TResolved, S, V> observer,
+    void Function(Object error, StackTrace stackTrace)? onError,
   }) : config = PresentumConfig<TResolved, S, V>(
          storage: storage,
          observer: observer,
          engine: engine,
        ),
        _engine = engine,
-       _storage = storage;
+       _eventHandlers = eventHandlers,
+       _onError = onError;
 
   @override
   final PresentumConfig<TResolved, S, V> config;
 
   final PresentumEngine$Impl<TResolved, S, V> _engine;
-  final PresentumStorage _storage;
+  final List<IPresentumEventHandler<TResolved, S, V>> _eventHandlers;
+  final void Function(Object error, StackTrace stackTrace)? _onError;
 
   @override
   PresentumStateObserver<TResolved, S, V> get observer => config.observer;
@@ -170,39 +182,71 @@ final class Presentum$EngineImpl<
   }
 
   @override
+  Future<void> addEvent(PresentumEvent<TResolved, S, V> event) async {
+    // If the event was added, but no event handlers are registered,
+    // log a warning.
+    if (_eventHandlers.isEmpty) {
+      dev.log(
+        'Event $event was added but no event handlers are registered',
+        name: 'presentum',
+        level: 500,
+        stackTrace: StackTrace.current,
+      );
+    }
+
+    // Handle the event with all registered event handlers.
+    for (final handler in _eventHandlers) {
+      try {
+        await handler.onEvent(event);
+      } on Object catch (error, stackTrace) {
+        dev.log(
+          'Event handler ${handler.runtimeType} failed to handle event: $event',
+          name: 'presentum',
+          error: error,
+          stackTrace: stackTrace,
+          level: 1000,
+        );
+        _onError?.call(error, stackTrace);
+        // Don't return, continue handling other event handlers.
+      }
+    }
+  }
+
+  @override
   Future<void> markShown(TResolved item) async {
-    final surface = item.surface;
-    final variant = item.visualVariant;
-    await _storage.recordShown(
-      item.id,
-      surface: surface,
-      variant: variant,
-      at: DateTime.now(),
+    final event = PresentumShownEvent<TResolved, S, V>(
+      item: item,
+      timestamp: DateTime.now(),
     );
+    await addEvent(event);
   }
 
   @override
   Future<void> markDismissed(TResolved item) async {
-    final surface = item.surface;
-    final variant = item.visualVariant;
-    await _storage.recordDismissed(item.id, surface: surface, variant: variant);
+    final event = PresentumDismissedEvent<TResolved, S, V>(
+      item: item,
+      timestamp: DateTime.now(),
+    );
+    await addEvent(event);
 
     await setState(
       (state) =>
-          state..removeFromSurface(surface, (entry) => entry.id == item.id),
+          state
+            ..removeFromSurface(item.surface, (entry) => entry.id == item.id),
     );
   }
 
   @override
-  Future<void> markConverted(TResolved item) async {
-    final surface = item.surface;
-    final variant = item.visualVariant;
-    await _storage.recordConverted(
-      item.id,
-      surface: surface,
-      variant: variant,
-      at: DateTime.now(),
+  Future<void> markConverted(
+    TResolved item, {
+    Map<String, Object?>? conversionMetadata,
+  }) async {
+    final event = PresentumConvertedEvent<TResolved, S, V>(
+      item: item,
+      timestamp: DateTime.now(),
+      conversionMetadata: conversionMetadata,
     );
+    await addEvent(event);
   }
 
   @override

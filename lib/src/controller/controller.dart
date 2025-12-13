@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:presentum/src/controller/config.dart';
 import 'package:presentum/src/controller/engine/controller.dart';
+import 'package:presentum/src/controller/event_handler.dart';
 import 'package:presentum/src/controller/guard.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/controller/storage.dart';
@@ -20,7 +21,8 @@ abstract interface class Presentum<
 > {
   /// {@macro presentum}
   factory Presentum({
-    required PresentumStorage storage,
+    PresentumStorage<S, V>? storage,
+    List<IPresentumEventHandler<TResolved, S, V>>? eventHandlers,
     Map<S, PresentumSlot<TResolved, S, V>>? slots,
     List<IPresentumGuard<TResolved, S, V>>? guards,
     PresentumState<TResolved, S, V>? initialState,
@@ -105,6 +107,9 @@ abstract interface class Presentum<
   /// Push multiple items to the presentation slot.
   Future<void> pushAllSlots(List<({S surface, TResolved item})> items);
 
+  /// Add a new event to the event listeners.
+  Future<void> addEvent(PresentumEvent<TResolved, S, V> event);
+
   /// Mark an item as shown.
   Future<void> markShown(TResolved item);
 
@@ -112,7 +117,10 @@ abstract interface class Presentum<
   Future<void> markDismissed(TResolved item);
 
   /// Mark an item as converted.
-  Future<void> markConverted(TResolved item);
+  Future<void> markConverted(
+    TResolved item, {
+    Map<String, Object?>? conversionMetadata,
+  });
 
   /// Remove all instances of an item with the given [id] from slots.
   ///

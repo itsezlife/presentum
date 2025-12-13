@@ -48,7 +48,7 @@ abstract interface class IPresentumGuard<
   ///
   /// {@macro guard}
   FutureOr<PresentumState<TResolved, S, V>> call(
-    PresentumStorage storage,
+    PresentumStorage<S, V> storage,
     List<PresentumHistoryEntry<TResolved, S, V>> history,
     PresentumState$Mutable<TResolved, S, V> state,
     List<TResolved> candidates,
@@ -77,7 +77,7 @@ abstract class PresentumGuard<
 
   @override
   FutureOr<PresentumState<TResolved, S, V>> call(
-    PresentumStorage storage,
+    PresentumStorage<S, V> storage,
     List<PresentumHistoryEntry<TResolved, S, V>> history,
     PresentumState$Mutable<TResolved, S, V> state,
     List<TResolved> candidates,

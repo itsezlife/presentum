@@ -148,7 +148,7 @@ sealed class PresentumState<
 
   /// Create state from list of nodes
   ///
-  /// {@macro octopus_state}
+  /// {@macro presentum_state}
   @factory
   static PresentumState$Mutable<TResolved, S, V> from<
     TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
@@ -159,7 +159,7 @@ sealed class PresentumState<
 
   /// Empty state
   ///
-  /// {@macro octopus_state}
+  /// {@macro presentum_state}
   @factory
   static PresentumState$Mutable<TResolved, S, V> empty<
     TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
@@ -309,7 +309,7 @@ final class PresentumState$Mutable<
   }) : _slots = slots ?? <S, PresentumSlot<TResolved, S, V>>{},
        super._();
 
-  /// {@macro octopus_state}
+  /// {@macro presentum_state}
   factory PresentumState$Mutable.from(PresentumState<TResolved, S, V> state) =>
       PresentumState$Mutable<TResolved, S, V>(
         slots: state.slots,

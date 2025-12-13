@@ -20,6 +20,19 @@ abstract base class PresentumEngine<
     candidates,
   );
 
+  /// Set the candidates list with build in diffing algorithm.
+  FutureOr<void> setCandidatesWithDiff(
+    List<TResolved> Function(PresentumState$Mutable<TResolved, S, V> state)
+    newCandidates, {
+      Object? Function(TResolved item) getId,
+    bool Function(TResolved oldItem, TResolved newItem)?
+    customContentsComparison,
+    void Function(int position, int count)? inserted,
+    void Function(int position, int count)? removed,
+    void Function(int fromPosition, int toPosition)? moved,
+    void Function(int position, int count, Object? payload)? changed,
+  });
+
   /// The current list of candidates.
   List<TResolved> get currentCandidates;
 

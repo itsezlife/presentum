@@ -26,7 +26,7 @@ class PresentumConfig<
   /// - converted items
   /// - cooldown periods
   /// - etc.
-  final PresentumStorage storage;
+  final PresentumStorage<S, V> storage;
 
   /// The [PresentumStateObserver] that is used to observe the [Presentum]
   /// state.

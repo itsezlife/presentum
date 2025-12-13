@@ -12,6 +12,7 @@ import 'package:presentum/src/controller/state_queue.dart';
 import 'package:presentum/src/controller/storage.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
+import 'package:presentum/src/utils/diff_util_helpers.dart';
 import 'package:presentum/src/widgets/inherited_presentation.dart';
 
 /// Presentum engine.
@@ -25,7 +26,7 @@ final class PresentumEngine$Impl<
     with ChangeNotifier {
   PresentumEngine$Impl({
     required PresentumStateObserver$EngineImpl<TResolved, S, V> observer,
-    required PresentumStorage storage,
+    required PresentumStorage<S, V> storage,
     List<IPresentumGuard<TResolved, S, V>>? guards,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) : _observer = observer,
@@ -44,7 +45,7 @@ final class PresentumEngine$Impl<
   final PresentumStateObserver$EngineImpl<TResolved, S, V> _observer;
 
   /// The storage used by the presentum.
-  final PresentumStorage _storage;
+  final PresentumStorage<S, V> _storage;
 
   /// Error handler.
   final void Function(Object error, StackTrace stackTrace)? _onError;
@@ -74,7 +75,89 @@ final class PresentumEngine$Impl<
   ) async {
     final mutableState = _observer.value.mutate()
       ..intention = PresentumStateIntention.auto;
-    _candidates = candidates(mutableState, _candidates);
+    _candidates = candidates(mutableState, List.from(_candidates));
+    await setNewPresentationState(mutableState);
+  }
+
+  @override
+  FutureOr<void> setCandidatesWithDiff(
+    List<TResolved> Function(PresentumState$Mutable<TResolved, S, V> state)
+    newCandidates, {
+    Object? Function(TResolved item)? getId,
+    bool Function(TResolved oldItem, TResolved newItem)?
+    customContentsComparison,
+    void Function(int position, int count)? inserted,
+    void Function(int position, int count)? removed,
+    void Function(int fromPosition, int toPosition)? moved,
+    void Function(int position, int count, Object? payload)? changed,
+  }) async {
+    final mutableState = _observer.value.mutate()
+      ..intention = PresentumStateIntention.auto;
+    late final candidates = newCandidates(mutableState);
+
+    final oldList = List<TResolved>.from(_candidates);
+    final newList = List<TResolved>.from(candidates);
+
+    DiffUtils.calculateListDiffOperations(
+      oldList,
+      newList,
+      (item) {
+        if (getId case final id?) {
+          return id(item);
+        }
+        return item.id;
+      },
+      customContentsComparison: (oldItem, newItem) {
+        if (customContentsComparison case final comparison?) {
+          return comparison(oldItem, newItem);
+        }
+
+        final oldVariant = oldItem.variant;
+        final newVariant = newItem.variant;
+
+        // Return false if change was detected
+        if (oldVariant.surface != newVariant.surface) return false;
+        if (oldVariant.variant != newVariant.variant) return false;
+        if (oldVariant.stage != newVariant.stage) return false;
+        if (oldVariant.maxImpressions != newVariant.maxImpressions) {
+          return false;
+        }
+        if (oldVariant.cooldownMinutes != newVariant.cooldownMinutes) {
+          return false;
+        }
+        if (oldVariant.isDismissible != newVariant.isDismissible) {
+          return false;
+        }
+        if (oldVariant.alwaysOnIfEligible != newVariant.alwaysOnIfEligible) {
+          return false;
+        }
+
+        // No changes, return true
+        return true;
+      },
+      detectMoves: false, // we don't care about moves
+      inserted: (position, count) {
+        if (inserted case final inserted?) {
+          return inserted(position, count);
+        }
+        final data = candidates.sublist(position, position + count);
+        newList.insertAll(position, data);
+      },
+      removed: (position, count) {
+        if (removed case final removed?) {
+          return removed(position, count);
+        }
+        newList.removeRange(position, position + count);
+      },
+      changed: (position, count, payload) {
+        if (changed case final changed?) {
+          return changed(position, count, payload);
+        }
+        newList[position] = payload as TResolved;
+      },
+    ).clear();
+
+    _candidates = newList;
     await setNewPresentationState(mutableState);
   }
 
@@ -96,9 +179,6 @@ final class PresentumEngine$Impl<
   /// State observer,
   /// which can be used to listen to changes in the [PresentumState].
   PresentumStateObserver<TResolved, S, V> get observer => _observer;
-
-  /// The storage used by the presentation engine.
-  PresentumStorage get storage => _storage;
 
   @override
   Widget build(BuildContext context, Widget child) =>
