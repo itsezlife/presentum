@@ -24,7 +24,7 @@ abstract base class PresentumEngine<
   FutureOr<void> setCandidatesWithDiff(
     List<TResolved> Function(PresentumState$Mutable<TResolved, S, V> state)
     newCandidates, {
-      Object? Function(TResolved item) getId,
+    Object? Function(TResolved item) getId,
     bool Function(TResolved oldItem, TResolved newItem)?
     customContentsComparison,
     void Function(int position, int count)? inserted,

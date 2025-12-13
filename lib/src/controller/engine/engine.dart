@@ -93,7 +93,7 @@ final class PresentumEngine$Impl<
   }) async {
     final mutableState = _observer.value.mutate()
       ..intention = PresentumStateIntention.auto;
-    late final candidates = newCandidates(mutableState);
+    final candidates = newCandidates(mutableState);
 
     final oldList = List<TResolved>.from(_candidates);
     final updatedList = List<TResolved>.from(_candidates);
