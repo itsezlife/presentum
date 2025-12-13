@@ -96,11 +96,11 @@ final class PresentumEngine$Impl<
     late final candidates = newCandidates(mutableState);
 
     final oldList = List<TResolved>.from(_candidates);
-    final newList = List<TResolved>.from(_candidates);
+    final updatedList = List<TResolved>.from(_candidates);
 
     DiffUtils.calculateListDiffOperations(
       oldList,
-      newList,
+      candidates,
       (item) {
         if (getId case final id?) {
           return id(item);
@@ -141,23 +141,23 @@ final class PresentumEngine$Impl<
           return inserted(position, count);
         }
         final data = candidates.sublist(position, position + count);
-        newList.insertAll(position, data);
+        updatedList.insertAll(position, data);
       },
       removed: (position, count) {
         if (removed case final removed?) {
           return removed(position, count);
         }
-        newList.removeRange(position, position + count);
+        updatedList.removeRange(position, position + count);
       },
       changed: (position, count, payload) {
         if (changed case final changed?) {
           return changed(position, count, payload);
         }
-        newList[position] = payload as TResolved;
+        updatedList[position] = payload as TResolved;
       },
     ).clear();
 
-    _candidates = newList;
+    _candidates = updatedList;
     await setNewPresentationState(mutableState);
   }
 
