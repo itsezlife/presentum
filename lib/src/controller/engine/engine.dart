@@ -96,7 +96,7 @@ final class PresentumEngine$Impl<
     late final candidates = newCandidates(mutableState);
 
     final oldList = List<TResolved>.from(_candidates);
-    final newList = List<TResolved>.from(candidates);
+    final newList = List<TResolved>.from(_candidates);
 
     DiffUtils.calculateListDiffOperations(
       oldList,
