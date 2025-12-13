@@ -52,17 +52,15 @@ enum PresentumStateIntention {
 mixin PresentumSurface on Enum {
   /// The key of the surface.
   String get key => name;
+}
 
-  /// Duration until the surface is dismissed.
-  ///
-  /// This is used to determine if the surface should be shown.
-  /// If the duration is not null, the surface will be shown until the duration
-  /// is reached.
-  /// If the duration is null, the surface will be shown indefinitely.
-  DateTime? dismissedUntilDuration<TResolved>(
-    DateTime now,
-    TResolved resolvedVariant,
-  );
+/// Marker for all presentum variants.
+///
+/// Implement this on your surface enums:
+/// `enum AppVariant with PresentumVariant { ... }`
+mixin PresentumVisualVariant on Enum {
+  /// The key of the surface.
+  String get key => name;
 }
 
 /// {@template presentum_slot}
@@ -71,7 +69,11 @@ mixin PresentumSurface on Enum {
 /// - a FIFO (First In, First Out) `queue` of additional items.
 /// {@endtemplate}
 @immutable
-class PresentumSlot<TResolved, S extends PresentumSurface> {
+class PresentumSlot<
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> {
   /// {@macro presentum_slot}
   const PresentumSlot({
     required this.surface,
@@ -94,10 +96,10 @@ class PresentumSlot<TResolved, S extends PresentumSurface> {
   final List<TResolved> queue;
 
   /// Create a copy of the slot with the given changes.
-  PresentumSlot<TResolved, S> copyWith({
+  PresentumSlot<TResolved, S, V> copyWith({
     Object? active = _null,
     List<TResolved>? queue,
-  }) => PresentumSlot<TResolved, S>(
+  }) => PresentumSlot<TResolved, S, V>(
     surface: surface,
     active: active == _null ? this.active : active as TResolved?,
     queue: queue ?? this.queue,
@@ -106,7 +108,7 @@ class PresentumSlot<TResolved, S extends PresentumSurface> {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is PresentumSlot<TResolved, S> &&
+    return other is PresentumSlot<TResolved, S, V> &&
         other.surface == surface &&
         other.active == active &&
         other.queue == queue;
@@ -124,19 +126,23 @@ class PresentumSlot<TResolved, S extends PresentumSurface> {
 /// this callback.
 ///
 /// Return false to stop the walk.
-typedef ConditionalSlotVisitor<TResolved, S extends PresentumSurface> =
-    bool Function(S surface, PresentumSlot<TResolved, S> slot);
+typedef ConditionalSlotVisitor<
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> = bool Function(S surface, PresentumSlot<TResolved, S, V> slot);
 
 /// Sealed root type for presentation state.
 sealed class PresentumState<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 >
-    extends PresentumStateBase<TResolved, S> {
+    extends PresentumStateBase<TResolved, S, V> {
   factory PresentumState({
-    required Map<S, PresentumSlot<TResolved, S>> slots,
+    required Map<S, PresentumSlot<TResolved, S, V>> slots,
     required PresentumStateIntention intention,
-  }) = PresentumState$Mutable<TResolved, S>;
+  }) = PresentumState$Mutable<TResolved, S, V>;
 
   PresentumState._();
 
@@ -144,31 +150,34 @@ sealed class PresentumState<
   ///
   /// {@macro octopus_state}
   @factory
-  static PresentumState$Mutable<TResolved, S>
-  from<TResolved extends Identifiable, S extends PresentumSurface>(
-    PresentumState<TResolved, S> state,
-  ) => PresentumState$Mutable<TResolved, S>.from(state);
+  static PresentumState$Mutable<TResolved, S, V> from<
+    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+    S extends PresentumSurface,
+    V extends PresentumVisualVariant
+  >(PresentumState<TResolved, S, V> state) =>
+      PresentumState$Mutable<TResolved, S, V>.from(state);
 
   /// Empty state
   ///
   /// {@macro octopus_state}
   @factory
-  static PresentumState$Mutable<TResolved, S> empty<
-    TResolved extends Identifiable,
-    S extends PresentumSurface
+  static PresentumState$Mutable<TResolved, S, V> empty<
+    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+    S extends PresentumSurface,
+    V extends PresentumVisualVariant
   >({PresentumStateIntention intention = PresentumStateIntention.auto}) =>
-      PresentumState$Mutable<TResolved, S>(
-        slots: <S, PresentumSlot<TResolved, S>>{},
+      PresentumState$Mutable<TResolved, S, V>(
+        slots: <S, PresentumSlot<TResolved, S, V>>{},
         intention: intention,
       );
 
   /// Returns a immutable copy of this state.
   @override
-  PresentumState$Immutable<TResolved, S> freeze();
+  PresentumState$Immutable<TResolved, S, V> freeze();
 
   /// Returns a mutable copy of this state.
   @override
-  PresentumState$Mutable<TResolved, S> mutate();
+  PresentumState$Mutable<TResolved, S, V> mutate();
 
   /// Returns all active items across all slots.
   List<TResolved> get activeItems =>
@@ -181,23 +190,25 @@ sealed class PresentumState<
 /// {@macro presentum_state}
 @immutable
 final class PresentumState$Immutable<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 >
-    extends PresentumState<TResolved, S>
-    with _PresentumStateBase$Immutable<TResolved, S> {
+    extends PresentumState<TResolved, S, V>
+    with _PresentumStateBase$Immutable<TResolved, S, V> {
   /// {@macro presentum_state}
   factory PresentumState$Immutable({
-    required Map<S, PresentumSlot<TResolved, S>> slots,
+    required Map<S, PresentumSlot<TResolved, S, V>> slots,
     required PresentumStateIntention intention,
   }) => PresentumState$Immutable._(
-    slots: UnmodifiableMapView<S, PresentumSlot<TResolved, S>>(slots),
+    slots: UnmodifiableMapView<S, PresentumSlot<TResolved, S, V>>(slots),
     intention: intention,
   );
 
   /// {@macro presentum_state}
-  factory PresentumState$Immutable.from(PresentumState<TResolved, S> state) =>
-      state is PresentumState$Immutable<TResolved, S>
+  factory PresentumState$Immutable.from(
+    PresentumState<TResolved, S, V> state,
+  ) => state is PresentumState$Immutable<TResolved, S, V>
       ? state
       : PresentumState$Immutable(
           slots: state.slots,
@@ -205,32 +216,32 @@ final class PresentumState$Immutable<
         );
 
   PresentumState$Immutable._({
-    required Map<S, PresentumSlot<TResolved, S>> slots,
+    required Map<S, PresentumSlot<TResolved, S, V>> slots,
     required this.intention,
-  }) : _slots = UnmodifiableMapView<S, PresentumSlot<TResolved, S>>(slots),
+  }) : _slots = UnmodifiableMapView<S, PresentumSlot<TResolved, S, V>>(slots),
        super._();
 
-  final Map<S, PresentumSlot<TResolved, S>> _slots;
+  final Map<S, PresentumSlot<TResolved, S, V>> _slots;
 
   @override
-  Map<S, PresentumSlot<TResolved, S>> get slots => _slots;
+  Map<S, PresentumSlot<TResolved, S, V>> get slots => _slots;
 
   @override
   final PresentumStateIntention intention;
 
   @override
-  PresentumState$Immutable<TResolved, S> freeze() => this;
+  PresentumState$Immutable<TResolved, S, V> freeze() => this;
 
   @override
-  PresentumState$Mutable<TResolved, S> mutate() =>
-      PresentumState$Mutable<TResolved, S>(
-        slots: Map<S, PresentumSlot<TResolved, S>>.of(_slots),
+  PresentumState$Mutable<TResolved, S, V> mutate() =>
+      PresentumState$Mutable<TResolved, S, V>(
+        slots: Map<S, PresentumSlot<TResolved, S, V>>.of(_slots),
         intention: intention,
       );
 
   @override
-  PresentumState$Immutable<TResolved, S> copy() =>
-      PresentumState$Immutable<TResolved, S>(
+  PresentumState$Immutable<TResolved, S, V> copy() =>
+      PresentumState$Immutable<TResolved, S, V>(
         slots: _slots,
         intention: intention,
       );
@@ -253,7 +264,7 @@ final class PresentumState$Immutable<
           'surface': entry.key.name,
           'active': entry.value.active == null
               ? null
-              : encodeItem(entry.value.active!),
+              : encodeItem(entry.value.active as TResolved),
           'queue': <Map<String, Object?>>[
             for (final q in entry.value.queue) encodeItem(q),
           ],
@@ -264,8 +275,8 @@ final class PresentumState$Immutable<
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is PresentumState$Immutable<TResolved, S> &&
-        MapEquality<S, PresentumSlot<TResolved, S>>().equals(
+    return other is PresentumState$Immutable<TResolved, S, V> &&
+        MapEquality<S, PresentumSlot<TResolved, S, V>>().equals(
           slots,
           other.slots,
         ) &&
@@ -274,7 +285,7 @@ final class PresentumState$Immutable<
 
   @override
   int get hashCode => Object.hash(
-    MapEquality<S, PresentumSlot<TResolved, S>>().hash(slots),
+    MapEquality<S, PresentumSlot<TResolved, S, V>>().hash(slots),
     intention,
   );
 
@@ -285,47 +296,48 @@ final class PresentumState$Immutable<
 
 /// Mutable state.
 final class PresentumState$Mutable<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 >
-    extends PresentumState<TResolved, S>
-    with _PresentumStateBase$Mutable<TResolved, S> {
+    extends PresentumState<TResolved, S, V>
+    with _PresentumStateBase$Mutable<TResolved, S, V> {
   /// {@macro presentum_state}
   PresentumState$Mutable({
-    Map<S, PresentumSlot<TResolved, S>>? slots,
+    Map<S, PresentumSlot<TResolved, S, V>>? slots,
     this.intention = PresentumStateIntention.auto,
-  }) : _slots = slots ?? <S, PresentumSlot<TResolved, S>>{},
+  }) : _slots = slots ?? <S, PresentumSlot<TResolved, S, V>>{},
        super._();
 
   /// {@macro octopus_state}
-  factory PresentumState$Mutable.from(PresentumState<TResolved, S> state) =>
-      PresentumState$Mutable<TResolved, S>(
+  factory PresentumState$Mutable.from(PresentumState<TResolved, S, V> state) =>
+      PresentumState$Mutable<TResolved, S, V>(
         slots: state.slots,
         intention: state.intention,
       );
 
-  final Map<S, PresentumSlot<TResolved, S>> _slots;
+  final Map<S, PresentumSlot<TResolved, S, V>> _slots;
 
   @override
-  Map<S, PresentumSlot<TResolved, S>> get slots => _slots;
+  Map<S, PresentumSlot<TResolved, S, V>> get slots => _slots;
 
   @override
   PresentumStateIntention intention;
 
   @override
-  PresentumState$Immutable<TResolved, S> freeze() =>
-      PresentumState$Immutable<TResolved, S>(
+  PresentumState$Immutable<TResolved, S, V> freeze() =>
+      PresentumState$Immutable<TResolved, S, V>(
         slots: _slots,
         intention: intention,
       );
 
   @override
-  PresentumState$Mutable<TResolved, S> mutate() => this;
+  PresentumState$Mutable<TResolved, S, V> mutate() => this;
 
   @override
-  PresentumState$Mutable<TResolved, S> copy() =>
-      PresentumState$Mutable<TResolved, S>(
-        slots: Map<S, PresentumSlot<TResolved, S>>.of(_slots),
+  PresentumState$Mutable<TResolved, S, V> copy() =>
+      PresentumState$Mutable<TResolved, S, V>(
+        slots: Map<S, PresentumSlot<TResolved, S, V>>.of(_slots),
         intention: intention,
       );
 
@@ -388,11 +400,11 @@ final class PresentumState$Mutable<
   bool hasActive(S surface) => _slots[surface]?.active != null;
 
   /// Ensure slot exists and return it.
-  PresentumSlot<TResolved, S> _ensureSlot(S surface) =>
+  PresentumSlot<TResolved, S, V> _ensureSlot(S surface) =>
       _slots[surface] ??= PresentumSlot.empty(surface);
 
   /// Set active item for [surface] using [intention] semantics.
-  Map<S, PresentumSlot<TResolved, S>> setActive(
+  Map<S, PresentumSlot<TResolved, S, V>> setActive(
     S surface,
     TResolved item, {
     PresentumStateIntention intention = PresentumStateIntention.replace,
@@ -412,12 +424,12 @@ final class PresentumState$Mutable<
       case PresentumStateIntention.cancel:
         _slots[surface] = current.copyWith(active: item);
     }
-    return Map<S, PresentumSlot<TResolved, S>>.from(_slots);
+    return Map<S, PresentumSlot<TResolved, S, V>>.from(_slots);
   }
 
   /// Clear active item from [surface] and promote next queued item if
   /// available.
-  PresentumSlot<TResolved, S>? clearActive(S surface) {
+  PresentumSlot<TResolved, S, V>? clearActive(S surface) {
     final slot = _slots[surface];
     if (slot == null) return null;
 
@@ -460,9 +472,9 @@ final class PresentumState$Mutable<
   }
 
   /// Clear the active and queue for a surface.
-  PresentumSlot<TResolved, S>? clearSurface(S surface) {
+  PresentumSlot<TResolved, S, V>? clearSurface(S surface) {
     if (!_slots.containsKey(surface)) return null;
-    final emptySlot = PresentumSlot<TResolved, S>.empty(surface);
+    final emptySlot = PresentumSlot<TResolved, S, V>.empty(surface);
     _slots[surface] = emptySlot;
     return emptySlot;
   }
@@ -474,7 +486,7 @@ final class PresentumState$Mutable<
   /// This preserves items from other campaigns while removing only ineligible
   /// ones. If active item is removed and queue has items, promotes next queued
   /// item.
-  Map<S, PresentumSlot<TResolved, S>> removeWhere(
+  Map<S, PresentumSlot<TResolved, S, V>> removeWhere(
     bool Function(TResolved item) predicate,
   ) {
     for (final entry in _slots.entries) {
@@ -510,12 +522,12 @@ final class PresentumState$Mutable<
         }
       }
     }
-    return Map<S, PresentumSlot<TResolved, S>>.from(_slots);
+    return Map<S, PresentumSlot<TResolved, S, V>>.from(_slots);
   }
 
   /// Remove items from specific surface matching the predicate.
   /// If active item is removed and queue has items, promotes next queued item.
-  PresentumSlot<TResolved, S>? removeFromSurface(
+  PresentumSlot<TResolved, S, V>? removeFromSurface(
     S surface,
     bool Function(TResolved item) predicate,
   ) {
@@ -555,18 +567,18 @@ final class PresentumState$Mutable<
   }
 
   /// Look up the slot with [surface], or add a new slot if it isn't there.
-  PresentumSlot<TResolved, S> putIfAbsent(
+  PresentumSlot<TResolved, S, V> putIfAbsent(
     S surface,
-    PresentumSlot<TResolved, S> Function() ifAbsent,
+    PresentumSlot<TResolved, S, V> Function() ifAbsent,
   ) => _slots.putIfAbsent(surface, ifAbsent);
 
   /// Remove items with matching [id] from slots.
   ///
   /// If [surface] is provided, only that surface is affected.
-  Map<S, PresentumSlot<TResolved, S>> removeById(String id, {S? surface}) {
+  Map<S, PresentumSlot<TResolved, S, V>> removeById(String id, {S? surface}) {
     if (surface != null) {
       removeFromSurface(surface, (item) => item.id == id);
-      return Map<S, PresentumSlot<TResolved, S>>.from(slots);
+      return Map<S, PresentumSlot<TResolved, S, V>>.from(slots);
     }
     return removeWhere((item) => item.id == id);
   }
@@ -593,21 +605,25 @@ final class PresentumState$Mutable<
 }
 
 /// Base class for presentation state implementations.
-abstract base class PresentumStateBase<TResolved, S extends PresentumSurface> {
+abstract base class PresentumStateBase<
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> {
   /// Returns true if this entity has children.
   bool get hasSlots => slots.isNotEmpty;
 
   /// Returns a immutable copy of this entity.
-  PresentumStateBase<TResolved, S> freeze();
+  PresentumStateBase<TResolved, S, V> freeze();
 
   /// Returns a mutable copy of this entity.
-  PresentumStateBase<TResolved, S> mutate();
+  PresentumStateBase<TResolved, S, V> mutate();
 
   /// Returns a copy of this entity (keeps mutability).
-  PresentumStateBase<TResolved, S> copy();
+  PresentumStateBase<TResolved, S, V> copy();
 
   /// The slots of the state.
-  abstract final Map<S, PresentumSlot<TResolved, S>> slots;
+  abstract final Map<S, PresentumSlot<TResolved, S, V>> slots;
 
   /// The intention of the state.
   abstract final PresentumStateIntention intention;
@@ -615,37 +631,41 @@ abstract base class PresentumStateBase<TResolved, S extends PresentumSurface> {
   /// Walks the slots of this state.
   ///
   /// Return false to stop the walk.
-  void visitSlots(ConditionalSlotVisitor<TResolved, S> visitor);
+  void visitSlots(ConditionalSlotVisitor<TResolved, S, V> visitor);
 
   /// Search slot by surface and get first match or null.
-  PresentumSlot<TResolved, S>? findSlot(
-    ConditionalSlotVisitor<TResolved, S> test,
+  PresentumSlot<TResolved, S, V>? findSlot(
+    ConditionalSlotVisitor<TResolved, S, V> test,
   );
 
   /// Search all slots that match the test condition.
-  List<PresentumSlot<TResolved, S>> findAllSlots(
-    ConditionalSlotVisitor<TResolved, S> test,
+  List<PresentumSlot<TResolved, S, V>> findAllSlots(
+    ConditionalSlotVisitor<TResolved, S, V> test,
   );
 
   /// Walks the slots of this state and evaluates [value] on each of them.
   T foldSlots<T>(
     T value,
-    T Function(T value, S surface, PresentumSlot<TResolved, S> slot) visitor,
+    T Function(T value, S surface, PresentumSlot<TResolved, S, V> slot) visitor,
   );
 }
 
-base mixin _PresentumStateBase$Mutable<TResolved, S extends PresentumSurface>
-    on PresentumStateBase<TResolved, S> {
+base mixin _PresentumStateBase$Mutable<
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    on PresentumStateBase<TResolved, S, V> {
   @override
-  void visitSlots(ConditionalSlotVisitor<TResolved, S> visitor) {
+  void visitSlots(ConditionalSlotVisitor<TResolved, S, V> visitor) {
     for (final entry in slots.entries) {
       if (!visitor(entry.key, entry.value)) return;
     }
   }
 
   @override
-  PresentumSlot<TResolved, S>? findSlot(
-    ConditionalSlotVisitor<TResolved, S> test,
+  PresentumSlot<TResolved, S, V>? findSlot(
+    ConditionalSlotVisitor<TResolved, S, V> test,
   ) {
     for (final entry in slots.entries) {
       if (test(entry.key, entry.value)) {
@@ -656,10 +676,10 @@ base mixin _PresentumStateBase$Mutable<TResolved, S extends PresentumSurface>
   }
 
   @override
-  List<PresentumSlot<TResolved, S>> findAllSlots(
-    ConditionalSlotVisitor<TResolved, S> test,
+  List<PresentumSlot<TResolved, S, V>> findAllSlots(
+    ConditionalSlotVisitor<TResolved, S, V> test,
   ) {
-    final result = <PresentumSlot<TResolved, S>>[];
+    final result = <PresentumSlot<TResolved, S, V>>[];
     for (final entry in slots.entries) {
       if (test(entry.key, entry.value)) {
         result.add(entry.value);
@@ -671,7 +691,7 @@ base mixin _PresentumStateBase$Mutable<TResolved, S extends PresentumSurface>
   @override
   T foldSlots<T>(
     T value,
-    T Function(T value, S surface, PresentumSlot<TResolved, S> slot) visitor,
+    T Function(T value, S surface, PresentumSlot<TResolved, S, V> slot) visitor,
   ) {
     var result = value;
     for (final entry in slots.entries) {
@@ -681,18 +701,22 @@ base mixin _PresentumStateBase$Mutable<TResolved, S extends PresentumSurface>
   }
 }
 
-base mixin _PresentumStateBase$Immutable<TResolved, S extends PresentumSurface>
-    on PresentumStateBase<TResolved, S> {
+base mixin _PresentumStateBase$Immutable<
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    on PresentumStateBase<TResolved, S, V> {
   @override
-  void visitSlots(ConditionalSlotVisitor<TResolved, S> visitor) {
+  void visitSlots(ConditionalSlotVisitor<TResolved, S, V> visitor) {
     for (final entry in slots.entries) {
       if (!visitor(entry.key, entry.value)) return;
     }
   }
 
   @override
-  PresentumSlot<TResolved, S>? findSlot(
-    ConditionalSlotVisitor<TResolved, S> test,
+  PresentumSlot<TResolved, S, V>? findSlot(
+    ConditionalSlotVisitor<TResolved, S, V> test,
   ) {
     for (final entry in slots.entries) {
       if (test(entry.key, entry.value)) {
@@ -703,10 +727,10 @@ base mixin _PresentumStateBase$Immutable<TResolved, S extends PresentumSurface>
   }
 
   @override
-  List<PresentumSlot<TResolved, S>> findAllSlots(
-    ConditionalSlotVisitor<TResolved, S> test,
+  List<PresentumSlot<TResolved, S, V>> findAllSlots(
+    ConditionalSlotVisitor<TResolved, S, V> test,
   ) {
-    final result = <PresentumSlot<TResolved, S>>[];
+    final result = <PresentumSlot<TResolved, S, V>>[];
     for (final entry in slots.entries) {
       if (test(entry.key, entry.value)) {
         result.add(entry.value);
@@ -718,7 +742,7 @@ base mixin _PresentumStateBase$Immutable<TResolved, S extends PresentumSurface>
   @override
   T foldSlots<T>(
     T value,
-    T Function(T value, S surface, PresentumSlot<TResolved, S> slot) visitor,
+    T Function(T value, S surface, PresentumSlot<TResolved, S, V> slot) visitor,
   ) {
     var result = value;
     for (final entry in slots.entries) {

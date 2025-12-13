@@ -3,7 +3,6 @@
 /// anytime.
 library;
 
-export 'src/controller/bindings.dart';
 export 'src/controller/controller.dart';
 export 'src/controller/engine.dart';
 export 'src/controller/guard.dart';

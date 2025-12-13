@@ -41,11 +41,10 @@ abstract interface class PresentumStorage {
     String itemId, {
     required Enum surface,
     required Enum variant,
-    required DateTime until,
   });
 
   /// Gets when an item was dismissed until.
-  FutureOr<DateTime?> getDismissedUntil(
+  FutureOr<DateTime?> getDismissedAt(
     String itemId, {
     required Enum surface,
     required Enum variant,

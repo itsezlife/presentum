@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:presentum/src/controller/bindings.dart';
 import 'package:presentum/src/controller/config.dart';
 import 'package:presentum/src/controller/engine/controller.dart';
 import 'package:presentum/src/controller/guard.dart';
@@ -15,47 +14,50 @@ import 'package:presentum/src/widgets/inherited_presentation.dart';
 /// The main class of the package.
 /// {@endtemplate}
 abstract interface class Presentum<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 > {
   /// {@macro presentum}
   factory Presentum({
     required PresentumStorage storage,
-    required PresentumBindings<TResolved, S> bindings,
-    Map<S, PresentumSlot<TResolved, S>>? slots,
-    List<IPresentumGuard<TResolved, S>>? guards,
-    PresentumState<TResolved, S>? initialState,
-    List<PresentumHistoryEntry<TResolved, S>>? history,
+    Map<S, PresentumSlot<TResolved, S, V>>? slots,
+    List<IPresentumGuard<TResolved, S, V>>? guards,
+    PresentumState<TResolved, S, V>? initialState,
+    List<PresentumHistoryEntry<TResolved, S, V>>? history,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) = Presentum$EngineImpl;
 
   /// Receives the [Presentum] instance from the elements tree.
-  static Presentum<TResolved, S>? maybeOf<
-    TResolved extends Identifiable,
-    S extends PresentumSurface
-  >(BuildContext context) => InheritedPresentum.maybeOf<TResolved, S>(
+  static Presentum<TResolved, S, V>? maybeOf<
+    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+    S extends PresentumSurface,
+    V extends PresentumVisualVariant
+  >(BuildContext context) => InheritedPresentum.maybeOf<TResolved, S, V>(
     context,
     listen: false,
   )?.presentum;
 
   /// Receives the [Presentum] instance from the elements tree.
-  static Presentum<TResolved, S>
-  of<TResolved extends Identifiable, S extends PresentumSurface>(
-    BuildContext context,
-  ) => InheritedPresentum.of<TResolved, S>(context, listen: false).presentum;
+  static Presentum<TResolved, S, V> of<
+    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+    S extends PresentumSurface,
+    V extends PresentumVisualVariant
+  >(BuildContext context) =>
+      InheritedPresentum.of<TResolved, S, V>(context, listen: false).presentum;
 
   /// Configuration of the [Presentum].
-  abstract final PresentumConfig<TResolved, S> config;
+  abstract final PresentumConfig<TResolved, S, V> config;
 
   /// State observer,
   /// which can be used to listen to changes in the [PresentumState].
-  PresentumStateObserver<TResolved, S> get observer;
+  PresentumStateObserver<TResolved, S, V> get observer;
 
   /// Current state.
-  PresentumState$Immutable<TResolved, S> get state;
+  PresentumState$Immutable<TResolved, S, V> get state;
 
   /// History of the [PresentumState] states.
-  List<PresentumHistoryEntry<TResolved, S>> get history;
+  List<PresentumHistoryEntry<TResolved, S, V>> get history;
 
   /// Completes when processing queue is empty
   /// and all transactions are completed.
@@ -73,8 +75,8 @@ abstract interface class Presentum<
   /// Better to use [transaction] method to change multiple states
   /// at once synchronously at the same time and merge changes into transaction.
   Future<void> setState(
-    PresentumState<TResolved, S> Function(
-      PresentumState$Mutable<TResolved, S> state,
+    PresentumState<TResolved, S, V> Function(
+      PresentumState$Mutable<TResolved, S, V> state,
     )
     change,
   );
@@ -90,7 +92,9 @@ abstract interface class Presentum<
   /// If the priority is not specified, the transaction will be executed
   /// in the order in which it was added.
   Future<void> transaction(
-    PresentumState<TResolved, S> Function(PresentumState<TResolved, S> state)
+    PresentumState<TResolved, S, V> Function(
+      PresentumState<TResolved, S, V> state,
+    )
     change, {
     int? priority,
   });

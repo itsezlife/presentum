@@ -8,26 +8,28 @@ import 'package:presentum/src/state/state.dart';
 
 /// Processor for the presentum state.
 typedef PresentumStateProcessor<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
-> = Future<void> Function(PresentumState<TResolved, S> state);
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> = Future<void> Function(PresentumState<TResolved, S, V> state);
 
 /// Serializes presentum state transitions.
 class PresentumStateQueue<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 >
-    implements Sink<PresentumState<TResolved, S>> {
+    implements Sink<PresentumState<TResolved, S, V>> {
   /// {@macro presentum_state_queue}
   PresentumStateQueue({
-    required PresentumStateProcessor<TResolved, S> processor,
+    required PresentumStateProcessor<TResolved, S, V> processor,
     String debugLabel = 'PresentumStateQueue',
   }) : _stateProcessor = processor,
        _debugLabel = debugLabel;
 
-  final DoubleLinkedQueue<_StateTask<TResolved, S>> _queue =
-      DoubleLinkedQueue<_StateTask<TResolved, S>>();
-  final PresentumStateProcessor<TResolved, S> _stateProcessor;
+  final DoubleLinkedQueue<_StateTask<TResolved, S, V>> _queue =
+      DoubleLinkedQueue<_StateTask<TResolved, S, V>>();
+  final PresentumStateProcessor<TResolved, S, V> _stateProcessor;
   final String _debugLabel;
   Future<void>? _processing;
 
@@ -53,9 +55,9 @@ class PresentumStateQueue<
   bool _closed = false;
 
   @override
-  Future<void> add(PresentumState<TResolved, S> state) {
+  Future<void> add(PresentumState<TResolved, S, V> state) {
     if (_closed) throw StateError('StateQueue is closed');
-    final task = _StateTask<TResolved, S>(state);
+    final task = _StateTask<TResolved, S, V>(state);
     _queue.add(task);
     unawaited(_start());
     developer.Timeline.instantSync('$_debugLabel:add');
@@ -112,18 +114,22 @@ class PresentumStateQueue<
 }
 
 @immutable
-class _StateTask<TResolved extends Identifiable, S extends PresentumSurface> {
-  _StateTask(PresentumState<TResolved, S> state)
+class _StateTask<
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> {
+  _StateTask(PresentumState<TResolved, S, V> state)
     : _state = state,
       _completer = Completer<void>.sync();
 
-  final PresentumState<TResolved, S> _state;
+  final PresentumState<TResolved, S, V> _state;
   final Completer<void> _completer;
 
   Future<void> get future => _completer.future;
 
   Future<void> call(
-    Future<void> Function(PresentumState<TResolved, S>) fn,
+    Future<void> Function(PresentumState<TResolved, S, V>) fn,
   ) async {
     try {
       if (_completer.isCompleted) return;

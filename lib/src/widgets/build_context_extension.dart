@@ -7,7 +7,9 @@ import 'package:presentum/src/widgets/inherited_presentation.dart';
 /// Extension methods for [BuildContext].
 extension PresentationBuildContextExtension on BuildContext {
   /// Receives the [Presentum] instance from the elements tree.
-  Presentum<TResolved, S>
-  presentum<TResolved extends Identifiable, S extends PresentumSurface>() =>
-      InheritedPresentum.of<TResolved, S>(this, listen: false).presentum;
+  Presentum<TResolved, S, V> presentum<
+    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+    S extends PresentumSurface,
+    V extends PresentumVisualVariant
+  >() => InheritedPresentum.of<TResolved, S, V>(this, listen: false).presentum;
 }

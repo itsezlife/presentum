@@ -25,8 +25,9 @@ import 'package:presentum/src/state/state.dart';
 /// and presentum rerun the all guards with current state.
 /// {@endtemplate}
 abstract interface class IPresentumGuard<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 >
     implements Listenable {
   /// Called when the [PresentumState] changes.
@@ -46,10 +47,10 @@ abstract interface class IPresentumGuard<
   /// DO NOT USE [notifyListeners] IN THIS METHOD TO AVOID INFINITE LOOP!
   ///
   /// {@macro guard}
-  FutureOr<PresentumState<TResolved, S>> call(
+  FutureOr<PresentumState<TResolved, S, V>> call(
     PresentumStorage storage,
-    List<PresentumHistoryEntry<TResolved, S>> history,
-    PresentumState$Mutable<TResolved, S> state,
+    List<PresentumHistoryEntry<TResolved, S, V>> history,
+    PresentumState$Mutable<TResolved, S, V> state,
     List<TResolved> candidates,
     Map<String, Object?> context,
   );
@@ -61,11 +62,12 @@ abstract interface class IPresentumGuard<
 ///
 /// {@macro guard}
 abstract class PresentumGuard<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 >
     with ChangeNotifier
-    implements IPresentumGuard<TResolved, S> {
+    implements IPresentumGuard<TResolved, S, V> {
   /// {@macro guard}
   PresentumGuard({Listenable? refresh}) : _refresh = refresh {
     _refresh?.addListener(notifyListeners);
@@ -74,10 +76,10 @@ abstract class PresentumGuard<
   final Listenable? _refresh;
 
   @override
-  FutureOr<PresentumState<TResolved, S>> call(
+  FutureOr<PresentumState<TResolved, S, V>> call(
     PresentumStorage storage,
-    List<PresentumHistoryEntry<TResolved, S>> history,
-    PresentumState$Mutable<TResolved, S> state,
+    List<PresentumHistoryEntry<TResolved, S, V>> history,
+    PresentumState$Mutable<TResolved, S, V> state,
     List<TResolved> candidates,
     Map<String, Object?> context,
   ) => state;

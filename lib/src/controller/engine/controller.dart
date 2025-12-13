@@ -3,7 +3,6 @@ import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:presentum/src/controller/bindings.dart';
 import 'package:presentum/src/controller/config.dart';
 import 'package:presentum/src/controller/controller.dart';
 import 'package:presentum/src/controller/engine/engine.dart';
@@ -16,23 +15,23 @@ import 'package:presentum/src/state/state.dart';
 
 @internal
 final class Presentum$EngineImpl<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 >
-    implements Presentum<TResolved, S> {
+    implements Presentum<TResolved, S, V> {
   factory Presentum$EngineImpl({
     required PresentumStorage storage,
-    required PresentumBindings<TResolved, S> bindings,
-    Map<S, PresentumSlot<TResolved, S>>? slots,
-    List<IPresentumGuard<TResolved, S>>? guards,
-    PresentumState<TResolved, S>? initialState,
-    List<PresentumHistoryEntry<TResolved, S>>? history,
+    Map<S, PresentumSlot<TResolved, S, V>>? slots,
+    List<IPresentumGuard<TResolved, S, V>>? guards,
+    PresentumState<TResolved, S, V>? initialState,
+    List<PresentumHistoryEntry<TResolved, S, V>>? history,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) {
     final observer = PresentumStateObserver$EngineImpl(
       initialState?.freeze() ??
-          PresentumState$Immutable<TResolved, S>(
-            slots: slots ?? <S, PresentumSlot<TResolved, S>>{},
+          PresentumState$Immutable<TResolved, S, V>(
+            slots: slots ?? <S, PresentumSlot<TResolved, S, V>>{},
             intention: PresentumStateIntention.auto,
           ),
       history,
@@ -46,7 +45,6 @@ final class Presentum$EngineImpl<
     final controller = Presentum$EngineImpl._(
       storage: storage,
       observer: observer,
-      bindings: bindings,
       engine: engine,
     );
     engine.$presentum = WeakReference(controller);
@@ -55,33 +53,30 @@ final class Presentum$EngineImpl<
 
   Presentum$EngineImpl._({
     required PresentumStorage storage,
-    required PresentumBindings<TResolved, S> bindings,
-    required PresentumEngine$Impl<TResolved, S> engine,
-    required PresentumStateObserver<TResolved, S> observer,
-  }) : config = PresentumConfig<TResolved, S>(
+    required PresentumEngine$Impl<TResolved, S, V> engine,
+    required PresentumStateObserver<TResolved, S, V> observer,
+  }) : config = PresentumConfig<TResolved, S, V>(
          storage: storage,
          observer: observer,
          engine: engine,
        ),
        _engine = engine,
-       _bindings = bindings,
        _storage = storage;
 
   @override
-  final PresentumConfig<TResolved, S> config;
+  final PresentumConfig<TResolved, S, V> config;
 
-  final PresentumEngine$Impl<TResolved, S> _engine;
-  final PresentumBindings<TResolved, S> _bindings;
+  final PresentumEngine$Impl<TResolved, S, V> _engine;
   final PresentumStorage _storage;
 
   @override
-  PresentumStateObserver<TResolved, S> get observer => config.observer;
+  PresentumStateObserver<TResolved, S, V> get observer => config.observer;
 
   @override
-  PresentumState$Immutable<TResolved, S> get state => observer.value;
+  PresentumState$Immutable<TResolved, S, V> get state => observer.value;
 
   @override
-  List<PresentumHistoryEntry<TResolved, S>> get history => observer.history;
+  List<PresentumHistoryEntry<TResolved, S, V>> get history => observer.history;
 
   @override
   bool get isIdle => !isProcessing;
@@ -94,8 +89,8 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> setState(
-    PresentumState<TResolved, S> Function(
-      PresentumState$Mutable<TResolved, S> state,
+    PresentumState<TResolved, S, V> Function(
+      PresentumState$Mutable<TResolved, S, V> state,
     )
     change,
   ) => _engine.setNewPresentationState(
@@ -118,8 +113,8 @@ final class Presentum$EngineImpl<
   Completer<void>? _txnCompleter;
   final Queue<
     (
-      PresentumState<TResolved, S> Function(
-        PresentumState$Mutable<TResolved, S>,
+      PresentumState<TResolved, S, V> Function(
+        PresentumState$Mutable<TResolved, S, V>,
       ),
       int,
     )
@@ -127,8 +122,8 @@ final class Presentum$EngineImpl<
   _txnQueue =
       Queue<
         (
-          PresentumState<TResolved, S> Function(
-            PresentumState$Mutable<TResolved, S>,
+          PresentumState<TResolved, S, V> Function(
+            PresentumState$Mutable<TResolved, S, V>,
           ),
           int,
         )
@@ -136,7 +131,9 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> transaction(
-    PresentumState<TResolved, S> Function(PresentumState$Mutable<TResolved, S>)
+    PresentumState<TResolved, S, V> Function(
+      PresentumState$Mutable<TResolved, S, V>,
+    )
     change, {
     int? priority,
   }) async {
@@ -152,8 +149,8 @@ final class Presentum$EngineImpl<
         for (final fn in list) {
           try {
             mutableState = switch (fn.$1(mutableState)) {
-              final PresentumState$Mutable<TResolved, S> state => state,
-              final PresentumState$Immutable<TResolved, S> state =>
+              final PresentumState$Mutable<TResolved, S, V> state => state,
+              final PresentumState$Immutable<TResolved, S, V> state =>
                 state.mutate(),
             };
           } on Object {
@@ -174,8 +171,8 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> markShown(TResolved item) async {
-    final surface = _bindings.surfaceOf(item);
-    final variant = _bindings.variantOf(item);
+    final surface = item.surface;
+    final variant = item.visualVariant;
     await _storage.recordShown(
       item.id,
       surface: surface,
@@ -186,18 +183,9 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> markDismissed(TResolved item) async {
-    final surface = _bindings.surfaceOf(item);
-    final variant = _bindings.variantOf(item);
-    final until =
-        surface.dismissedUntilDuration(DateTime.now(), item) ??
-        dismissUntilForever;
-    await _storage.recordDismissed(
-      item.id,
-      surface: surface,
-      variant: variant,
-      // TODO(campaigns): find a way to provide per variant/surface dismiss until.
-      until: until,
-    );
+    final surface = item.surface;
+    final variant = item.visualVariant;
+    await _storage.recordDismissed(item.id, surface: surface, variant: variant);
 
     await setState(
       (state) =>
@@ -207,8 +195,8 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> markConverted(TResolved item) async {
-    final surface = _bindings.surfaceOf(item);
-    final variant = _bindings.variantOf(item);
+    final surface = item.surface;
+    final variant = item.visualVariant;
     await _storage.recordConverted(
       item.id,
       surface: surface,

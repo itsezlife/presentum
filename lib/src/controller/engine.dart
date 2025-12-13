@@ -7,13 +7,14 @@ import 'package:presentum/src/widgets/inherited_presentation.dart';
 
 /// Presentum engine.
 abstract base class PresentumEngine<
-  TResolved extends Identifiable,
-  S extends PresentumSurface
+  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
 > {
   /// Set the candidates list.
   FutureOr<void> setCandidates(
     List<TResolved> Function(
-      PresentumState$Mutable<TResolved, S> state,
+      PresentumState$Mutable<TResolved, S, V> state,
       List<TResolved> currentCandidates,
     )
     candidates,
@@ -23,10 +24,10 @@ abstract base class PresentumEngine<
   List<TResolved> get currentCandidates;
 
   /// Set the new presentation state.
-  Future<void> setNewPresentationState(PresentumState<TResolved, S> state);
+  Future<void> setNewPresentationState(PresentumState<TResolved, S, V> state);
 
   /// The current state of the presentation engine.
-  PresentumState$Immutable<TResolved, S> get currentState;
+  PresentumState$Immutable<TResolved, S, V> get currentState;
 
   /// Whether the controller is currently processing a tasks.
   bool get isProcessing;
