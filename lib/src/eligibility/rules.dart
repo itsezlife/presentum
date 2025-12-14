@@ -58,11 +58,12 @@ final class SetMembershipRule
     final value = context[eligibility.contextKey];
 
     if (value == null) {
-      dev.log(
-        'SetMembership: key="${eligibility.contextKey}" not found in context',
-        name: 'SetMembershipRule',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'SetMembership: key="${eligibility.contextKey}" not found in context',
+        ),
+        StackTrace.current,
       );
-      return false;
     }
 
     final isEligible = eligibility.allowedValues.contains(value.toString());
@@ -102,11 +103,12 @@ final class AnySegmentRule implements EligibilityRule<AnySegmentEligibility> {
     } else if (rawSegments is List) {
       userSegments = rawSegments.whereType<String>().toSet();
     } else {
-      dev.log(
-        'AnySegment: key="${eligibility.contextKey}" is not a Set or List',
-        name: 'AnySegmentRule',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'AnySegment: key="${eligibility.contextKey}" is not a Set or List',
+        ),
+        StackTrace.current,
       );
-      return false;
     }
 
     final isEligible = eligibility.requiredSegments.any(userSegments.contains);
@@ -140,12 +142,13 @@ final class BooleanFlagRule implements EligibilityRule<BooleanFlagEligibility> {
     final value = context[eligibility.contextKey];
 
     if (value is! bool) {
-      dev.log(
-        'BooleanFlag: key="${eligibility.contextKey}" is not a bool '
-        '(got: ${value.runtimeType})',
-        name: 'BooleanFlagRule',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'BooleanFlag: key="${eligibility.contextKey}" is not a bool '
+          '(got: $value)',
+        ),
+        StackTrace.current,
       );
-      return false;
     }
 
     final isEligible = value == eligibility.requiredValue;
@@ -181,12 +184,13 @@ final class NumericComparisonRule
     final value = context[eligibility.contextKey];
 
     if (value is! num) {
-      dev.log(
-        'NumericComparison: key="${eligibility.contextKey}" is not a num '
-        '(got: ${value.runtimeType})',
-        name: 'NumericComparisonRule',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'NumericComparison: key="${eligibility.contextKey}" is not a num '
+          '(got: $value)',
+        ),
+        StackTrace.current,
       );
-      return false;
     }
 
     final isEligible = eligibility.comparison.compare(
@@ -224,11 +228,12 @@ final class StringMatchRule implements EligibilityRule<StringMatchEligibility> {
     final value = context[eligibility.contextKey];
 
     if (value == null) {
-      dev.log(
-        'StringMatch: key="${eligibility.contextKey}" not found in context',
-        name: 'StringMatchRule',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'StringMatch: key="${eligibility.contextKey}" not found in context',
+        ),
+        StackTrace.current,
       );
-      return false;
     }
 
     final stringValue = value.toString();
