@@ -25,7 +25,7 @@ extension PresentumBuildContextExtension on BuildContext {
   ).item;
 
   /// Receives the [ResolvedPresentumVariant] instance from the elements tree.
-  TResolved watchedResolvedPresentumVariant<
+  TResolved watchResolvedPresentumVariant<
     TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
