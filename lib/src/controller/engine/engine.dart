@@ -13,7 +13,7 @@ import 'package:presentum/src/controller/storage.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
 import 'package:presentum/src/utils/diff_util_helpers.dart';
-import 'package:presentum/src/widgets/inherited_presentation.dart';
+import 'package:presentum/src/widgets/inherited_presentum.dart';
 
 /// Presentum engine.
 @internal

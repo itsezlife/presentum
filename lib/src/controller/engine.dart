@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
-import 'package:presentum/src/widgets/inherited_presentation.dart';
+import 'package:presentum/src/widgets/inherited_presentum.dart';
 
 /// Presentum engine.
 abstract base class PresentumEngine<

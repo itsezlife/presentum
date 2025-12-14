@@ -73,7 +73,7 @@ class _PresentumOutletState<
   @override
   Widget build(BuildContext context) {
     if (_lastItem case final item?) {
-      return InheritedResolvedPresentum<TResolved>(
+      return InheritedPresentumResolvedVariant<TResolved, S, V>(
         item: item,
         child: widget.builder(context, item),
       );
