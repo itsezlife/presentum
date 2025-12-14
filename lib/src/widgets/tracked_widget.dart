@@ -11,8 +11,7 @@ import 'package:presentum/src/widgets/build_context_extension.dart';
 ///
 /// This widget uses [PageStorage] to remember whether it has already
 /// tracked the "shown" event to avoid duplicate tracking when the widget is
-/// rebuilt. If you need this behaviour, ensure that a [PageStorageKey] is
-/// provided to the widget's [key] parameter.
+/// rebuilt.
 /// {@endtemplate}
 class PresentumTrackedWidget<
   TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
@@ -55,18 +54,24 @@ class _PresentumTrackedWidgetState<
     extends State<PresentumTrackedWidget<TResolved, S, V>> {
   late bool _hasTrackedShown;
 
+  String get _pageStorageKey => 'presentum_tracked_widget_${widget.item.id}';
+
   @override
   void initState() {
     super.initState();
     final hasTrackedShown =
-        PageStorage.of(context).readState(context) as bool? ?? false;
+        PageStorage.of(context).readState(context, identifier: _pageStorageKey)
+            as bool? ??
+        false;
     _hasTrackedShown = hasTrackedShown;
     if (widget.trackVisibility && !_hasTrackedShown) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         context.presentum<TResolved, S, V>().markShown(widget.item);
         _hasTrackedShown = true;
-        PageStorage.of(context).writeState(context, true);
+        PageStorage.of(
+          context,
+        ).writeState(context, true, identifier: _pageStorageKey);
       });
     }
   }

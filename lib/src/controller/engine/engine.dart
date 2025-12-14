@@ -86,10 +86,10 @@ final class PresentumEngine$Impl<
     Object? Function(TResolved item)? getId,
     bool Function(TResolved oldItem, TResolved newItem)?
     customContentsComparison,
-    void Function(int position, int count)? inserted,
+    void Function(int position, List<TResolved> newItems)? inserted,
     void Function(int position, int count)? removed,
     void Function(int fromPosition, int toPosition)? moved,
-    void Function(int position, int count, Object? payload)? changed,
+    void Function(int position, int count, TResolved? payload)? changed,
   }) async {
     final mutableState = _observer.value.mutate()
       ..intention = PresentumStateIntention.auto;
@@ -137,23 +137,25 @@ final class PresentumEngine$Impl<
       },
       detectMoves: false, // we don't care about moves
       inserted: (position, count) {
-        if (inserted case final inserted?) {
-          return inserted(position, count);
-        }
         final data = candidates.sublist(position, position + count);
         updatedList.insertAll(position, data);
+        if (inserted case final inserted?) {
+          inserted(position, data);
+        }
       },
       removed: (position, count) {
-        if (removed case final removed?) {
-          return removed(position, count);
-        }
         updatedList.removeRange(position, position + count);
+        if (removed case final removed?) {
+          removed(position, count);
+        }
       },
       changed: (position, count, payload) {
-        if (changed case final changed?) {
-          return changed(position, count, payload);
+        if (payload case final TResolved payload?) {
+          updatedList[position] = payload;
+          if (changed case final changed?) {
+            changed(position, count, payload);
+          }
         }
-        updatedList[position] = payload as TResolved;
       },
     ).clear();
 

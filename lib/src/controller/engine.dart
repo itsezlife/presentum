@@ -27,10 +27,10 @@ abstract base class PresentumEngine<
     Object? Function(TResolved item) getId,
     bool Function(TResolved oldItem, TResolved newItem)?
     customContentsComparison,
-    void Function(int position, int count)? inserted,
+    void Function(int position, List<TResolved> newItems)? inserted,
     void Function(int position, int count)? removed,
     void Function(int fromPosition, int toPosition)? moved,
-    void Function(int position, int count, Object? payload)? changed,
+    void Function(int position, int count, TResolved? payload)? changed,
   });
 
   /// The current list of candidates.

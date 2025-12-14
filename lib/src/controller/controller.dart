@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:presentum/src/controller/config.dart';
 import 'package:presentum/src/controller/engine/controller.dart';
-import 'package:presentum/src/controller/event_handler.dart';
+import 'package:presentum/src/controller/event.dart';
 import 'package:presentum/src/controller/guard.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/controller/storage.dart';
