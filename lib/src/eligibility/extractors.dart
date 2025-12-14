@@ -439,6 +439,37 @@ final class StringMatchExtractor<S extends HasMetadata>
   }
 }
 
+/// {@template constant_extractor}
+/// Extracts [ConstantEligibility] from metadata.
+///
+/// This allows hard-coding eligibility values in metadata.
+/// {@endtemplate}
+///
+/// Expected metadata:
+/// ```json
+/// {
+///   "is_active": true
+/// }
+/// ```
+final class ConstantExtractor<S extends HasMetadata>
+    extends MetadataExtractor<S> {
+  /// {@macro constant_extractor}
+  const ConstantExtractor({required this.metadataKey});
+
+  /// Key in metadata to read the boolean value from.
+  final String metadataKey;
+
+  @override
+  bool supports(S subject) => subject.metadata.containsKey(metadataKey);
+
+  @override
+  Iterable<Eligibility> extract(S subject) {
+    final value = requireBool(subject.metadata[metadataKey], metadataKey);
+
+    return [ConstantEligibility(value: value)];
+  }
+}
+
 /// Extracts [AllOfEligibility] from metadata (nested extractors).
 ///
 /// This allows combining multiple conditions with AND logic.
