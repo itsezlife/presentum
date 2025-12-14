@@ -15,8 +15,7 @@ extension PresentumBuildContextExtension on BuildContext {
   >() => InheritedPresentum.of<TResolved, S, V>(this, listen: false).presentum;
 
   /// Receives the [ResolvedPresentumVariant] instance from the elements tree.
-  ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>
-  resolvedPresentumVariant<
+  TResolved resolvedPresentumVariant<
     TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
@@ -26,8 +25,7 @@ extension PresentumBuildContextExtension on BuildContext {
   ).item;
 
   /// Receives the [ResolvedPresentumVariant] instance from the elements tree.
-  ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>
-  watchedResolvedPresentumVariant<
+  TResolved watchedResolvedPresentumVariant<
     TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
