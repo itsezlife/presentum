@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:presentum/src/eligibility/core.dart';
+import 'package:presentum/src/eligibility/resolver.dart';
 
 /// {@template time_range_eligibility}
 /// Time must fall within a specified range (inclusive of start, exclusive of

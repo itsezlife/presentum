@@ -1,5 +1,5 @@
 import 'package:presentum/src/eligibility/conditions.dart';
-import 'package:presentum/src/eligibility/core.dart';
+import 'package:presentum/src/eligibility/resolver.dart';
 
 /// Interface for subjects that have metadata.
 ///

@@ -1,7 +1,7 @@
 import 'dart:developer' as dev;
 
 import 'package:presentum/src/eligibility/conditions.dart';
-import 'package:presentum/src/eligibility/core.dart';
+import 'package:presentum/src/eligibility/resolver.dart';
 
 /// Evaluates [TimeRangeEligibility] conditions.
 ///

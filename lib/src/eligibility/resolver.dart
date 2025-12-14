@@ -182,7 +182,7 @@ final class DefaultEligibilityResolver<S> implements EligibilityResolver<S> {
     EligibilityRule rule,
     Eligibility condition,
     Map<String, dynamic> context,
-  // ignore: prefer_expression_function_bodies
+    // ignore: prefer_expression_function_bodies
   ) {
     // Dart doesn't allow us to express the relationship between the rule's
     // generic type and the condition type statically, so we use dynamic.
