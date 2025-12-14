@@ -49,6 +49,6 @@
 library;
 
 export 'conditions.dart';
-export 'resolver.dart';
 export 'extractors.dart';
+export 'resolver.dart';
 export 'rules.dart';
