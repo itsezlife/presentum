@@ -24,9 +24,12 @@ abstract class MetadataExtractor<S extends HasMetadata>
   /// Validates that a value is a non-empty string.
   String requireString(Object? value, String fieldName) {
     if (value is! String || value.isEmpty) {
-      throw MalformedMetadataException(
-        'Field "$fieldName" must be a non-empty string',
-        'received: $value',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$fieldName" must be a non-empty string',
+          'received: $value',
+        ),
+        StackTrace.current,
       );
     }
     return value;
@@ -39,9 +42,12 @@ abstract class MetadataExtractor<S extends HasMetadata>
       if (value == 'true') return true;
       if (value == 'false') return false;
     }
-    throw MalformedMetadataException(
-      'Field "$fieldName" must be a boolean or "true"/"false" string',
-      'received: $value',
+    Error.throwWithStackTrace(
+      MalformedMetadataException(
+        'Field "$fieldName" must be a boolean or "true"/"false" string',
+        'received: $value',
+      ),
+      StackTrace.current,
     );
   }
 
@@ -52,26 +58,35 @@ abstract class MetadataExtractor<S extends HasMetadata>
       final parsed = num.tryParse(value);
       if (parsed != null) return parsed;
     }
-    throw MalformedMetadataException(
-      'Field "$fieldName" must be a number',
-      'received: $value',
+    Error.throwWithStackTrace(
+      MalformedMetadataException(
+        'Field "$fieldName" must be a number',
+        'received: $value',
+      ),
+      StackTrace.current,
     );
   }
 
   /// Validates that a value is a non-empty list of strings.
   List<String> requireStringList(Object? value, String fieldName) {
     if (value is! List || value.isEmpty) {
-      throw MalformedMetadataException(
-        'Field "$fieldName" must be a non-empty list',
-        'received: $value',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$fieldName" must be a non-empty list',
+          'received: $value',
+        ),
+        StackTrace.current,
       );
     }
 
     final strings = value.whereType<String>().toList();
     if (strings.isEmpty) {
-      throw MalformedMetadataException(
-        'Field "$fieldName" must contain at least one string',
-        'received: $value',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$fieldName" must contain at least one string',
+          'received: $value',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -81,17 +96,23 @@ abstract class MetadataExtractor<S extends HasMetadata>
   /// Validates that a value is a parseable DateTime.
   DateTime requireDateTime(Object? value, String fieldName) {
     if (value is! String) {
-      throw MalformedMetadataException(
-        'Field "$fieldName" must be an ISO 8601 date string',
-        'received: $value',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$fieldName" must be an ISO 8601 date string',
+          'received: $value',
+        ),
+        StackTrace.current,
       );
     }
 
     final parsed = DateTime.tryParse(value);
     if (parsed == null) {
-      throw MalformedMetadataException(
-        'Field "$fieldName" is not a valid ISO 8601 date',
-        'received: $value',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$fieldName" is not a valid ISO 8601 date',
+          'received: $value',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -127,9 +148,12 @@ final class TimeRangeExtractor<S extends HasMetadata>
   Iterable<Eligibility> extract(S subject) {
     final range = subject.metadata[metadataKey];
     if (range is! Map) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" must be a map with "start" and "end" keys',
-        'received: $range',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" must be a map with "start" and "end" keys',
+          'received: $range',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -168,10 +192,13 @@ final class SetMembershipExtractor<S extends HasMetadata>
   Iterable<Eligibility> extract(S subject) {
     final data = subject.metadata[metadataKey];
     if (data is! Map) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" must be a map with "context_key" and '
-            '"allowed_values"',
-        'received: $data',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" must be a map with "context_key" and '
+              '"allowed_values"',
+          'received: $data',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -301,10 +328,13 @@ final class NumericComparisonExtractor<S extends HasMetadata>
   Iterable<Eligibility> extract(S subject) {
     final data = subject.metadata[metadataKey];
     if (data is! Map) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" must be a map with "context_key", "operator", '
-            'and "threshold"',
-        'received: $data',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" must be a map with "context_key", "operator", '
+              'and "threshold"',
+          'received: $data',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -370,9 +400,12 @@ final class StringMatchExtractor<S extends HasMetadata>
   Iterable<Eligibility> extract(S subject) {
     final data = subject.metadata[metadataKey];
     if (data is! Map) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" must be a map with "context_key" and "pattern"',
-        'received: $data',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" must be a map with "context_key" and "pattern"',
+          'received: $data',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -387,9 +420,12 @@ final class StringMatchExtractor<S extends HasMetadata>
     try {
       RegExp(pattern);
     } catch (e) {
-      throw MalformedMetadataException(
-        'Invalid regex pattern in "$metadataKey.pattern"',
-        'error: $e',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Invalid regex pattern in "$metadataKey.pattern"',
+          'error: $e',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -438,17 +474,23 @@ final class AllOfExtractor<S extends HasMetadata> extends MetadataExtractor<S> {
 
     final items = subject.metadata[metadataKey];
     if (items is! List) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" must be a list of condition maps',
-        'received: $items',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" must be a list of condition maps',
+          'received: $items',
+        ),
+        StackTrace.current,
       );
     }
 
     for (final item in items) {
       if (item is! Map<String, dynamic>) {
-        throw MalformedMetadataException(
-          'Each item in "$metadataKey" must be a map',
-          'received: $item',
+        Error.throwWithStackTrace(
+          MalformedMetadataException(
+            'Each item in "$metadataKey" must be a map',
+            'received: $item',
+          ),
+          StackTrace.current,
         );
       }
 
@@ -463,9 +505,12 @@ final class AllOfExtractor<S extends HasMetadata> extends MetadataExtractor<S> {
     }
 
     if (conditions.isEmpty) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" produced no valid conditions',
-        'received: $items',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" produced no valid conditions',
+          'received: $items',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -498,17 +543,23 @@ final class AnyOfExtractor<S extends HasMetadata> extends MetadataExtractor<S> {
 
     final items = subject.metadata[metadataKey];
     if (items is! List) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" must be a list of condition maps',
-        'received: $items',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" must be a list of condition maps',
+          'received: $items',
+        ),
+        StackTrace.current,
       );
     }
 
     for (final item in items) {
       if (item is! Map<String, dynamic>) {
-        throw MalformedMetadataException(
-          'Each item in "$metadataKey" must be a map',
-          'received: $item',
+        Error.throwWithStackTrace(
+          MalformedMetadataException(
+            'Each item in "$metadataKey" must be a map',
+            'received: $item',
+          ),
+          StackTrace.current,
         );
       }
 
@@ -522,9 +573,12 @@ final class AnyOfExtractor<S extends HasMetadata> extends MetadataExtractor<S> {
     }
 
     if (conditions.isEmpty) {
-      throw MalformedMetadataException(
-        'Field "$metadataKey" produced no valid conditions',
-        'received: $items',
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" produced no valid conditions',
+          'received: $items',
+        ),
+        StackTrace.current,
       );
     }
 
