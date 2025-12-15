@@ -6,27 +6,44 @@ import 'package:presentum/src/widgets/build_context_extension.dart';
 import 'package:presentum/src/widgets/presentum_context.dart';
 
 /// Builder function that receives the [BuildContext] and the [TResolved] item.
-typedef PresentumBuilder<TResolved> =
-    Widget Function(BuildContext context, TResolved item);
+typedef PresentumOutletBuilder<T> =
+    Widget Function(BuildContext context, T item);
+
+/// Builder function that receives the [BuildContext] and returns a placeholder
+/// widget.
+typedef PresentumOutletPlaceholderBuilder =
+    Widget Function(BuildContext context);
 
 /// {@template presentum_outlet}
 /// Outlet that can render items from a surface of the same type.
 /// {@endtemplate}
-abstract class PresentumOutlet<
+class PresentumOutlet<
   TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
     extends StatefulWidget {
   /// {@macro presentum_outlet}
-  const PresentumOutlet({required this.surface, super.key});
+  const PresentumOutlet({
+    required this.surface,
+    required this.builder,
+    this.placeholderBuilder = _defaultPlaceholderBuilder,
+    super.key,
+  });
 
   /// The surface to render items from.
   final S surface;
 
   /// Builder function that receives the [BuildContext] and the [TResolved]
   /// item.
-  abstract final PresentumBuilder<TResolved> builder;
+  final PresentumOutletBuilder<TResolved> builder;
+
+  /// Builder function that receives the [BuildContext] and returns a
+  /// placeholder widget.
+  final PresentumOutletPlaceholderBuilder placeholderBuilder;
+
+  static Widget _defaultPlaceholderBuilder(BuildContext context) =>
+      const SizedBox.shrink();
 
   @override
   State<PresentumOutlet<TResolved, S, V>> createState() =>
@@ -78,7 +95,7 @@ class _PresentumOutletState<
         child: widget.builder(context, item),
       );
     }
-    return const SizedBox.shrink();
+    return widget.placeholderBuilder(context);
   }
 }
 
@@ -128,6 +145,7 @@ class PresentumOutlet$Composition<
     this.mergeMode = CompositionMergeMode.concatenate,
     this.surfaceMode = OutletGroupMode.single,
     this.maxItems = 2,
+    this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
   }) : assert(
          resolver != null || mergeMode != CompositionMergeMode.custom,
@@ -150,7 +168,14 @@ class PresentumOutlet$Composition<
   final CompositionItemsResolver<TResolved>? resolver;
 
   /// Builder that receives the list of items from the slot.
-  final Widget Function(BuildContext context, List<TResolved> items) builder;
+  final PresentumOutletBuilder<List<TResolved>> builder;
+
+  /// Builder function that receives the [BuildContext] and returns a
+  /// placeholder widget.
+  final PresentumOutletPlaceholderBuilder placeholderBuilder;
+
+  static Widget _defaultPlaceholderBuilder(BuildContext context) =>
+      const SizedBox.shrink();
 
   @override
   State<PresentumOutlet$Composition<TResolved, S, V>> createState() =>
@@ -201,7 +226,7 @@ class _PresentumOutlet$CompositionState<
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty) return const SizedBox.shrink();
+    if (_items.isEmpty) return widget.placeholderBuilder(context);
     return widget.builder(context, _items);
   }
 }
@@ -235,6 +260,7 @@ class PresentumOutlet$Composition2<
     this.mergeMode2 = CompositionMergeMode.concatenate,
     this.resolver1,
     this.resolver2,
+    this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
   });
 
@@ -272,6 +298,13 @@ class PresentumOutlet$Composition2<
     List<ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>> items2,
   )
   builder;
+
+  /// Builder function that receives the [BuildContext] and returns a
+  /// placeholder widget.
+  final PresentumOutletPlaceholderBuilder placeholderBuilder;
+
+  static Widget _defaultPlaceholderBuilder(BuildContext context) =>
+      const SizedBox.shrink();
 
   @override
   State<PresentumOutlet$Composition2<TResolved1, TResolved2, S1, V1, S2, V2>>
@@ -350,7 +383,8 @@ class _PresentumOutlet$Composition2State<
 
   @override
   Widget build(BuildContext context) {
-    if (_items1.isEmpty && _items2.isEmpty) return const SizedBox.shrink();
+    if (_items1.isEmpty && _items2.isEmpty)
+      return widget.placeholderBuilder(context);
     return widget.builder(context, _items1, _items2);
   }
 }
@@ -392,6 +426,7 @@ class PresentumOutlet$Composition3<
     this.mergeMode1 = CompositionMergeMode.concatenate,
     this.mergeMode2 = CompositionMergeMode.concatenate,
     this.mergeMode3 = CompositionMergeMode.concatenate,
+    this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
   });
 
@@ -435,6 +470,13 @@ class PresentumOutlet$Composition3<
     List<ResolvedPresentumVariant<PresentumPayload<S3, V3>, S3, V3>> items3,
   )
   builder;
+
+  /// Builder function that receives the [BuildContext] and returns a
+  /// placeholder widget.
+  final PresentumOutletPlaceholderBuilder placeholderBuilder;
+
+  static Widget _defaultPlaceholderBuilder(BuildContext context) =>
+      const SizedBox.shrink();
 
   @override
   State<
@@ -558,7 +600,7 @@ class _PresentumOutlet$Composition3State<
   @override
   Widget build(BuildContext context) {
     if (_items1.isEmpty && _items2.isEmpty && _items3.isEmpty) {
-      return const SizedBox.shrink();
+      return widget.placeholderBuilder(context);
     }
     return widget.builder(context, _items1, _items2, _items3);
   }
