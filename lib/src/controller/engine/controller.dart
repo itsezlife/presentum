@@ -8,7 +8,7 @@ import 'package:presentum/src/controller/config.dart';
 import 'package:presentum/src/controller/controller.dart';
 import 'package:presentum/src/controller/engine/engine.dart';
 import 'package:presentum/src/controller/engine/observer.dart';
-import 'package:presentum/src/controller/event.dart';
+import 'package:presentum/src/controller/events.dart';
 import 'package:presentum/src/controller/guard.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/controller/storage.dart';
@@ -197,7 +197,7 @@ final class Presentum$EngineImpl<
     // Handle the event with all registered event handlers.
     for (final handler in _eventHandlers) {
       try {
-        await handler.onEvent(event);
+        await handler(event);
       } on Object catch (error, stackTrace) {
         dev.log(
           'Event handler ${handler.runtimeType} failed to handle event: $event',

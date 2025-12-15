@@ -5,7 +5,7 @@ library;
 
 export 'src/controller/controller.dart';
 export 'src/controller/engine.dart';
-export 'src/controller/event.dart';
+export 'src/controller/events.dart';
 export 'src/controller/guard.dart';
 export 'src/controller/observer.dart';
 export 'src/controller/storage.dart';

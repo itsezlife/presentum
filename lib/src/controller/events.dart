@@ -130,7 +130,7 @@ abstract interface class IPresentumEventHandler<
   const IPresentumEventHandler();
 
   /// Called when any presentation event occurs
-  FutureOr<void> onEvent(PresentumEvent<TResolved, S, V> event);
+  FutureOr<void> call(PresentumEvent<TResolved, S, V> event);
 }
 
 /// {@template presentum_storage_event_handler}
@@ -150,7 +150,7 @@ final class PresentumStorageEventHandler<
   final PresentumStorage<S, V> storage;
 
   @override
-  FutureOr<void> onEvent(PresentumEvent<TResolved, S, V> event) async {
+  FutureOr<void> call(PresentumEvent<TResolved, S, V> event) async {
     switch (event) {
       case PresentumShownEvent(:final item, :final timestamp):
         await storage.recordShown(
