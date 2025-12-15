@@ -7,6 +7,7 @@ import 'package:presentum/src/controller/events.dart';
 import 'package:presentum/src/controller/guard.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/controller/storage.dart';
+import 'package:presentum/src/controller/transitions.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
 import 'package:presentum/src/widgets/inherited_presentum.dart';
@@ -23,6 +24,7 @@ abstract interface class Presentum<
   factory Presentum({
     PresentumStorage<S, V>? storage,
     List<IPresentumEventHandler<TResolved, S, V>>? eventHandlers,
+    List<IPresentumTransitionObserver<TResolved, S, V>>? transitionObservers,
     Map<S, PresentumSlot<TResolved, S, V>>? slots,
     List<IPresentumGuard<TResolved, S, V>>? guards,
     PresentumState<TResolved, S, V>? initialState,

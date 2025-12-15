@@ -10,6 +10,7 @@ import 'package:presentum/src/controller/guard.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/controller/state_queue.dart';
 import 'package:presentum/src/controller/storage.dart';
+import 'package:presentum/src/controller/transitions.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
 import 'package:presentum/src/utils/diff_util_helpers.dart';
@@ -28,12 +29,16 @@ final class PresentumEngine$Impl<
     required PresentumStateObserver$EngineImpl<TResolved, S, V> observer,
     required PresentumStorage<S, V> storage,
     List<IPresentumGuard<TResolved, S, V>>? guards,
+    List<IPresentumTransitionObserver<TResolved, S, V>>? transitionObservers,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) : _observer = observer,
        _storage = storage,
        _guards =
            guards?.toList(growable: false) ??
            <IPresentumGuard<TResolved, S, V>>[],
+       _transitionObservers =
+           transitionObservers?.toList(growable: false) ??
+           <IPresentumTransitionObserver<TResolved, S, V>>[],
        _onError = onError {
     // Subscribe to the guards.
     _guardsListener = Listenable.merge(_guards)..addListener(_onGuardsNotified);
@@ -57,6 +62,10 @@ final class PresentumEngine$Impl<
   /// Guards.
   final List<IPresentumGuard<TResolved, S, V>> _guards;
   late final Listenable _guardsListener;
+
+  /// Transition observers.
+  final List<IPresentumTransitionObserver<TResolved, S, V>>
+  _transitionObservers;
 
   /// Candidates.
   List<TResolved> _candidates = <TResolved>[];
@@ -245,7 +254,35 @@ final class PresentumEngine$Impl<
     // if (newState.slots.isEmpty) return;
 
     final result = newState.freeze();
+    final oldStateSnapshot = _observer.value;
+
     if (_observer.changeState(result)) {
+      // Fire transition observers AFTER state commits but BEFORE
+      // notifyListeners
+      if (_transitionObservers.isNotEmpty) {
+        final transition = PresentumStateTransition<TResolved, S, V>(
+          oldState: oldStateSnapshot,
+          newState: result,
+          timestamp: DateTime.now(),
+        );
+
+        for (final observer in _transitionObservers) {
+          try {
+            await observer(transition);
+          } on Object catch (error, stackTrace) {
+            dev.log(
+              'Transition observer ${observer.runtimeType} failed',
+              name: 'presentum',
+              error: error,
+              stackTrace: stackTrace,
+              level: 1000,
+            );
+            _onError?.call(error, stackTrace);
+            // Continue with other observers even if one fails
+          }
+        }
+      }
+
       notifyListeners();
     }
   }

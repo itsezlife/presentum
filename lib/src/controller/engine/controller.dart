@@ -12,6 +12,7 @@ import 'package:presentum/src/controller/events.dart';
 import 'package:presentum/src/controller/guard.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/controller/storage.dart';
+import 'package:presentum/src/controller/transitions.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
 
@@ -25,6 +26,7 @@ final class Presentum$EngineImpl<
   factory Presentum$EngineImpl({
     PresentumStorage<S, V>? storage,
     List<IPresentumEventHandler<TResolved, S, V>>? eventHandlers,
+    List<IPresentumTransitionObserver<TResolved, S, V>>? transitionObservers,
     Map<S, PresentumSlot<TResolved, S, V>>? slots,
     List<IPresentumGuard<TResolved, S, V>>? guards,
     PresentumState<TResolved, S, V>? initialState,
@@ -45,6 +47,7 @@ final class Presentum$EngineImpl<
     final engine = PresentumEngine$Impl(
       observer: observer,
       guards: guards,
+      transitionObservers: transitionObservers,
       storage: resolvedStorage,
       onError: onError,
     );
