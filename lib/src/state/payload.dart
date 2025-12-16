@@ -1,8 +1,9 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:presentum/src/state/state.dart';
 
 /// {@template presentum_option}
-/// One renderable option of an item for a given `surface` and visual `variant` 
+/// One renderable option of an item for a given `surface` and visual `variant`
 /// style.
 /// {@endtemplate}
 @immutable
@@ -35,6 +36,29 @@ abstract class PresentumOption<
   abstract final bool isDismissible;
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PresentumOption<S, V> &&
+          surface == other.surface &&
+          variant == other.variant &&
+          stage == other.stage &&
+          maxImpressions == other.maxImpressions &&
+          cooldownMinutes == other.cooldownMinutes &&
+          alwaysOnIfEligible == other.alwaysOnIfEligible &&
+          isDismissible == other.isDismissible;
+
+  @override
+  int get hashCode => Object.hash(
+    surface,
+    variant,
+    stage,
+    maxImpressions,
+    cooldownMinutes,
+    alwaysOnIfEligible,
+    isDismissible,
+  );
+
+  @override
   String toString() =>
       'PresentumOption(surface: $surface, variant: $variant, stage: $stage, '
       'maxImpressions: $maxImpressions, cooldownMinutes: $cooldownMinutes, '
@@ -45,6 +69,7 @@ abstract class PresentumOption<
 /// Generic payload that contain options that can be presented across
 /// multiple surfaces.
 /// {@endtemplate}
+@immutable
 abstract class PresentumPayload<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
@@ -65,6 +90,23 @@ abstract class PresentumPayload<
   abstract final List<PresentumOption<S, V>> options;
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PresentumPayload<S, V> &&
+          id == other.id &&
+          priority == other.priority &&
+          const DeepCollectionEquality().equals(metadata, other.metadata) &&
+          const ListEquality<PresentumOption>().equals(options, other.options);
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    priority,
+    const DeepCollectionEquality().hash(metadata),
+    const ListEquality<PresentumOption>().hash(options),
+  );
+
+  @override
   String toString() =>
       'PresentumPayload(id: $id, priority: $priority, metadata: $metadata, '
       'options: $options)';
@@ -73,6 +115,7 @@ abstract class PresentumPayload<
 /// {@template presentum_item}
 /// A concrete decision: "show `payload` with `option` on `surface` now".
 /// {@endtemplate}
+@immutable
 abstract class PresentumItem<
   TPayload extends PresentumPayload<S, V>,
   S extends PresentumSurface,
@@ -105,6 +148,16 @@ abstract class PresentumItem<
 
   /// Sequence hint within a surface (e.g. fullscreen -> dialog).
   int? get stage => option.stage;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PresentumItem<TPayload, S, V> &&
+          payload == other.payload &&
+          option == other.option;
+
+  @override
+  int get hashCode => Object.hash(payload, option);
 
   @override
   String toString() => 'PresentumItem(payload: $payload, option: $option)';
