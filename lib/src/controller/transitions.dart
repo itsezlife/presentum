@@ -14,7 +14,7 @@ import 'package:presentum/src/state/state.dart';
 ///
 /// You can consider using transition observers for:
 /// - Business logic integration (e.g., BLoC/Cubit)
-/// - Conditional data fetching based on active variants
+/// - Conditional data fetching based on active items
 /// - Custom analytics for state flow
 /// - Debug logging of state changes
 ///
@@ -26,7 +26,7 @@ import 'package:presentum/src/state/state.dart';
 ///
 /// {@endtemplate}
 abstract interface class IPresentumTransitionObserver<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
@@ -44,15 +44,13 @@ abstract interface class IPresentumTransitionObserver<
   /// - Called before [notifyListeners]
   /// - Called synchronously in state change flow
   ///
-  /// If this method throws, the state transition continues. Other observers 
+  /// If this method throws, the state transition continues. Other observers
   /// will still be notified.
   ///
   /// Do NOT call `setState` or `transaction` on the presentum instance from
   /// within this method. This creates circular dependencies. Instead, schedule
   /// async work or dispatch to business logic layer.
-  FutureOr<void> call(
-    PresentumStateTransition<TResolved, S, V> transition,
-  );
+  FutureOr<void> call(PresentumStateTransition<TItem, S, V> transition);
 }
 
 /// {@template presentum_state_transition}
@@ -63,7 +61,7 @@ abstract interface class IPresentumTransitionObserver<
 /// {@endtemplate}
 @immutable
 final class PresentumStateTransition<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
@@ -75,10 +73,10 @@ final class PresentumStateTransition<
   });
 
   /// The state before the transition.
-  final PresentumState$Immutable<TResolved, S, V> oldState;
+  final PresentumState$Immutable<TItem, S, V> oldState;
 
   /// The state after the transition.
-  final PresentumState$Immutable<TResolved, S, V> newState;
+  final PresentumState$Immutable<TItem, S, V> newState;
 
   /// The timestamp when the transition occurred.
   final DateTime timestamp;
@@ -91,13 +89,13 @@ final class PresentumStateTransition<
   /// - Variants added to queues
   /// - Variants removed from queues
   /// - Surfaces that were added or removed
-  PresentumStateDiff<TResolved, S, V> get diff =>
+  PresentumStateDiff<TItem, S, V> get diff =>
       PresentumStateDiff.compute(oldState, newState);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PresentumStateTransition<TResolved, S, V> &&
+      other is PresentumStateTransition<TItem, S, V> &&
           oldState == other.oldState &&
           newState == other.newState &&
           timestamp == other.timestamp;
@@ -124,7 +122,7 @@ final class PresentumStateTransition<
 /// {@endtemplate}
 @immutable
 final class PresentumStateDiff<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
@@ -132,18 +130,18 @@ final class PresentumStateDiff<
   const PresentumStateDiff._({
     required this.oldState,
     required this.newState,
-    required List<SlotChange<TResolved, S, V>> changes,
-    required Map<S, SlotDiff<TResolved, S, V>> slotDiffs,
+    required List<SlotChange<TItem, S, V>> changes,
+    required Map<S, SlotDiff<TItem, S, V>> slotDiffs,
   }) : _changes = changes,
        _slotDiffs = slotDiffs;
 
   /// Computes the diff between two states.
   factory PresentumStateDiff.compute(
-    PresentumState$Immutable<TResolved, S, V> oldState,
-    PresentumState$Immutable<TResolved, S, V> newState,
+    PresentumState$Immutable<TItem, S, V> oldState,
+    PresentumState$Immutable<TItem, S, V> newState,
   ) {
-    final changes = <SlotChange<TResolved, S, V>>[];
-    final slotDiffs = <S, SlotDiff<TResolved, S, V>>{};
+    final changes = <SlotChange<TItem, S, V>>[];
+    final slotDiffs = <S, SlotDiff<TItem, S, V>>{};
 
     // Get all unique surfaces from both states
     final allSurfaces = <S>{...oldState.slots.keys, ...newState.slots.keys};
@@ -153,7 +151,7 @@ final class PresentumStateDiff<
       final newSlot = newState.slots[surface];
 
       // Compute slot-level diff
-      final slotDiff = SlotDiff<TResolved, S, V>.compute(
+      final slotDiff = SlotDiff<TItem, S, V>.compute(
         surface: surface,
         oldSlot: oldSlot,
         newSlot: newSlot,
@@ -174,23 +172,22 @@ final class PresentumStateDiff<
   }
 
   /// The state before the transition.
-  final PresentumState$Immutable<TResolved, S, V> oldState;
+  final PresentumState$Immutable<TItem, S, V> oldState;
 
   /// The state after the transition.
-  final PresentumState$Immutable<TResolved, S, V> newState;
+  final PresentumState$Immutable<TItem, S, V> newState;
 
   /// All changes across all slots, in no particular order.
-  final List<SlotChange<TResolved, S, V>> _changes;
+  final List<SlotChange<TItem, S, V>> _changes;
 
   /// Per-surface slot diffs.
-  final Map<S, SlotDiff<TResolved, S, V>> _slotDiffs;
+  final Map<S, SlotDiff<TItem, S, V>> _slotDiffs;
 
   /// All changes that occurred in this transition.
-  List<SlotChange<TResolved, S, V>> get changes => List.unmodifiable(_changes);
+  List<SlotChange<TItem, S, V>> get changes => List.unmodifiable(_changes);
 
   /// Diffs for each surface that changed.
-  Map<S, SlotDiff<TResolved, S, V>> get slotDiffs =>
-      Map.unmodifiable(_slotDiffs);
+  Map<S, SlotDiff<TItem, S, V>> get slotDiffs => Map.unmodifiable(_slotDiffs);
 
   /// Returns true if no changes occurred.
   bool get isEmpty => _changes.isEmpty;
@@ -198,27 +195,27 @@ final class PresentumStateDiff<
   /// Returns true if any changes occurred.
   bool get isNotEmpty => _changes.isNotEmpty;
 
-  /// All variants that became active (moved to active slot).
-  List<TResolved> get variantsActivated => _changes
-      .whereType<VariantActivatedChange<TResolved, S, V>>()
+  /// All items that became active (moved to active slot).
+  List<TItem> get itemsActivated => _changes
+      .whereType<ItemActivatedChange<TItem, S, V>>()
       .map((e) => e.item)
       .toList();
 
-  /// All variants that became inactive (removed from active slot).
-  List<TResolved> get variantsDeactivated => _changes
-      .whereType<VariantDeactivatedChange<TResolved, S, V>>()
+  /// All items that became inactive (removed from active slot).
+  List<TItem> get itemsDeactivated => _changes
+      .whereType<ItemDeactivatedChange<TItem, S, V>>()
       .map((e) => e.item)
       .toList();
 
-  /// All variants added to queues.
-  List<TResolved> get variantsQueued => _changes
-      .whereType<VariantQueuedChange<TResolved, S, V>>()
+  /// All items added to queues.
+  List<TItem> get itemsQueued => _changes
+      .whereType<ItemQueuedChange<TItem, S, V>>()
       .map((e) => e.item)
       .toList();
 
-  /// All variants removed from queues.
-  List<TResolved> get variantsDequeued => _changes
-      .whereType<VariantDequeuedChange<TResolved, S, V>>()
+  /// All items removed from queues.
+  List<TItem> get itemsDequeued => _changes
+      .whereType<ItemDequeuedChange<TItem, S, V>>()
       .map((e) => e.item)
       .toList();
 
@@ -242,12 +239,12 @@ final class PresentumStateDiff<
       .toList();
 
   /// Get diff for a specific surface, or null if it didn't change.
-  SlotDiff<TResolved, S, V>? diffForSurface(S surface) => _slotDiffs[surface];
+  SlotDiff<TItem, S, V>? diffForSurface(S surface) => _slotDiffs[surface];
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PresentumStateDiff<TResolved, S, V> &&
+      other is PresentumStateDiff<TItem, S, V> &&
           oldState == other.oldState &&
           newState == other.newState;
 
@@ -257,10 +254,10 @@ final class PresentumStateDiff<
   @override
   String toString() =>
       'PresentumStateDiff('
-      'activated: ${variantsActivated.length}, '
-      'deactivated: ${variantsDeactivated.length}, '
-      'queued: ${variantsQueued.length}, '
-      'dequeued: ${variantsDequeued.length})';
+      'activated: ${itemsActivated.length}, '
+      'deactivated: ${itemsDeactivated.length}, '
+      'queued: ${itemsQueued.length}, '
+      'dequeued: ${itemsDequeued.length})';
 }
 
 /// {@template slot_diff}
@@ -268,7 +265,7 @@ final class PresentumStateDiff<
 /// {@endtemplate}
 @immutable
 final class SlotDiff<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
@@ -277,16 +274,16 @@ final class SlotDiff<
     required this.surface,
     required this.oldSlot,
     required this.newSlot,
-    required List<SlotChange<TResolved, S, V>> changes,
+    required List<SlotChange<TItem, S, V>> changes,
   }) : _changes = changes;
 
   /// Computes the diff for a single slot.
   factory SlotDiff.compute({
     required S surface,
-    required PresentumSlot<TResolved, S, V>? oldSlot,
-    required PresentumSlot<TResolved, S, V>? newSlot,
+    required PresentumSlot<TItem, S, V>? oldSlot,
+    required PresentumSlot<TItem, S, V>? newSlot,
   }) {
-    final changes = <SlotChange<TResolved, S, V>>[];
+    final changes = <SlotChange<TItem, S, V>>[];
 
     // Handle slot creation/deletion
     if (oldSlot == null && newSlot == null) {
@@ -302,7 +299,7 @@ final class SlotDiff<
       // Slot was created
       if (newSlot!.active case final newActive?) {
         changes.add(
-          VariantActivatedChange(
+          ItemActivatedChange(
             surface: surface,
             item: newActive,
             previousActive: null,
@@ -310,7 +307,7 @@ final class SlotDiff<
         );
       }
       for (final item in newSlot.queue) {
-        changes.add(VariantQueuedChange(surface: surface, item: item));
+        changes.add(ItemQueuedChange(surface: surface, item: item));
       }
       return SlotDiff._(
         surface: surface,
@@ -324,7 +321,7 @@ final class SlotDiff<
       // Slot was deleted
       if (oldSlot.active case final oldActive?) {
         changes.add(
-          VariantDeactivatedChange(
+          ItemDeactivatedChange(
             surface: surface,
             item: oldActive,
             newActive: null,
@@ -332,7 +329,7 @@ final class SlotDiff<
         );
       }
       for (final item in oldSlot.queue) {
-        changes.add(VariantDequeuedChange(surface: surface, item: item));
+        changes.add(ItemDequeuedChange(surface: surface, item: item));
       }
       return SlotDiff._(
         surface: surface,
@@ -346,7 +343,7 @@ final class SlotDiff<
     if (oldSlot.active != newSlot.active) {
       if (oldSlot.active case final oldActive?) {
         changes.add(
-          VariantDeactivatedChange(
+          ItemDeactivatedChange(
             surface: surface,
             item: oldActive,
             newActive: newSlot.active,
@@ -355,7 +352,7 @@ final class SlotDiff<
       }
       if (newSlot.active case final newActive?) {
         changes.add(
-          VariantActivatedChange(
+          ItemActivatedChange(
             surface: surface,
             item: newActive,
             previousActive: oldSlot.active,
@@ -371,14 +368,14 @@ final class SlotDiff<
     // Find items added to queue
     for (final item in newSlot.queue) {
       if (!oldQueueIds.contains(item.id)) {
-        changes.add(VariantQueuedChange(surface: surface, item: item));
+        changes.add(ItemQueuedChange(surface: surface, item: item));
       }
     }
 
     // Find items removed from queue
     for (final item in oldSlot.queue) {
       if (!newQueueIds.contains(item.id)) {
-        changes.add(VariantDequeuedChange(surface: surface, item: item));
+        changes.add(ItemDequeuedChange(surface: surface, item: item));
       }
     }
 
@@ -394,16 +391,16 @@ final class SlotDiff<
   final S surface;
 
   /// The slot state before the change (null if slot was created).
-  final PresentumSlot<TResolved, S, V>? oldSlot;
+  final PresentumSlot<TItem, S, V>? oldSlot;
 
   /// The slot state after the change (null if slot was deleted).
-  final PresentumSlot<TResolved, S, V>? newSlot;
+  final PresentumSlot<TItem, S, V>? newSlot;
 
   /// All changes that occurred in this slot.
-  final List<SlotChange<TResolved, S, V>> _changes;
+  final List<SlotChange<TItem, S, V>> _changes;
 
   /// All changes that occurred in this slot.
-  List<SlotChange<TResolved, S, V>> get changes => List.unmodifiable(_changes);
+  List<SlotChange<TItem, S, V>> get changes => List.unmodifiable(_changes);
 
   /// Returns true if no changes occurred.
   bool get isEmpty => _changes.isEmpty;
@@ -423,7 +420,7 @@ final class SlotDiff<
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is SlotDiff<TResolved, S, V> &&
+      other is SlotDiff<TItem, S, V> &&
           surface == other.surface &&
           oldSlot == other.oldSlot &&
           newSlot == other.newSlot;
@@ -440,7 +437,7 @@ final class SlotDiff<
 /// Base class for all slot changes.
 @immutable
 sealed class SlotChange<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
@@ -451,36 +448,36 @@ sealed class SlotChange<
   final S surface;
 
   /// The item involved in the change.
-  final TResolved item;
+  final TItem item;
 
   @override
   String toString() => 'SlotChange($surface, ${item.id})';
 }
 
-/// {@template variant_activated_change}
-/// A variant became the active item in a slot.
+/// {@template item_activated_change}
+/// An item became the active item in a slot.
 /// {@endtemplate}
 @immutable
-final class VariantActivatedChange<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+final class ItemActivatedChange<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends SlotChange<TResolved, S, V> {
-  /// {@macro variant_activated_change}
-  const VariantActivatedChange({
+    extends SlotChange<TItem, S, V> {
+  /// {@macro item_activated_change}
+  const ItemActivatedChange({
     required super.surface,
     required super.item,
     required this.previousActive,
   });
 
   /// The previously active item (null if slot was empty).
-  final TResolved? previousActive;
+  final TItem? previousActive;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is VariantActivatedChange<TResolved, S, V> &&
+      other is ItemActivatedChange<TItem, S, V> &&
           surface == other.surface &&
           item == other.item &&
           previousActive == other.previousActive;
@@ -489,30 +486,30 @@ final class VariantActivatedChange<
   int get hashCode => Object.hash(surface, item, previousActive);
 }
 
-/// {@template variant_deactivated_change}
-/// A variant was removed from the active slot.
+/// {@template item_deactivated_change}
+/// An item was removed from the active slot.
 /// {@endtemplate}
 @immutable
-final class VariantDeactivatedChange<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+final class ItemDeactivatedChange<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends SlotChange<TResolved, S, V> {
-  /// {@macro variant_deactivated_change}
-  const VariantDeactivatedChange({
+    extends SlotChange<TItem, S, V> {
+  /// {@macro item_deactivated_change}
+  const ItemDeactivatedChange({
     required super.surface,
     required super.item,
     required this.newActive,
   });
 
   /// The new active item (null if slot is now empty).
-  final TResolved? newActive;
+  final TItem? newActive;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is VariantDeactivatedChange<TResolved, S, V> &&
+      other is ItemDeactivatedChange<TItem, S, V> &&
           surface == other.surface &&
           item == other.item &&
           newActive == other.newActive;
@@ -521,23 +518,23 @@ final class VariantDeactivatedChange<
   int get hashCode => Object.hash(surface, item, newActive);
 }
 
-/// {@template variant_queued_change}
-/// A variant was added to a slot's queue.
+/// {@template item_queued_change}
+/// An item was added to a slot's queue.
 /// {@endtemplate}
 @immutable
-final class VariantQueuedChange<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+final class ItemQueuedChange<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends SlotChange<TResolved, S, V> {
-  /// {@macro variant_queued_change}
-  const VariantQueuedChange({required super.surface, required super.item});
+    extends SlotChange<TItem, S, V> {
+  /// {@macro item_queued_change}
+  const ItemQueuedChange({required super.surface, required super.item});
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is VariantQueuedChange<TResolved, S, V> &&
+      other is ItemQueuedChange<TItem, S, V> &&
           surface == other.surface &&
           item == other.item;
 
@@ -545,23 +542,23 @@ final class VariantQueuedChange<
   int get hashCode => Object.hash(surface, item);
 }
 
-/// {@template variant_dequeued_change}
-/// A variant was removed from a slot's queue.
+/// {@template item_dequeued_change}
+/// An item was removed from a slot's queue.
 /// {@endtemplate}
 @immutable
-final class VariantDequeuedChange<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+final class ItemDequeuedChange<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends SlotChange<TResolved, S, V> {
-  /// {@macro variant_dequeued_change}
-  const VariantDequeuedChange({required super.surface, required super.item});
+    extends SlotChange<TItem, S, V> {
+  /// {@macro item_dequeued_change}
+  const ItemDequeuedChange({required super.surface, required super.item});
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is VariantDequeuedChange<TResolved, S, V> &&
+      other is ItemDequeuedChange<TItem, S, V> &&
           surface == other.surface &&
           item == other.item;
 

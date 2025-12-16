@@ -9,7 +9,7 @@ import 'package:presentum/src/state/state.dart';
 /// Creates a Presentum configuration.
 /// {@endtemplate}
 class PresentumConfig<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
@@ -30,8 +30,8 @@ class PresentumConfig<
 
   /// The [PresentumStateObserver] that is used to observe the [Presentum]
   /// state.
-  final PresentumStateObserver<TResolved, S, V> observer;
+  final PresentumStateObserver<TItem, S, V> observer;
 
   /// The [PresentumEngine] that is used to manage the [Presentum] state.
-  final PresentumEngine<TResolved, S, V> engine;
+  final PresentumEngine<TItem, S, V> engine;
 }

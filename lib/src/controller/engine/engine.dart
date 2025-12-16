@@ -19,26 +19,25 @@ import 'package:presentum/src/widgets/inherited_presentum.dart';
 /// Presentum engine.
 @internal
 final class PresentumEngine$Impl<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends PresentumEngine<TResolved, S, V>
+    extends PresentumEngine<TItem, S, V>
     with ChangeNotifier {
   PresentumEngine$Impl({
-    required PresentumStateObserver$EngineImpl<TResolved, S, V> observer,
+    required PresentumStateObserver$EngineImpl<TItem, S, V> observer,
     required PresentumStorage<S, V> storage,
-    List<IPresentumGuard<TResolved, S, V>>? guards,
-    List<IPresentumTransitionObserver<TResolved, S, V>>? transitionObservers,
+    List<IPresentumGuard<TItem, S, V>>? guards,
+    List<IPresentumTransitionObserver<TItem, S, V>>? transitionObservers,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) : _observer = observer,
        _storage = storage,
        _guards =
-           guards?.toList(growable: false) ??
-           <IPresentumGuard<TResolved, S, V>>[],
+           guards?.toList(growable: false) ?? <IPresentumGuard<TItem, S, V>>[],
        _transitionObservers =
            transitionObservers?.toList(growable: false) ??
-           <IPresentumTransitionObserver<TResolved, S, V>>[],
+           <IPresentumTransitionObserver<TItem, S, V>>[],
        _onError = onError {
     // Subscribe to the guards.
     _guardsListener = Listenable.merge(_guards)..addListener(_onGuardsNotified);
@@ -47,7 +46,7 @@ final class PresentumEngine$Impl<
   }
 
   /// State observer.
-  final PresentumStateObserver$EngineImpl<TResolved, S, V> _observer;
+  final PresentumStateObserver$EngineImpl<TItem, S, V> _observer;
 
   /// The storage used by the presentum.
   final PresentumStorage<S, V> _storage;
@@ -57,28 +56,26 @@ final class PresentumEngine$Impl<
 
   /// Current presentum instance.
   @internal
-  late WeakReference<Presentum<TResolved, S, V>> $presentum;
+  late WeakReference<Presentum<TItem, S, V>> $presentum;
 
   /// Guards.
-  final List<IPresentumGuard<TResolved, S, V>> _guards;
+  final List<IPresentumGuard<TItem, S, V>> _guards;
   late final Listenable _guardsListener;
 
   /// Transition observers.
-  final List<IPresentumTransitionObserver<TResolved, S, V>>
-  _transitionObservers;
+  final List<IPresentumTransitionObserver<TItem, S, V>> _transitionObservers;
 
   /// Candidates.
-  List<TResolved> _candidates = <TResolved>[];
+  List<TItem> _candidates = <TItem>[];
 
   @override
-  List<TResolved> get currentCandidates =>
-      List<TResolved>.unmodifiable(_candidates);
+  List<TItem> get currentCandidates => List<TItem>.unmodifiable(_candidates);
 
   @override
   FutureOr<void> setCandidates(
-    List<TResolved> Function(
-      PresentumState$Mutable<TResolved, S, V> state,
-      List<TResolved> currentCandidates,
+    List<TItem> Function(
+      PresentumState$Mutable<TItem, S, V> state,
+      List<TItem> currentCandidates,
     )
     candidates,
   ) async {
@@ -90,22 +87,21 @@ final class PresentumEngine$Impl<
 
   @override
   FutureOr<void> setCandidatesWithDiff(
-    List<TResolved> Function(PresentumState$Mutable<TResolved, S, V> state)
+    List<TItem> Function(PresentumState$Mutable<TItem, S, V> state)
     newCandidates, {
-    Object? Function(TResolved item)? getId,
-    bool Function(TResolved oldItem, TResolved newItem)?
-    customContentsComparison,
-    void Function(int position, List<TResolved> newItems)? inserted,
+    Object? Function(TItem item)? getId,
+    bool Function(TItem oldItem, TItem newItem)? customContentsComparison,
+    void Function(int position, List<TItem> newItems)? inserted,
     void Function(int position, int count)? removed,
     void Function(int fromPosition, int toPosition)? moved,
-    void Function(int position, int count, TResolved? payload)? changed,
+    void Function(int position, int count, TItem? payload)? changed,
   }) async {
     final mutableState = _observer.value.mutate()
       ..intention = PresentumStateIntention.auto;
     final candidates = newCandidates(mutableState);
 
-    final oldList = List<TResolved>.from(_candidates);
-    final updatedList = List<TResolved>.from(_candidates);
+    final oldList = List<TItem>.from(_candidates);
+    final updatedList = List<TItem>.from(_candidates);
 
     DiffUtils.calculateListDiffOperations(
       oldList,
@@ -121,8 +117,8 @@ final class PresentumEngine$Impl<
           return comparison(oldItem, newItem);
         }
 
-        final oldVariant = oldItem.variant;
-        final newVariant = newItem.variant;
+        final oldVariant = oldItem.option;
+        final newVariant = newItem.option;
 
         // Return false if change was detected
         if (oldVariant.surface != newVariant.surface) return false;
@@ -159,7 +155,7 @@ final class PresentumEngine$Impl<
         }
       },
       changed: (position, count, payload) {
-        if (payload case final TResolved payload?) {
+        if (payload case final TItem payload?) {
           updatedList[position] = payload;
           if (changed case final changed?) {
             changed(position, count, payload);
@@ -173,8 +169,8 @@ final class PresentumEngine$Impl<
   }
 
   /// State change queue.
-  late final PresentumStateQueue<TResolved, S, V> _$stateChangeQueue =
-      PresentumStateQueue<TResolved, S, V>(processor: _setState);
+  late final PresentumStateQueue<TItem, S, V> _$stateChangeQueue =
+      PresentumStateQueue<TItem, S, V>(processor: _setState);
 
   @override
   bool get isProcessing => _$stateChangeQueue.isProcessing;
@@ -185,11 +181,11 @@ final class PresentumEngine$Impl<
 
   /// Current state.
   @override
-  PresentumState$Immutable<TResolved, S, V> get currentState => _observer.value;
+  PresentumState$Immutable<TItem, S, V> get currentState => _observer.value;
 
   /// State observer,
   /// which can be used to listen to changes in the [PresentumState].
-  PresentumStateObserver<TResolved, S, V> get observer => _observer;
+  PresentumStateObserver<TItem, S, V> get observer => _observer;
 
   @override
   Widget build(BuildContext context, Widget child) =>
@@ -200,23 +196,23 @@ final class PresentumEngine$Impl<
   );
 
   @override
-  Future<void> setNewPresentationState(PresentumState<TResolved, S, V> state) =>
+  Future<void> setNewPresentationState(PresentumState<TItem, S, V> state) =>
       _$stateChangeQueue.add(state);
 
-  Future<void> _setState(PresentumState<TResolved, S, V> state) async {
+  Future<void> _setState(PresentumState<TItem, S, V> state) async {
     // Do nothing:
     if (state.intention == PresentumStateIntention.cancel) return;
 
     // Create a mutable copy of the state
     // to allow changing it in the guards
-    var newState = state is PresentumState$Mutable<TResolved, S, V>
+    var newState = state is PresentumState$Mutable<TItem, S, V>
         ? state
         : state.mutate();
 
     if (_guards.isNotEmpty) {
       // Get the history of the states
       final history = _observer.history;
-      final candidates = List<TResolved>.unmodifiable(_candidates);
+      final candidates = List<TItem>.unmodifiable(_candidates);
 
       // Unsubscribe from the guards to avoid infinite loop.
       _guardsListener.removeListener(_onGuardsNotified);
@@ -260,7 +256,7 @@ final class PresentumEngine$Impl<
       // Fire transition observers AFTER state commits but BEFORE
       // notifyListeners
       if (_transitionObservers.isNotEmpty) {
-        final transition = PresentumStateTransition<TResolved, S, V>(
+        final transition = PresentumStateTransition<TItem, S, V>(
           oldState: oldStateSnapshot,
           newState: result,
           timestamp: DateTime.now(),

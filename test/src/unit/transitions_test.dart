@@ -7,25 +7,20 @@ void main() {
   group('PresentumStateTransition', () {
     test('creates transition with correct properties', () {
       final oldState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(slots: const {}, intention: PresentumStateIntention.auto);
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
+            slots: const {},
+            intention: PresentumStateIntention.auto,
+          );
 
       final newState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
             slots: {
               FakeSurface.banner: PresentumSlot(
                 surface: FakeSurface.banner,
-                active: createFakeResolved(
+                active: createFakeItem(
                   'c1',
                   FakeSurface.banner,
-                  FakeVisualVariant.variantA,
+                  FakeVariant.variantA,
                 ),
                 queue: const [],
               ),
@@ -47,17 +42,15 @@ void main() {
 
     test('equality', () {
       final oldState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(slots: const {}, intention: PresentumStateIntention.auto);
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
+            slots: const {},
+            intention: PresentumStateIntention.auto,
+          );
       final newState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(slots: const {}, intention: PresentumStateIntention.replace);
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
+            slots: const {},
+            intention: PresentumStateIntention.replace,
+          );
       final timestamp = DateTime.now();
 
       final t1 = PresentumStateTransition(
@@ -78,20 +71,16 @@ void main() {
 
   test('detects variant activation', () {
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: const {
             FakeSurface.banner: PresentumSlot.empty(FakeSurface.banner),
           },
           intention: PresentumStateIntention.auto,
         );
 
-    final item = createFakeResolved(
-      'c1',
-      FakeSurface.banner,
-      FakeVisualVariant.variantA,
-    );
+    final item = createFakeItem('c1', FakeSurface.banner, FakeVariant.variantA);
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -106,21 +95,17 @@ void main() {
 
     expect(diff.isEmpty, isFalse);
     expect(diff.isNotEmpty, isTrue);
-    expect(diff.variantsActivated, hasLength(1));
-    expect(diff.variantsActivated.first, equals(item));
-    expect(diff.variantsDeactivated, isEmpty);
-    expect(diff.variantsQueued, isEmpty);
-    expect(diff.variantsDequeued, isEmpty);
+    expect(diff.itemsActivated, hasLength(1));
+    expect(diff.itemsActivated.first, equals(item));
+    expect(diff.itemsDeactivated, isEmpty);
+    expect(diff.itemsQueued, isEmpty);
+    expect(diff.itemsDequeued, isEmpty);
   });
 
   test('detects variant deactivation', () {
-    final item = createFakeResolved(
-      'c1',
-      FakeSurface.banner,
-      FakeVisualVariant.variantA,
-    );
+    final item = createFakeItem('c1', FakeSurface.banner, FakeVariant.variantA);
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -132,7 +117,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: const {
             FakeSurface.banner: PresentumSlot.empty(FakeSurface.banner),
           },
@@ -141,25 +126,25 @@ void main() {
 
     final diff = PresentumStateDiff.compute(oldState, newState);
 
-    expect(diff.variantsActivated, isEmpty);
-    expect(diff.variantsDeactivated, hasLength(1));
-    expect(diff.variantsDeactivated.first, equals(item));
+    expect(diff.itemsActivated, isEmpty);
+    expect(diff.itemsDeactivated, hasLength(1));
+    expect(diff.itemsDeactivated.first, equals(item));
   });
 
   test('detects variant queued', () {
-    final active = createFakeResolved(
+    final active = createFakeItem(
       'c1',
       FakeSurface.banner,
-      FakeVisualVariant.variantA,
+      FakeVariant.variantA,
     );
-    final queued = createFakeResolved(
+    final queued = createFakeItem(
       'c2',
       FakeSurface.banner,
-      FakeVisualVariant.variantB,
+      FakeVariant.variantB,
     );
 
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -171,7 +156,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -184,26 +169,26 @@ void main() {
 
     final diff = PresentumStateDiff.compute(oldState, newState);
 
-    expect(diff.variantsQueued, hasLength(1));
-    expect(diff.variantsQueued.first, equals(queued));
-    expect(diff.variantsActivated, isEmpty);
-    expect(diff.variantsDeactivated, isEmpty);
+    expect(diff.itemsQueued, hasLength(1));
+    expect(diff.itemsQueued.first, equals(queued));
+    expect(diff.itemsActivated, isEmpty);
+    expect(diff.itemsDeactivated, isEmpty);
   });
 
   test('detects variant dequeued', () {
-    final active = createFakeResolved(
+    final active = createFakeItem(
       'c1',
       FakeSurface.banner,
-      FakeVisualVariant.variantA,
+      FakeVariant.variantA,
     );
-    final queued = createFakeResolved(
+    final queued = createFakeItem(
       'c2',
       FakeSurface.banner,
-      FakeVisualVariant.variantB,
+      FakeVariant.variantB,
     );
 
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -215,7 +200,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -228,44 +213,43 @@ void main() {
 
     final diff = PresentumStateDiff.compute(oldState, newState);
 
-    expect(diff.variantsDequeued, hasLength(1));
-    expect(diff.variantsDequeued.first, equals(queued));
+    expect(diff.itemsDequeued, hasLength(1));
+    expect(diff.itemsDequeued.first, equals(queued));
   });
 
   test('detects no changes when states are identical', () {
-    final state =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
-          slots: const {
-            FakeSurface.banner: PresentumSlot.empty(FakeSurface.banner),
-          },
-          intention: PresentumStateIntention.auto,
-        );
+    final state = PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
+      slots: const {
+        FakeSurface.banner: PresentumSlot.empty(FakeSurface.banner),
+      },
+      intention: PresentumStateIntention.auto,
+    );
 
     final diff = PresentumStateDiff.compute(state, state);
 
     expect(diff.isEmpty, isTrue);
     expect(diff.isNotEmpty, isFalse);
     expect(diff.changes, isEmpty);
-    expect(diff.variantsActivated, isEmpty);
-    expect(diff.variantsDeactivated, isEmpty);
-    expect(diff.variantsQueued, isEmpty);
-    expect(diff.variantsDequeued, isEmpty);
+    expect(diff.itemsActivated, isEmpty);
+    expect(diff.itemsDeactivated, isEmpty);
+    expect(diff.itemsQueued, isEmpty);
+    expect(diff.itemsDequeued, isEmpty);
   });
 
   test('detects active swap (deactivate + activate)', () {
-    final item1 = createFakeResolved(
+    final item1 = createFakeItem(
       'c1',
       FakeSurface.banner,
-      FakeVisualVariant.variantA,
+      FakeVariant.variantA,
     );
-    final item2 = createFakeResolved(
+    final item2 = createFakeItem(
       'c2',
       FakeSurface.banner,
-      FakeVisualVariant.variantB,
+      FakeVariant.variantB,
     );
 
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -277,7 +261,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -290,26 +274,26 @@ void main() {
 
     final diff = PresentumStateDiff.compute(oldState, newState);
 
-    expect(diff.variantsDeactivated, hasLength(1));
-    expect(diff.variantsDeactivated.first, equals(item1));
-    expect(diff.variantsActivated, hasLength(1));
-    expect(diff.variantsActivated.first, equals(item2));
+    expect(diff.itemsDeactivated, hasLength(1));
+    expect(diff.itemsDeactivated.first, equals(item1));
+    expect(diff.itemsActivated, hasLength(1));
+    expect(diff.itemsActivated.first, equals(item2));
   });
 
   test('detects promotion from queue to active', () {
-    final item1 = createFakeResolved(
+    final item1 = createFakeItem(
       'c1',
       FakeSurface.banner,
-      FakeVisualVariant.variantA,
+      FakeVariant.variantA,
     );
-    final item2 = createFakeResolved(
+    final item2 = createFakeItem(
       'c2',
       FakeSurface.banner,
-      FakeVisualVariant.variantB,
+      FakeVariant.variantB,
     );
 
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -321,7 +305,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -334,25 +318,25 @@ void main() {
 
     final diff = PresentumStateDiff.compute(oldState, newState);
 
-    expect(diff.variantsDeactivated, contains(item1));
-    expect(diff.variantsActivated, contains(item2));
-    expect(diff.variantsDequeued, contains(item2));
+    expect(diff.itemsDeactivated, contains(item1));
+    expect(diff.itemsActivated, contains(item2));
+    expect(diff.itemsDequeued, contains(item2));
   });
 
   test('detects changes across multiple surfaces', () {
-    final banner1 = createFakeResolved(
+    final banner1 = createFakeItem(
       'b1',
       FakeSurface.banner,
-      FakeVisualVariant.variantA,
+      FakeVariant.variantA,
     );
-    final modal1 = createFakeResolved(
+    final modal1 = createFakeItem(
       'm1',
       FakeSurface.modal,
-      FakeVisualVariant.variantA,
+      FakeVariant.variantA,
     );
 
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: const {
             FakeSurface.banner: PresentumSlot.empty(FakeSurface.banner),
             FakeSurface.modal: PresentumSlot.empty(FakeSurface.modal),
@@ -361,7 +345,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -379,27 +363,23 @@ void main() {
 
     final diff = PresentumStateDiff.compute(oldState, newState);
 
-    expect(diff.variantsActivated, hasLength(2));
-    expect(diff.variantsActivated, contains(banner1));
-    expect(diff.variantsActivated, contains(modal1));
+    expect(diff.itemsActivated, hasLength(2));
+    expect(diff.itemsActivated, contains(banner1));
+    expect(diff.itemsActivated, contains(modal1));
     expect(diff.slotDiffs, hasLength(2));
   });
 
   test('detects surface addition', () {
-    final item = createFakeResolved(
-      'c1',
-      FakeSurface.banner,
-      FakeVisualVariant.variantA,
-    );
+    final item = createFakeItem('c1', FakeSurface.banner, FakeVariant.variantA);
 
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: const {},
           intention: PresentumStateIntention.auto,
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -418,13 +398,9 @@ void main() {
   });
 
   test('detects surface removal', () {
-    final item = createFakeResolved(
-      'c1',
-      FakeSurface.banner,
-      FakeVisualVariant.variantA,
-    );
+    final item = createFakeItem('c1', FakeSurface.banner, FakeVariant.variantA);
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -436,7 +412,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: const {},
           intention: PresentumStateIntention.auto,
         );
@@ -445,23 +421,23 @@ void main() {
 
     expect(diff.surfacesRemoved, contains(FakeSurface.banner));
     expect(diff.surfacesAdded, isEmpty);
-    expect(diff.variantsDeactivated, contains(item));
+    expect(diff.itemsDeactivated, contains(item));
   });
 
   test('detects surface modification', () {
-    final item1 = createFakeResolved(
+    final item1 = createFakeItem(
       'c1',
       FakeSurface.banner,
-      FakeVisualVariant.variantA,
+      FakeVariant.variantA,
     );
-    final item2 = createFakeResolved(
+    final item2 = createFakeItem(
       'c2',
       FakeSurface.banner,
-      FakeVisualVariant.variantB,
+      FakeVariant.variantB,
     );
 
     final oldState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -473,7 +449,7 @@ void main() {
         );
 
     final newState =
-        PresentumState$Immutable<FakeResolved, FakeSurface, FakeVisualVariant>(
+        PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
           slots: {
             FakeSurface.banner: PresentumSlot(
               surface: FakeSurface.banner,
@@ -493,10 +469,9 @@ void main() {
 
   group('SlotDiff', () {
     test('computes empty diff for identical slots', () {
-      const slot =
-          PresentumSlot<FakeResolved, FakeSurface, FakeVisualVariant>.empty(
-            FakeSurface.banner,
-          );
+      const slot = PresentumSlot<FakeItem, FakeSurface, FakeVariant>.empty(
+        FakeSurface.banner,
+      );
 
       final diff = SlotDiff.compute(
         surface: FakeSurface.banner,
@@ -511,27 +486,27 @@ void main() {
     });
 
     test('detects active change', () {
-      final item1 = createFakeResolved(
+      final item1 = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
-      final item2 = createFakeResolved(
+      final item2 = createFakeItem(
         'c2',
         FakeSurface.banner,
-        FakeVisualVariant.variantB,
+        FakeVariant.variantB,
       );
 
       final oldSlot = PresentumSlot(
         surface: FakeSurface.banner,
         active: item1,
-        queue: const <FakeResolved>[],
+        queue: const <FakeItem>[],
       );
 
       final newSlot = PresentumSlot(
         surface: FakeSurface.banner,
         active: item2,
-        queue: const <FakeResolved>[],
+        queue: const <FakeItem>[],
       );
 
       final diff = SlotDiff.compute(
@@ -546,27 +521,27 @@ void main() {
     });
 
     test('detects queue change', () {
-      final active = createFakeResolved(
+      final active = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
-      final queued = createFakeResolved(
+      final queued = createFakeItem(
         'c2',
         FakeSurface.banner,
-        FakeVisualVariant.variantB,
+        FakeVariant.variantB,
       );
 
       final oldSlot = PresentumSlot(
         surface: FakeSurface.banner,
         active: active,
-        queue: const <FakeResolved>[],
+        queue: const <FakeItem>[],
       );
 
       final newSlot = PresentumSlot(
         surface: FakeSurface.banner,
         active: active,
-        queue: <FakeResolved>[queued],
+        queue: <FakeItem>[queued],
       );
 
       final diff = SlotDiff.compute(
@@ -581,15 +556,15 @@ void main() {
     });
 
     test('handles null old slot (slot creation)', () {
-      final item = createFakeResolved(
+      final item = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
-      final queued = createFakeResolved(
+      final queued = createFakeItem(
         'c2',
         FakeSurface.banner,
-        FakeVisualVariant.variantB,
+        FakeVariant.variantB,
       );
 
       final newSlot = PresentumSlot(
@@ -605,20 +580,20 @@ void main() {
       );
 
       expect(diff.changes, hasLength(2)); // 1 activation + 1 queued
-      expect(diff.changes.whereType<VariantActivatedChange>(), hasLength(1));
-      expect(diff.changes.whereType<VariantQueuedChange>(), hasLength(1));
+      expect(diff.changes.whereType<ItemActivatedChange>(), hasLength(1));
+      expect(diff.changes.whereType<ItemQueuedChange>(), hasLength(1));
     });
 
     test('handles null new slot (slot deletion)', () {
-      final item = createFakeResolved(
+      final item = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
-      final queued = createFakeResolved(
+      final queued = createFakeItem(
         'c2',
         FakeSurface.banner,
-        FakeVisualVariant.variantB,
+        FakeVariant.variantB,
       );
 
       final oldSlot = PresentumSlot(
@@ -634,17 +609,16 @@ void main() {
       );
 
       expect(diff.changes, hasLength(2)); // 1 deactivation + 1 dequeued
-      expect(diff.changes.whereType<VariantDeactivatedChange>(), hasLength(1));
-      expect(diff.changes.whereType<VariantDequeuedChange>(), hasLength(1));
+      expect(diff.changes.whereType<ItemDeactivatedChange>(), hasLength(1));
+      expect(diff.changes.whereType<ItemDequeuedChange>(), hasLength(1));
     });
 
     test('handles both null slots', () {
-      final diff =
-          SlotDiff<FakeResolved, FakeSurface, FakeVisualVariant>.compute(
-            surface: FakeSurface.banner,
-            oldSlot: null,
-            newSlot: null,
-          );
+      final diff = SlotDiff<FakeItem, FakeSurface, FakeVariant>.compute(
+        surface: FakeSurface.banner,
+        oldSlot: null,
+        newSlot: null,
+      );
 
       expect(diff.isEmpty, isTrue);
       expect(diff.changes, isEmpty);
@@ -653,23 +627,22 @@ void main() {
 
   group('SlotChange Types', () {
     test('VariantActivatedChange contains correct data', () {
-      final item = createFakeResolved(
+      final item = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
-      final previous = createFakeResolved(
+      final previous = createFakeItem(
         'c0',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
 
-      final change =
-          VariantActivatedChange<FakeResolved, FakeSurface, FakeVisualVariant>(
-            surface: FakeSurface.banner,
-            item: item,
-            previousActive: previous,
-          );
+      final change = ItemActivatedChange<FakeItem, FakeSurface, FakeVariant>(
+        surface: FakeSurface.banner,
+        item: item,
+        previousActive: previous,
+      );
 
       expect(change.surface, equals(FakeSurface.banner));
       expect(change.item, equals(item));
@@ -678,23 +651,22 @@ void main() {
     });
 
     test('VariantDeactivatedChange contains correct data', () {
-      final item = createFakeResolved(
+      final item = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
-      final next = createFakeResolved(
+      final next = createFakeItem(
         'c2',
         FakeSurface.banner,
-        FakeVisualVariant.variantB,
+        FakeVariant.variantB,
       );
 
-      final change =
-          VariantDeactivatedChange<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(surface: FakeSurface.banner, item: item, newActive: next);
+      final change = ItemDeactivatedChange<FakeItem, FakeSurface, FakeVariant>(
+        surface: FakeSurface.banner,
+        item: item,
+        newActive: next,
+      );
 
       expect(change.surface, equals(FakeSurface.banner));
       expect(change.item, equals(item));
@@ -702,44 +674,40 @@ void main() {
     });
 
     test('VariantQueuedChange equality works', () {
-      final item = createFakeResolved(
+      final item = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
 
-      final c1 =
-          VariantQueuedChange<FakeResolved, FakeSurface, FakeVisualVariant>(
-            surface: FakeSurface.banner,
-            item: item,
-          );
-      final c2 =
-          VariantQueuedChange<FakeResolved, FakeSurface, FakeVisualVariant>(
-            surface: FakeSurface.banner,
-            item: item,
-          );
+      final c1 = ItemQueuedChange<FakeItem, FakeSurface, FakeVariant>(
+        surface: FakeSurface.banner,
+        item: item,
+      );
+      final c2 = ItemQueuedChange<FakeItem, FakeSurface, FakeVariant>(
+        surface: FakeSurface.banner,
+        item: item,
+      );
 
       expect(c1, equals(c2));
       expect(c1.hashCode, equals(c2.hashCode));
     });
 
     test('VariantDequeuedChange equality works', () {
-      final item = createFakeResolved(
+      final item = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
 
-      final c1 =
-          VariantDequeuedChange<FakeResolved, FakeSurface, FakeVisualVariant>(
-            surface: FakeSurface.banner,
-            item: item,
-          );
-      final c2 =
-          VariantDequeuedChange<FakeResolved, FakeSurface, FakeVisualVariant>(
-            surface: FakeSurface.banner,
-            item: item,
-          );
+      final c1 = ItemDequeuedChange<FakeItem, FakeSurface, FakeVariant>(
+        surface: FakeSurface.banner,
+        item: item,
+      );
+      final c2 = ItemDequeuedChange<FakeItem, FakeSurface, FakeVariant>(
+        surface: FakeSurface.banner,
+        item: item,
+      );
 
       expect(c1, equals(c2));
       expect(c1.hashCode, equals(c2.hashCode));
@@ -748,33 +716,17 @@ void main() {
 
   group('PresentumStateDiff - Edge Cases', () {
     test('handles multiple items in queue', () {
-      final active = createFakeResolved(
+      final active = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
-      final q1 = createFakeResolved(
-        'q1',
-        FakeSurface.banner,
-        FakeVisualVariant.variantB,
-      );
-      final q2 = createFakeResolved(
-        'q2',
-        FakeSurface.banner,
-        FakeVisualVariant.variantA,
-      );
-      final q3 = createFakeResolved(
-        'q3',
-        FakeSurface.banner,
-        FakeVisualVariant.variantB,
-      );
+      final q1 = createFakeItem('q1', FakeSurface.banner, FakeVariant.variantB);
+      final q2 = createFakeItem('q2', FakeSurface.banner, FakeVariant.variantA);
+      final q3 = createFakeItem('q3', FakeSurface.banner, FakeVariant.variantB);
 
       final oldState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
             slots: {
               FakeSurface.banner: PresentumSlot(
                 surface: FakeSurface.banner,
@@ -786,11 +738,7 @@ void main() {
           );
 
       final newState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
             slots: {
               FakeSurface.banner: PresentumSlot(
                 surface: FakeSurface.banner,
@@ -803,24 +751,20 @@ void main() {
 
       final diff = PresentumStateDiff.compute(oldState, newState);
 
-      expect(diff.variantsDequeued, contains(q1));
-      expect(diff.variantsQueued, contains(q2));
-      expect(diff.variantsQueued, contains(q3));
+      expect(diff.itemsDequeued, contains(q1));
+      expect(diff.itemsQueued, contains(q2));
+      expect(diff.itemsQueued, contains(q3));
     });
 
     test('diffForSurface returns correct slot diff', () {
-      final item = createFakeResolved(
+      final item = createFakeItem(
         'c1',
         FakeSurface.banner,
-        FakeVisualVariant.variantA,
+        FakeVariant.variantA,
       );
 
       final oldState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
             slots: const {
               FakeSurface.banner: PresentumSlot.empty(FakeSurface.banner),
             },
@@ -828,11 +772,7 @@ void main() {
           );
 
       final newState =
-          PresentumState$Immutable<
-            FakeResolved,
-            FakeSurface,
-            FakeVisualVariant
-          >(
+          PresentumState$Immutable<FakeItem, FakeSurface, FakeVariant>(
             slots: {
               FakeSurface.banner: PresentumSlot(
                 surface: FakeSurface.banner,

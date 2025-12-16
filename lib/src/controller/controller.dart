@@ -16,52 +16,52 @@ import 'package:presentum/src/widgets/inherited_presentum.dart';
 /// The main class of the package.
 /// {@endtemplate}
 abstract interface class Presentum<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
   /// {@macro presentum}
   factory Presentum({
     PresentumStorage<S, V>? storage,
-    List<IPresentumEventHandler<TResolved, S, V>>? eventHandlers,
-    List<IPresentumTransitionObserver<TResolved, S, V>>? transitionObservers,
-    Map<S, PresentumSlot<TResolved, S, V>>? slots,
-    List<IPresentumGuard<TResolved, S, V>>? guards,
-    PresentumState<TResolved, S, V>? initialState,
-    List<PresentumHistoryEntry<TResolved, S, V>>? history,
+    List<IPresentumEventHandler<TItem, S, V>>? eventHandlers,
+    List<IPresentumTransitionObserver<TItem, S, V>>? transitionObservers,
+    Map<S, PresentumSlot<TItem, S, V>>? slots,
+    List<IPresentumGuard<TItem, S, V>>? guards,
+    PresentumState<TItem, S, V>? initialState,
+    List<PresentumHistoryEntry<TItem, S, V>>? history,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) = Presentum$EngineImpl;
 
   /// Receives the [Presentum] instance from the elements tree.
-  static Presentum<TResolved, S, V>? maybeOf<
-    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  static Presentum<TItem, S, V>? maybeOf<
+    TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
-  >(BuildContext context) => InheritedPresentum.maybeOf<TResolved, S, V>(
+  >(BuildContext context) => InheritedPresentum.maybeOf<TItem, S, V>(
     context,
     listen: false,
   )?.presentum;
 
   /// Receives the [Presentum] instance from the elements tree.
-  static Presentum<TResolved, S, V> of<
-    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  static Presentum<TItem, S, V> of<
+    TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
   >(BuildContext context) =>
-      InheritedPresentum.of<TResolved, S, V>(context, listen: false).presentum;
+      InheritedPresentum.of<TItem, S, V>(context, listen: false).presentum;
 
   /// Configuration of the [Presentum].
-  abstract final PresentumConfig<TResolved, S, V> config;
+  abstract final PresentumConfig<TItem, S, V> config;
 
   /// State observer,
   /// which can be used to listen to changes in the [PresentumState].
-  PresentumStateObserver<TResolved, S, V> get observer;
+  PresentumStateObserver<TItem, S, V> get observer;
 
   /// Current state.
-  PresentumState$Immutable<TResolved, S, V> get state;
+  PresentumState$Immutable<TItem, S, V> get state;
 
   /// History of the [PresentumState] states.
-  List<PresentumHistoryEntry<TResolved, S, V>> get history;
+  List<PresentumHistoryEntry<TItem, S, V>> get history;
 
   /// Completes when processing queue is empty
   /// and all transactions are completed.
@@ -79,8 +79,8 @@ abstract interface class Presentum<
   /// Better to use [transaction] method to change multiple states
   /// at once synchronously at the same time and merge changes into transaction.
   Future<void> setState(
-    PresentumState<TResolved, S, V> Function(
-      PresentumState$Mutable<TResolved, S, V> state,
+    PresentumState<TItem, S, V> Function(
+      PresentumState$Mutable<TItem, S, V> state,
     )
     change,
   );
@@ -96,31 +96,29 @@ abstract interface class Presentum<
   /// If the priority is not specified, the transaction will be executed
   /// in the order in which it was added.
   Future<void> transaction(
-    PresentumState<TResolved, S, V> Function(
-      PresentumState<TResolved, S, V> state,
-    )
+    PresentumState<TItem, S, V> Function(PresentumState<TItem, S, V> state)
     change, {
     int? priority,
   });
 
   /// Push a new item to the presentation slot.
-  Future<void> pushSlot(S surface, {required TResolved item});
+  Future<void> pushSlot(S surface, {required TItem item});
 
   /// Push multiple items to the presentation slot.
-  Future<void> pushAllSlots(List<({S surface, TResolved item})> items);
+  Future<void> pushAllSlots(List<({S surface, TItem item})> items);
 
   /// Add a new event to the event listeners.
-  Future<void> addEvent(PresentumEvent<TResolved, S, V> event);
+  Future<void> addEvent(PresentumEvent<TItem, S, V> event);
 
   /// Mark an item as shown.
-  Future<void> markShown(TResolved item);
+  Future<void> markShown(TItem item);
 
   /// Mark an item as dismissed in the storage and removes it from the slot.
-  Future<void> markDismissed(TResolved item);
+  Future<void> markDismissed(TItem item);
 
   /// Mark an item as converted.
   Future<void> markConverted(
-    TResolved item, {
+    TItem item, {
     Map<String, Object?>? conversionMetadata,
   });
 

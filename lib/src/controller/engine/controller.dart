@@ -18,28 +18,28 @@ import 'package:presentum/src/state/state.dart';
 
 @internal
 final class Presentum$EngineImpl<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    implements Presentum<TResolved, S, V> {
+    implements Presentum<TItem, S, V> {
   factory Presentum$EngineImpl({
     PresentumStorage<S, V>? storage,
-    List<IPresentumEventHandler<TResolved, S, V>>? eventHandlers,
-    List<IPresentumTransitionObserver<TResolved, S, V>>? transitionObservers,
-    Map<S, PresentumSlot<TResolved, S, V>>? slots,
-    List<IPresentumGuard<TResolved, S, V>>? guards,
-    PresentumState<TResolved, S, V>? initialState,
-    List<PresentumHistoryEntry<TResolved, S, V>>? history,
+    List<IPresentumEventHandler<TItem, S, V>>? eventHandlers,
+    List<IPresentumTransitionObserver<TItem, S, V>>? transitionObservers,
+    Map<S, PresentumSlot<TItem, S, V>>? slots,
+    List<IPresentumGuard<TItem, S, V>>? guards,
+    PresentumState<TItem, S, V>? initialState,
+    List<PresentumHistoryEntry<TItem, S, V>>? history,
     void Function(Object error, StackTrace stackTrace)? onError,
   }) {
     final resolvedStorage = storage ?? NoOpPresentumStorage<S, V>();
     final resolvedEventHandlers =
-        eventHandlers ?? <IPresentumEventHandler<TResolved, S, V>>[];
+        eventHandlers ?? <IPresentumEventHandler<TItem, S, V>>[];
     final observer = PresentumStateObserver$EngineImpl(
       initialState?.freeze() ??
-          PresentumState$Immutable<TResolved, S, V>(
-            slots: slots ?? <S, PresentumSlot<TResolved, S, V>>{},
+          PresentumState$Immutable<TItem, S, V>(
+            slots: slots ?? <S, PresentumSlot<TItem, S, V>>{},
             intention: PresentumStateIntention.auto,
           ),
       history,
@@ -64,11 +64,11 @@ final class Presentum$EngineImpl<
 
   Presentum$EngineImpl._({
     required PresentumStorage<S, V> storage,
-    required List<IPresentumEventHandler<TResolved, S, V>> eventHandlers,
-    required PresentumEngine$Impl<TResolved, S, V> engine,
-    required PresentumStateObserver<TResolved, S, V> observer,
+    required List<IPresentumEventHandler<TItem, S, V>> eventHandlers,
+    required PresentumEngine$Impl<TItem, S, V> engine,
+    required PresentumStateObserver<TItem, S, V> observer,
     void Function(Object error, StackTrace stackTrace)? onError,
-  }) : config = PresentumConfig<TResolved, S, V>(
+  }) : config = PresentumConfig<TItem, S, V>(
          storage: storage,
          observer: observer,
          engine: engine,
@@ -78,20 +78,20 @@ final class Presentum$EngineImpl<
        _onError = onError;
 
   @override
-  final PresentumConfig<TResolved, S, V> config;
+  final PresentumConfig<TItem, S, V> config;
 
-  final PresentumEngine$Impl<TResolved, S, V> _engine;
-  final List<IPresentumEventHandler<TResolved, S, V>> _eventHandlers;
+  final PresentumEngine$Impl<TItem, S, V> _engine;
+  final List<IPresentumEventHandler<TItem, S, V>> _eventHandlers;
   final void Function(Object error, StackTrace stackTrace)? _onError;
 
   @override
-  PresentumStateObserver<TResolved, S, V> get observer => config.observer;
+  PresentumStateObserver<TItem, S, V> get observer => config.observer;
 
   @override
-  PresentumState$Immutable<TResolved, S, V> get state => observer.value;
+  PresentumState$Immutable<TItem, S, V> get state => observer.value;
 
   @override
-  List<PresentumHistoryEntry<TResolved, S, V>> get history => observer.history;
+  List<PresentumHistoryEntry<TItem, S, V>> get history => observer.history;
 
   @override
   bool get isIdle => !isProcessing;
@@ -104,8 +104,8 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> setState(
-    PresentumState<TResolved, S, V> Function(
-      PresentumState$Mutable<TResolved, S, V> state,
+    PresentumState<TItem, S, V> Function(
+      PresentumState$Mutable<TItem, S, V> state,
     )
     change,
   ) => _engine.setNewPresentationState(
@@ -113,11 +113,11 @@ final class Presentum$EngineImpl<
   );
 
   @override
-  Future<void> pushSlot(S surface, {required TResolved item}) =>
+  Future<void> pushSlot(S surface, {required TItem item}) =>
       setState((state) => state..add(surface, item));
 
   @override
-  Future<void> pushAllSlots(List<({S surface, TResolved item})> items) =>
+  Future<void> pushAllSlots(List<({S surface, TItem item})> items) =>
       setState((state) {
         for (final item in items) {
           state.add(item.surface, item.item);
@@ -128,17 +128,15 @@ final class Presentum$EngineImpl<
   Completer<void>? _txnCompleter;
   final Queue<
     (
-      PresentumState<TResolved, S, V> Function(
-        PresentumState$Mutable<TResolved, S, V>,
-      ),
+      PresentumState<TItem, S, V> Function(PresentumState$Mutable<TItem, S, V>),
       int,
     )
   >
   _txnQueue =
       Queue<
         (
-          PresentumState<TResolved, S, V> Function(
-            PresentumState$Mutable<TResolved, S, V>,
+          PresentumState<TItem, S, V> Function(
+            PresentumState$Mutable<TItem, S, V>,
           ),
           int,
         )
@@ -146,9 +144,7 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> transaction(
-    PresentumState<TResolved, S, V> Function(
-      PresentumState$Mutable<TResolved, S, V>,
-    )
+    PresentumState<TItem, S, V> Function(PresentumState$Mutable<TItem, S, V>)
     change, {
     int? priority,
   }) async {
@@ -164,8 +160,8 @@ final class Presentum$EngineImpl<
         for (final fn in list) {
           try {
             mutableState = switch (fn.$1(mutableState)) {
-              final PresentumState$Mutable<TResolved, S, V> state => state,
-              final PresentumState$Immutable<TResolved, S, V> state =>
+              final PresentumState$Mutable<TItem, S, V> state => state,
+              final PresentumState$Immutable<TItem, S, V> state =>
                 state.mutate(),
             };
           } on Object {
@@ -185,7 +181,7 @@ final class Presentum$EngineImpl<
   }
 
   @override
-  Future<void> addEvent(PresentumEvent<TResolved, S, V> event) async {
+  Future<void> addEvent(PresentumEvent<TItem, S, V> event) async {
     // If the event was added, but no event handlers are registered,
     // log a warning.
     if (_eventHandlers.isEmpty) {
@@ -216,8 +212,8 @@ final class Presentum$EngineImpl<
   }
 
   @override
-  Future<void> markShown(TResolved item) async {
-    final event = PresentumShownEvent<TResolved, S, V>(
+  Future<void> markShown(TItem item) async {
+    final event = PresentumShownEvent<TItem, S, V>(
       item: item,
       timestamp: DateTime.now(),
     );
@@ -225,8 +221,8 @@ final class Presentum$EngineImpl<
   }
 
   @override
-  Future<void> markDismissed(TResolved item) async {
-    final event = PresentumDismissedEvent<TResolved, S, V>(
+  Future<void> markDismissed(TItem item) async {
+    final event = PresentumDismissedEvent<TItem, S, V>(
       item: item,
       timestamp: DateTime.now(),
     );
@@ -241,10 +237,10 @@ final class Presentum$EngineImpl<
 
   @override
   Future<void> markConverted(
-    TResolved item, {
+    TItem item, {
     Map<String, Object?>? conversionMetadata,
   }) async {
-    final event = PresentumConvertedEvent<TResolved, S, V>(
+    final event = PresentumConvertedEvent<TItem, S, V>(
       item: item,
       timestamp: DateTime.now(),
       conversionMetadata: conversionMetadata,

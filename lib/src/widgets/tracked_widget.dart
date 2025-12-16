@@ -14,7 +14,7 @@ import 'package:presentum/src/widgets/build_context_extension.dart';
 /// rebuilt.
 /// {@endtemplate}
 class PresentumTrackedWidget<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
@@ -28,11 +28,11 @@ class PresentumTrackedWidget<
     super.key,
   });
 
-  /// The resolved variant to track.
-  final TResolved item;
+  /// The presentum item to track.
+  final TItem item;
 
   /// Builder for the child widget.
-  final Widget Function(BuildContext context, TResolved item) builder;
+  final Widget Function(BuildContext context, TItem item) builder;
 
   /// Callback when the widget is dismissed (if using dismissible wrapper).
   final VoidCallback? onDismiss;
@@ -42,16 +42,16 @@ class PresentumTrackedWidget<
   final bool trackVisibility;
 
   @override
-  State<PresentumTrackedWidget<TResolved, S, V>> createState() =>
-      _PresentumTrackedWidgetState<TResolved, S, V>();
+  State<PresentumTrackedWidget<TItem, S, V>> createState() =>
+      _PresentumTrackedWidgetState<TItem, S, V>();
 }
 
 class _PresentumTrackedWidgetState<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends State<PresentumTrackedWidget<TResolved, S, V>> {
+    extends State<PresentumTrackedWidget<TItem, S, V>> {
   late bool _hasTrackedShown;
 
   String get _pageStorageKey => 'presentum_tracked_widget_${widget.item.id}';
@@ -67,7 +67,7 @@ class _PresentumTrackedWidgetState<
     if (widget.trackVisibility && !_hasTrackedShown) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.presentum<TResolved, S, V>().markShown(widget.item);
+        context.presentum<TItem, S, V>().markShown(widget.item);
         _hasTrackedShown = true;
         PageStorage.of(
           context,

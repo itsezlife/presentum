@@ -3,10 +3,10 @@ import 'package:presentum/presentum.dart';
 
 enum FakeSurface with PresentumSurface { banner, modal, tooltip }
 
-enum FakeVisualVariant with PresentumVisualVariant { variantA, variantB }
+enum FakeVariant with PresentumVisualVariant { variantA, variantB }
 
-class FakeVariant extends PresentumVariant<FakeSurface, FakeVisualVariant> {
-  const FakeVariant({
+class FakeOption extends PresentumOption<FakeSurface, FakeVariant> {
+  const FakeOption({
     required this.surface,
     required this.variant,
     this.stage,
@@ -20,7 +20,7 @@ class FakeVariant extends PresentumVariant<FakeSurface, FakeVisualVariant> {
   final FakeSurface surface;
 
   @override
-  final FakeVisualVariant variant;
+  final FakeVariant variant;
 
   @override
   final int? stage;
@@ -38,12 +38,12 @@ class FakeVariant extends PresentumVariant<FakeSurface, FakeVisualVariant> {
   final int? cooldownMinutes;
 }
 
-class FakePayload extends PresentumPayload<FakeSurface, FakeVisualVariant> {
+class FakePayload extends PresentumPayload<FakeSurface, FakeVariant> {
   const FakePayload({
     required this.id,
     required this.metadata,
     required this.priority,
-    required this.variants,
+    required this.options,
   });
 
   @override
@@ -56,31 +56,26 @@ class FakePayload extends PresentumPayload<FakeSurface, FakeVisualVariant> {
   final int priority;
 
   @override
-  final List<PresentumVariant<FakeSurface, FakeVisualVariant>> variants;
+  final List<PresentumOption<FakeSurface, FakeVariant>> options;
 }
 
-class FakeResolved
-    extends
-        ResolvedPresentumVariant<FakePayload, FakeSurface, FakeVisualVariant> {
-  const FakeResolved({required this.payload, required this.variant});
+class FakeItem extends PresentumItem<FakePayload, FakeSurface, FakeVariant> {
+  const FakeItem({required this.payload, required this.option});
 
   @override
   final FakePayload payload;
 
   @override
-  final FakeVariant variant;
+  final FakeOption option;
 }
 
-FakeResolved createFakeResolved(
-  String id,
-  FakeSurface surface,
-  FakeVisualVariant variant,
-) => FakeResolved(
-  payload: FakePayload(
-    id: id,
-    metadata: {},
-    priority: 0,
-    variants: [FakeVariant(surface: surface, variant: variant)],
-  ),
-  variant: FakeVariant(surface: surface, variant: variant),
-);
+FakeItem createFakeItem(String id, FakeSurface surface, FakeVariant variant) =>
+    FakeItem(
+      payload: FakePayload(
+        id: id,
+        metadata: {},
+        priority: 0,
+        options: [FakeOption(surface: surface, variant: variant)],
+      ),
+      option: FakeOption(surface: surface, variant: variant),
+    );
