@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:presentum/src/state/state.dart';
 
 /// {@template presentum_option}
-/// One renderable option of an item for a given `surface` and `visual` style.
+/// One renderable option of an item for a given `surface` and visual `variant` 
+/// style.
 /// {@endtemplate}
 @immutable
 abstract class PresentumOption<
@@ -15,7 +16,7 @@ abstract class PresentumOption<
   /// The surface where the option can be presented.
   abstract final S surface;
 
-  /// The visual style of presentation, e.g dialog, banner, inline, etc.
+  /// The visual variant of presentation, e.g dialog, banner, inline, etc.
   abstract final V variant;
 
   /// Sequence hint within a surface (e.g. fullscreen -> dialog).
@@ -35,7 +36,7 @@ abstract class PresentumOption<
 
   @override
   String toString() =>
-      'PresentumOption(surface: $surface, visual: $variant, stage: $stage, '
+      'PresentumOption(surface: $surface, variant: $variant, stage: $stage, '
       'maxImpressions: $maxImpressions, cooldownMinutes: $cooldownMinutes, '
       'alwaysOnIfEligible: $alwaysOnIfEligible, isDismissible: $isDismissible)';
 }
