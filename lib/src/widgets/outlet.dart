@@ -5,7 +5,7 @@ import 'package:presentum/src/state/state.dart';
 import 'package:presentum/src/widgets/build_context_extension.dart';
 import 'package:presentum/src/widgets/presentum_context.dart';
 
-/// Builder function that receives the [BuildContext] and the [TResolved] item.
+/// Builder function that receives the [BuildContext] and the [TItem] item.
 typedef PresentumOutletBuilder<T> =
     Widget Function(BuildContext context, T item);
 
@@ -18,7 +18,7 @@ typedef PresentumOutletPlaceholderBuilder =
 /// Outlet that can render items from a surface of the same type.
 /// {@endtemplate}
 class PresentumOutlet<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
@@ -34,9 +34,9 @@ class PresentumOutlet<
   /// The surface to render items from.
   final S surface;
 
-  /// Builder function that receives the [BuildContext] and the [TResolved]
+  /// Builder function that receives the [BuildContext] and the [TItem]
   /// item.
-  final PresentumOutletBuilder<TResolved> builder;
+  final PresentumOutletBuilder<TItem> builder;
 
   /// Builder function that receives the [BuildContext] and returns a
   /// placeholder widget.
@@ -46,23 +46,23 @@ class PresentumOutlet<
       const SizedBox.shrink();
 
   @override
-  State<PresentumOutlet<TResolved, S, V>> createState() =>
-      _PresentumOutletState<TResolved, S, V>();
+  State<PresentumOutlet<TItem, S, V>> createState() =>
+      _PresentumOutletState<TItem, S, V>();
 }
 
 class _PresentumOutletState<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends State<PresentumOutlet<TResolved, S, V>> {
-  late final PresentumStateObserver<TResolved, S, V> _observer;
-  TResolved? _lastItem;
+    extends State<PresentumOutlet<TItem, S, V>> {
+  late final PresentumStateObserver<TItem, S, V> _observer;
+  TItem? _lastItem;
 
   @override
   void initState() {
     super.initState();
-    _observer = context.presentum<TResolved, S, V>().observer;
+    _observer = context.presentum<TItem, S, V>().observer;
 
     // Handle initial state evaluation.
     _onStateChange();
@@ -90,7 +90,7 @@ class _PresentumOutletState<
   @override
   Widget build(BuildContext context) {
     if (_lastItem case final item?) {
-      return InheritedPresentumResolvedVariant<TResolved, S, V>(
+      return InheritedPresentumItem<TItem, S, V>(
         item: item,
         child: widget.builder(context, item),
       );
@@ -125,14 +125,14 @@ enum CompositionMergeMode {
 }
 
 /// Resolver function that decides how to select items from a surface slot.
-typedef CompositionItemsResolver<TResolved> =
-    List<TResolved> Function(List<TResolved> items);
+typedef CompositionItemsResolver<TItem> =
+    List<TItem> Function(List<TItem> items);
 
 /// {@template presentum_outlet_composition}
 /// Outlet that can render items from multiple surfaces of the same type.
 /// {@endtemplate}
 class PresentumOutlet$Composition<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
@@ -165,10 +165,10 @@ class PresentumOutlet$Composition<
   final int maxItems;
 
   /// Custom resolver that decides how to select items from the slot.
-  final CompositionItemsResolver<TResolved>? resolver;
+  final CompositionItemsResolver<TItem>? resolver;
 
   /// Builder that receives the list of items from the slot.
-  final PresentumOutletBuilder<List<TResolved>> builder;
+  final PresentumOutletBuilder<List<TItem>> builder;
 
   /// Builder function that receives the [BuildContext] and returns a
   /// placeholder widget.
@@ -178,30 +178,30 @@ class PresentumOutlet$Composition<
       const SizedBox.shrink();
 
   @override
-  State<PresentumOutlet$Composition<TResolved, S, V>> createState() =>
-      _PresentumOutlet$CompositionState<TResolved, S, V>();
+  State<PresentumOutlet$Composition<TItem, S, V>> createState() =>
+      _PresentumOutlet$CompositionState<TItem, S, V>();
 }
 
 class _PresentumOutlet$CompositionState<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends State<PresentumOutlet$Composition<TResolved, S, V>>
+    extends State<PresentumOutlet$Composition<TItem, S, V>>
     with PresentumOutlet$CompositionMixin {
-  late final PresentumStateObserver<TResolved, S, V> _observer;
-  List<TResolved> _items = <TResolved>[];
+  late final PresentumStateObserver<TItem, S, V> _observer;
+  List<TItem> _items = <TItem>[];
 
   @override
   void initState() {
     super.initState();
-    _observer = context.presentum<TResolved, S, V>().observer;
+    _observer = context.presentum<TItem, S, V>().observer;
     _onStateChange();
     _observer.addListener(_onStateChange);
   }
 
   void _onStateChange() {
-    final items = collectItemsForSlot<TResolved, S, V>(
+    final items = collectItemsForSlot<TItem, S, V>(
       widget.surface,
       _observer,
       widget.surfaceMode,
@@ -233,15 +233,15 @@ class _PresentumOutlet$CompositionState<
 
 /// Resolver function that decides how to combine items from two different
 /// presentums.
-typedef CompositionItemsResolver2<TResolved1, TResolved2> =
-    List<TResolved1> Function(List<TResolved1> items1, List<TResolved2> items2);
+typedef CompositionItemsResolver2<TItem1, TItem2> =
+    List<TItem1> Function(List<TItem1> items1, List<TItem2> items2);
 
 /// {@template presentum_outlet_composition2}
 /// Cross-presentum composition outlet for two different presentums.
 /// {@endtemplate}
 class PresentumOutlet$Composition2<
-  TResolved1 extends ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>,
-  TResolved2 extends ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>,
+  TItem1 extends PresentumItem<PresentumPayload<S1, V1>, S1, V1>,
+  TItem2 extends PresentumItem<PresentumPayload<S2, V2>, S2, V2>,
   S1 extends PresentumSurface,
   V1 extends PresentumVisualVariant,
   S2 extends PresentumSurface,
@@ -283,19 +283,19 @@ class PresentumOutlet$Composition2<
   final CompositionMergeMode mergeMode2;
 
   /// Custom resolver that decides how to select items from the first surface.
-  final CompositionItemsResolver<TResolved1>? resolver1;
+  final CompositionItemsResolver<TItem1>? resolver1;
 
   /// Custom resolver that decides how to select items from the second surface.
-  final CompositionItemsResolver<TResolved2>? resolver2;
+  final CompositionItemsResolver<TItem2>? resolver2;
 
   /// Custom resolver that decides how to combine items from both presentums.
-  final CompositionItemsResolver2<TResolved1, TResolved2> resolver;
+  final CompositionItemsResolver2<TItem1, TItem2> resolver;
 
   /// Builder that receives the list of items from the two presentums combined.
   final Widget Function(
     BuildContext context,
-    List<ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>> items1,
-    List<ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>> items2,
+    List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> items1,
+    List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> items2,
   )
   builder;
 
@@ -307,41 +307,31 @@ class PresentumOutlet$Composition2<
       const SizedBox.shrink();
 
   @override
-  State<PresentumOutlet$Composition2<TResolved1, TResolved2, S1, V1, S2, V2>>
+  State<PresentumOutlet$Composition2<TItem1, TItem2, S1, V1, S2, V2>>
   createState() =>
-      _PresentumOutlet$Composition2State<
-        TResolved1,
-        TResolved2,
-        S1,
-        V1,
-        S2,
-        V2
-      >();
+      _PresentumOutlet$Composition2State<TItem1, TItem2, S1, V1, S2, V2>();
 }
 
 class _PresentumOutlet$Composition2State<
-  TResolved1 extends ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>,
-  TResolved2 extends ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>,
+  TItem1 extends PresentumItem<PresentumPayload<S1, V1>, S1, V1>,
+  TItem2 extends PresentumItem<PresentumPayload<S2, V2>, S2, V2>,
   S1 extends PresentumSurface,
   V1 extends PresentumVisualVariant,
   S2 extends PresentumSurface,
   V2 extends PresentumVisualVariant
 >
-    extends
-        State<
-          PresentumOutlet$Composition2<TResolved1, TResolved2, S1, V1, S2, V2>
-        >
+    extends State<PresentumOutlet$Composition2<TItem1, TItem2, S1, V1, S2, V2>>
     with PresentumOutlet$CompositionMixin {
-  late final PresentumStateObserver<TResolved1, S1, V1> _observer1;
-  late final PresentumStateObserver<TResolved2, S2, V2> _observer2;
-  List<ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>> _items1 = [];
-  List<ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>> _items2 = [];
+  late final PresentumStateObserver<TItem1, S1, V1> _observer1;
+  late final PresentumStateObserver<TItem2, S2, V2> _observer2;
+  List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> _items1 = [];
+  List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> _items2 = [];
 
   @override
   void initState() {
     super.initState();
-    _observer1 = context.presentum<TResolved1, S1, V1>().observer;
-    _observer2 = context.presentum<TResolved2, S2, V2>().observer;
+    _observer1 = context.presentum<TItem1, S1, V1>().observer;
+    _observer2 = context.presentum<TItem2, S2, V2>().observer;
 
     _onStateChange();
     _observer1.addListener(_onStateChange);
@@ -349,13 +339,13 @@ class _PresentumOutlet$Composition2State<
   }
 
   void _onStateChange() {
-    final items1 = collectItemsForSlot<TResolved1, S1, V1>(
+    final items1 = collectItemsForSlot<TItem1, S1, V1>(
       widget.surface1,
       _observer1,
       widget.surfaceMode1,
       resolver: widget.resolver1,
     );
-    final items2 = collectItemsForSlot<TResolved2, S2, V2>(
+    final items2 = collectItemsForSlot<TItem2, S2, V2>(
       widget.surface2,
       _observer2,
       widget.surfaceMode2,
@@ -391,20 +381,20 @@ class _PresentumOutlet$Composition2State<
 
 /// Resolver function that decides how to combine items from three different
 /// presentums.
-typedef CompositionItemsResolver3<TResolved1, TResolved2, TResolved3> =
-    List<TResolved1> Function(
-      List<TResolved1> items1,
-      List<TResolved2> items2,
-      List<TResolved3> items3,
+typedef CompositionItemsResolver3<TItem1, TItem2, TItem3> =
+    List<TItem1> Function(
+      List<TItem1> items1,
+      List<TItem2> items2,
+      List<TItem3> items3,
     );
 
 /// {@template presentum_outlet_composition3}
 /// Cross-presentum composition outlet for three different presentums.
 /// {@endtemplate}
 class PresentumOutlet$Composition3<
-  TResolved1 extends ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>,
-  TResolved2 extends ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>,
-  TResolved3 extends ResolvedPresentumVariant<PresentumPayload<S3, V3>, S3, V3>,
+  TItem1 extends PresentumItem<PresentumPayload<S1, V1>, S1, V1>,
+  TItem2 extends PresentumItem<PresentumPayload<S2, V2>, S2, V2>,
+  TItem3 extends PresentumItem<PresentumPayload<S3, V3>, S3, V3>,
   S1 extends PresentumSurface,
   S2 extends PresentumSurface,
   S3 extends PresentumSurface,
@@ -459,15 +449,15 @@ class PresentumOutlet$Composition3<
 
   /// Custom resolver that decides how to combine items from all three
   /// presentums.
-  final CompositionItemsResolver3<TResolved1, TResolved2, TResolved3> resolver;
+  final CompositionItemsResolver3<TItem1, TItem2, TItem3> resolver;
 
   /// Builder that receives the list of items from the three presentums
   /// combined.
   final Widget Function(
     BuildContext context,
-    List<ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>> items1,
-    List<ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>> items2,
-    List<ResolvedPresentumVariant<PresentumPayload<S3, V3>, S3, V3>> items3,
+    List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> items1,
+    List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> items2,
+    List<PresentumItem<PresentumPayload<S3, V3>, S3, V3>> items3,
   )
   builder;
 
@@ -480,23 +470,13 @@ class PresentumOutlet$Composition3<
 
   @override
   State<
-    PresentumOutlet$Composition3<
-      TResolved1,
-      TResolved2,
-      TResolved3,
-      S1,
-      S2,
-      S3,
-      V1,
-      V2,
-      V3
-    >
+    PresentumOutlet$Composition3<TItem1, TItem2, TItem3, S1, S2, S3, V1, V2, V3>
   >
   createState() =>
       _PresentumOutlet$Composition3State<
-        TResolved1,
-        TResolved2,
-        TResolved3,
+        TItem1,
+        TItem2,
+        TItem3,
         S1,
         S2,
         S3,
@@ -507,9 +487,9 @@ class PresentumOutlet$Composition3<
 }
 
 class _PresentumOutlet$Composition3State<
-  TResolved1 extends ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>,
-  TResolved2 extends ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>,
-  TResolved3 extends ResolvedPresentumVariant<PresentumPayload<S3, V3>, S3, V3>,
+  TItem1 extends PresentumItem<PresentumPayload<S1, V1>, S1, V1>,
+  TItem2 extends PresentumItem<PresentumPayload<S2, V2>, S2, V2>,
+  TItem3 extends PresentumItem<PresentumPayload<S3, V3>, S3, V3>,
   S1 extends PresentumSurface,
   S2 extends PresentumSurface,
   S3 extends PresentumSurface,
@@ -520,9 +500,9 @@ class _PresentumOutlet$Composition3State<
     extends
         State<
           PresentumOutlet$Composition3<
-            TResolved1,
-            TResolved2,
-            TResolved3,
+            TItem1,
+            TItem2,
+            TItem3,
             S1,
             S2,
             S3,
@@ -532,19 +512,19 @@ class _PresentumOutlet$Composition3State<
           >
         >
     with PresentumOutlet$CompositionMixin {
-  late final PresentumStateObserver<TResolved1, S1, V1> _observer1;
-  late final PresentumStateObserver<TResolved2, S2, V2> _observer2;
-  late final PresentumStateObserver<TResolved3, S3, V3> _observer3;
-  List<ResolvedPresentumVariant<PresentumPayload<S1, V1>, S1, V1>> _items1 = [];
-  List<ResolvedPresentumVariant<PresentumPayload<S2, V2>, S2, V2>> _items2 = [];
-  List<ResolvedPresentumVariant<PresentumPayload<S3, V3>, S3, V3>> _items3 = [];
+  late final PresentumStateObserver<TItem1, S1, V1> _observer1;
+  late final PresentumStateObserver<TItem2, S2, V2> _observer2;
+  late final PresentumStateObserver<TItem3, S3, V3> _observer3;
+  List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> _items1 = [];
+  List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> _items2 = [];
+  List<PresentumItem<PresentumPayload<S3, V3>, S3, V3>> _items3 = [];
 
   @override
   void initState() {
     super.initState();
-    _observer1 = context.presentum<TResolved1, S1, V1>().observer;
-    _observer2 = context.presentum<TResolved2, S2, V2>().observer;
-    _observer3 = context.presentum<TResolved3, S3, V3>().observer;
+    _observer1 = context.presentum<TItem1, S1, V1>().observer;
+    _observer2 = context.presentum<TItem2, S2, V2>().observer;
+    _observer3 = context.presentum<TItem3, S3, V3>().observer;
 
     _onStateChange();
     _observer1.addListener(_onStateChange);
@@ -553,19 +533,19 @@ class _PresentumOutlet$Composition3State<
   }
 
   void _onStateChange() {
-    final items1 = collectItems<TResolved1, S1, V1>(
+    final items1 = collectItems<TItem1, S1, V1>(
       widget.surfaces1,
       _observer1,
       widget.surfaceMode1,
       widget.mergeMode1,
     );
-    final items2 = collectItems<TResolved2, S2, V2>(
+    final items2 = collectItems<TItem2, S2, V2>(
       widget.surfaces2,
       _observer2,
       widget.surfaceMode2,
       widget.mergeMode2,
     );
-    final items3 = collectItems<TResolved3, S3, V3>(
+    final items3 = collectItems<TItem3, S3, V3>(
       widget.surfaces3,
       _observer3,
       widget.surfaceMode3,
@@ -610,7 +590,7 @@ class _PresentumOutlet$Composition3State<
 mixin PresentumOutlet$CompositionMixin {
   /// Collect items from a surface slot.
   List<T> collectItemsForSlot<
-    T extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+    T extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
   >(
@@ -641,8 +621,8 @@ mixin PresentumOutlet$CompositionMixin {
   }
 
   /// Collect items from multiple surfaces.
-  List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>> collectItems<
-    T extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  List<PresentumItem<PresentumPayload<S, V>, S, V>> collectItems<
+    T extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
   >(
@@ -651,19 +631,17 @@ mixin PresentumOutlet$CompositionMixin {
     OutletGroupMode mode,
     CompositionMergeMode mergeMode, {
     int? maxItems,
-    CompositionItemsResolver<
-      ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>
-    >?
+    CompositionItemsResolver<PresentumItem<PresentumPayload<S, V>, S, V>>?
     resolver,
   }) {
     // Collect items from each surface according to surfaceMode
     final surfaceItems =
-        <S, List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>>{};
+        <S, List<PresentumItem<PresentumPayload<S, V>, S, V>>>{};
 
     for (final surface in surfaces) {
       final state = observer.value;
       final slot = state.slots[surface];
-      final all = <ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>[];
+      final all = <PresentumItem<PresentumPayload<S, V>, S, V>>[];
 
       if (slot?.active case final active?) {
         all.add(active);
@@ -672,15 +650,12 @@ mixin PresentumOutlet$CompositionMixin {
         all.addAll(queue);
       }
 
-      List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>
-      surfaceResult;
+      List<PresentumItem<PresentumPayload<S, V>, S, V>> surfaceResult;
       switch (mode) {
         case OutletGroupMode.single:
           surfaceResult = all.isEmpty
-              ? <ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>[]
-              : <ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>[
-                  all.first,
-                ];
+              ? <PresentumItem<PresentumPayload<S, V>, S, V>>[]
+              : <PresentumItem<PresentumPayload<S, V>, S, V>>[all.first];
         case OutletGroupMode.multiple:
           surfaceResult = all.take(2).toList(growable: false);
         case OutletGroupMode.custom:
@@ -699,14 +674,13 @@ mixin PresentumOutlet$CompositionMixin {
   }
 
   /// Merge items from multiple surfaces.
-  List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>
+  List<PresentumItem<PresentumPayload<S, V>, S, V>>
   _mergeItems<S extends PresentumSurface, V extends PresentumVisualVariant>(
-    List<List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>>
-    itemLists,
+    List<List<PresentumItem<PresentumPayload<S, V>, S, V>>> itemLists,
     CompositionMergeMode mergeMode, {
     int? maxItems,
-    List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>> Function(
-      List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>> items,
+    List<PresentumItem<PresentumPayload<S, V>, S, V>> Function(
+      List<PresentumItem<PresentumPayload<S, V>, S, V>> items,
     )?
     resolver,
   }) {
@@ -715,7 +689,7 @@ mixin PresentumOutlet$CompositionMixin {
       'resolver must be provided when mergeMode is custom',
     );
     // Merge items according to mergeMode
-    List<ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>> result;
+    List<PresentumItem<PresentumPayload<S, V>, S, V>> result;
     switch (mergeMode) {
       case CompositionMergeMode.concatenate:
         result = itemLists.expand((items) => items).toList();
@@ -723,8 +697,7 @@ mixin PresentumOutlet$CompositionMixin {
       case CompositionMergeMode.firstNonEmpty:
         result = itemLists.firstWhere(
           (items) => items.isNotEmpty,
-          orElse: () =>
-              <ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>>[],
+          orElse: () => <PresentumItem<PresentumPayload<S, V>, S, V>>[],
         );
 
       case CompositionMergeMode.custom:

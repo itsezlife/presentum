@@ -15,7 +15,7 @@ abstract interface class PresentumStorage<
   /// Clears all stored data.
   Future<void> clear();
 
-  /// Clears specific item by [itemId] on [surface] and [variant].
+  /// Clears specific item by [itemId] on [surface] with [variant] style.
   FutureOr<void> clearItem(
     String itemId, {
     required S surface,

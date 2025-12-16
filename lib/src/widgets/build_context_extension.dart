@@ -8,29 +8,23 @@ import 'package:presentum/src/widgets/presentum_context.dart';
 /// Extension methods for [BuildContext].
 extension PresentumBuildContextExtension on BuildContext {
   /// Receives the [Presentum] instance from the elements tree.
-  Presentum<TResolved, S, V> presentum<
-    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  Presentum<TItem, S, V> presentum<
+    TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
-  >() => InheritedPresentum.of<TResolved, S, V>(this, listen: false).presentum;
+  >() => InheritedPresentum.of<TItem, S, V>(this, listen: false).presentum;
 
-  /// Receives the [ResolvedPresentumVariant] instance from the elements tree.
-  TResolved resolvedPresentumVariant<
-    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  /// Receives the [PresentumItem] instance from the elements tree.
+  TItem presentumItem<
+    TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
-  >() => InheritedPresentumResolvedVariant.of<TResolved, S, V>(
-    this,
-    listen: false,
-  ).item;
+  >() => InheritedPresentumItem.of<TItem, S, V>(this, listen: false).item;
 
-  /// Receives the [ResolvedPresentumVariant] instance from the elements tree.
-  TResolved watchResolvedPresentumVariant<
-    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  /// Receives the [PresentumItem] instance from the elements tree.
+  TItem watchPresentumItem<
+    TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
-  >() => InheritedPresentumResolvedVariant.of<TResolved, S, V>(
-    this,
-    listen: true,
-  ).item;
+  >() => InheritedPresentumItem.of<TItem, S, V>(this, listen: true).item;
 }

@@ -7,22 +7,21 @@ import 'package:presentum/src/state/state.dart';
 
 @internal
 final class PresentumStateObserver$EngineImpl<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
     with ChangeNotifier
-    implements PresentumStateObserver<TResolved, S, V> {
+    implements PresentumStateObserver<TItem, S, V> {
   PresentumStateObserver$EngineImpl(
-    PresentumState$Immutable<TResolved, S, V> initialState, [
-    List<PresentumHistoryEntry<TResolved, S, V>>? history,
+    PresentumState$Immutable<TItem, S, V> initialState, [
+    List<PresentumHistoryEntry<TItem, S, V>>? history,
   ]) : _value = initialState.copy(),
        _history =
-           history?.toSet().toList() ??
-           <PresentumHistoryEntry<TResolved, S, V>>[] {
+           history?.toSet().toList() ?? <PresentumHistoryEntry<TItem, S, V>>[] {
     if (_history.isEmpty || _history.last.state != initialState) {
       _history.add(
-        PresentumHistoryEntry<TResolved, S, V>(
+        PresentumHistoryEntry<TItem, S, V>(
           state: initialState,
           timestamp: DateTime.now(),
         ),
@@ -31,19 +30,19 @@ final class PresentumStateObserver$EngineImpl<
     _history.sort();
   }
 
-  late PresentumState$Immutable<TResolved, S, V> _value;
+  late PresentumState$Immutable<TItem, S, V> _value;
 
-  final List<PresentumHistoryEntry<TResolved, S, V>> _history;
-
-  @override
-  PresentumState$Immutable<TResolved, S, V> get value => _value;
+  final List<PresentumHistoryEntry<TItem, S, V>> _history;
 
   @override
-  List<PresentumHistoryEntry<TResolved, S, V>> get history =>
-      UnmodifiableListView<PresentumHistoryEntry<TResolved, S, V>>(_history);
+  PresentumState$Immutable<TItem, S, V> get value => _value;
 
   @override
-  void setHistory(Iterable<PresentumHistoryEntry<TResolved, S, V>> history) {
+  List<PresentumHistoryEntry<TItem, S, V>> get history =>
+      UnmodifiableListView<PresentumHistoryEntry<TItem, S, V>>(_history);
+
+  @override
+  void setHistory(Iterable<PresentumHistoryEntry<TItem, S, V>> history) {
     _history
       ..clear()
       ..addAll(history)
@@ -51,14 +50,14 @@ final class PresentumStateObserver$EngineImpl<
   }
 
   @internal
-  bool changeState(PresentumState$Immutable<TResolved, S, V> state) {
+  bool changeState(PresentumState$Immutable<TItem, S, V> state) {
     if (state.slots.isEmpty) return false;
     if (state.intention == PresentumStateIntention.cancel) return false;
 
     if (_value == state) return false;
     _value = state;
 
-    late final historyEntry = PresentumHistoryEntry<TResolved, S, V>(
+    late final historyEntry = PresentumHistoryEntry<TItem, S, V>(
       state: state,
       timestamp: DateTime.now(),
     );

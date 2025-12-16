@@ -4,45 +4,45 @@ import 'package:presentum/src/state/state.dart';
 
 /// Presentum state observer.
 abstract interface class PresentumStateObserver<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    implements ValueListenable<PresentumState$Immutable<TResolved, S, V>> {
+    implements ValueListenable<PresentumState$Immutable<TItem, S, V>> {
   /// Max history length.
   static const int maxHistoryLength = 10000;
 
   /// Current immutable state.
   @override
-  PresentumState$Immutable<TResolved, S, V> get value;
+  PresentumState$Immutable<TItem, S, V> get value;
 
   /// History of the states.
-  List<PresentumHistoryEntry<TResolved, S, V>> get history;
+  List<PresentumHistoryEntry<TItem, S, V>> get history;
 
   /// Set history.
-  void setHistory(Iterable<PresentumHistoryEntry<TResolved, S, V>> history);
+  void setHistory(Iterable<PresentumHistoryEntry<TItem, S, V>> history);
 }
 
 /// Presentum history entry.
 @immutable
 final class PresentumHistoryEntry<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    implements Comparable<PresentumHistoryEntry<TResolved, S, V>> {
+    implements Comparable<PresentumHistoryEntry<TItem, S, V>> {
   /// {@macro presentum_history_entry}
   PresentumHistoryEntry({required this.state, DateTime? timestamp})
     : timestamp = timestamp ?? DateTime.now();
 
   /// The state of the entry.
-  final PresentumState$Immutable<TResolved, S, V> state;
+  final PresentumState$Immutable<TItem, S, V> state;
 
   /// The timestamp of the entry.
   final DateTime timestamp;
 
   @override
-  int compareTo(covariant PresentumHistoryEntry<TResolved, S, V> other) =>
+  int compareTo(covariant PresentumHistoryEntry<TItem, S, V> other) =>
       timestamp.compareTo(other.timestamp);
 
   @override
@@ -51,7 +51,7 @@ final class PresentumHistoryEntry<
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PresentumHistoryEntry<TResolved, S, V> &&
+      other is PresentumHistoryEntry<TItem, S, V> &&
           timestamp == other.timestamp &&
           state == other.state;
 }

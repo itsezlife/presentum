@@ -5,7 +5,7 @@ import 'package:presentum/src/state/state.dart';
 
 /// Inherited presentum widget.
 class InheritedPresentum<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
@@ -19,13 +19,13 @@ class InheritedPresentum<
 
   /// {@macro inherited_presentum.value}
   const InheritedPresentum.value({
-    required Presentum<TResolved, S, V> value,
+    required Presentum<TItem, S, V> value,
     required super.child,
     super.key,
   }) : presentum = value;
 
   /// Receives the [Presentum] instance from the elements tree.
-  final Presentum<TResolved, S, V> presentum;
+  final Presentum<TItem, S, V> presentum;
 
   static Never _notFoundInheritedWidgetOfExactType() => throw ArgumentError(
     'Out of scope, not found inherited widget '
@@ -36,33 +36,31 @@ class InheritedPresentum<
   /// The state from the closest instance of this class
   /// that encloses the given context, if any.
   /// e.g. `InheritedPresentum.maybeOf(context)`.
-  static InheritedPresentum<TResolved, S, V>? maybeOf<
-    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  static InheritedPresentum<TItem, S, V>? maybeOf<
+    TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
   >(BuildContext context, {bool listen = true}) => listen
       ? context
             .dependOnInheritedWidgetOfExactType<
-              InheritedPresentum<TResolved, S, V>
+              InheritedPresentum<TItem, S, V>
             >()
       : context
-            .getInheritedWidgetOfExactType<
-              InheritedPresentum<TResolved, S, V>
-            >();
+            .getInheritedWidgetOfExactType<InheritedPresentum<TItem, S, V>>();
 
   /// The state from the closest instance of this class
   /// that encloses the given context.
   /// e.g. `InheritedPresentum.of(context)`
-  static InheritedPresentum<TResolved, S, V> of<
-    TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  static InheritedPresentum<TItem, S, V> of<
+    TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
     S extends PresentumSurface,
     V extends PresentumVisualVariant
   >(BuildContext context, {bool listen = true}) =>
-      maybeOf<TResolved, S, V>(context, listen: listen) ??
+      maybeOf<TItem, S, V>(context, listen: listen) ??
       _notFoundInheritedWidgetOfExactType();
 
   @override
   bool updateShouldNotify(
-    covariant InheritedPresentum<TResolved, S, V> oldWidget,
+    covariant InheritedPresentum<TItem, S, V> oldWidget,
   ) => false;
 }

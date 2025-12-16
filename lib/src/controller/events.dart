@@ -10,15 +10,15 @@ import 'package:presentum/src/state/state.dart';
 /// {@endtemplate}
 @immutable
 abstract base class PresentumEvent<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
   /// {@macro presentum_event}
   const PresentumEvent();
 
-  /// The resolved variant that triggered the event.
-  abstract final TResolved item;
+  /// The presentum item that triggered the event.
+  abstract final TItem item;
 
   /// The timestamp of the event.
   abstract final DateTime timestamp;
@@ -26,7 +26,7 @@ abstract base class PresentumEvent<
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PresentumEvent<TResolved, S, V> &&
+      other is PresentumEvent<TItem, S, V> &&
           item == other.item &&
           timestamp == other.timestamp;
 
@@ -38,53 +38,53 @@ abstract base class PresentumEvent<
 }
 
 /// {@template presentum_shown_event}
-/// Event when a presentation is shown.
+/// Event when a presentation item is shown.
 /// {@endtemplate}
 final class PresentumShownEvent<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends PresentumEvent<TResolved, S, V> {
+    extends PresentumEvent<TItem, S, V> {
   /// {@macro presentum_shown_event}
   const PresentumShownEvent({required this.item, required this.timestamp});
 
   @override
-  final TResolved item;
+  final TItem item;
 
   @override
   final DateTime timestamp;
 }
 
 /// {@template presentum_dismissed_event}
-/// Event when a presentation is dismissed.
+/// Event when a presentation item is dismissed.
 /// {@endtemplate}
 final class PresentumDismissedEvent<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends PresentumEvent<TResolved, S, V> {
+    extends PresentumEvent<TItem, S, V> {
   /// {@macro presentum_dismissed_event}
   const PresentumDismissedEvent({required this.item, required this.timestamp});
 
   @override
-  final TResolved item;
+  final TItem item;
 
   @override
   final DateTime timestamp;
 }
 
 /// {@template presentum_converted_event}
-/// Event when a presentation is converted.
+/// Event when a presentation item is converted.
 /// {@endtemplate}
 @immutable
 final class PresentumConvertedEvent<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends PresentumEvent<TResolved, S, V> {
+    extends PresentumEvent<TItem, S, V> {
   /// {@macro presentum_converted_event}
   const PresentumConvertedEvent({
     required this.item,
@@ -93,7 +93,7 @@ final class PresentumConvertedEvent<
   });
 
   @override
-  final TResolved item;
+  final TItem item;
 
   @override
   final DateTime timestamp;
@@ -104,7 +104,7 @@ final class PresentumConvertedEvent<
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PresentumConvertedEvent<TResolved, S, V> &&
+      other is PresentumConvertedEvent<TItem, S, V> &&
           item == other.item &&
           timestamp == other.timestamp &&
           conversionMetadata == other.conversionMetadata;
@@ -119,29 +119,29 @@ final class PresentumConvertedEvent<
 }
 
 /// {@template presentum_event_handler}
-/// Event handler for presentation events.
+/// Event handler for presentation item events.
 /// {@endtemplate}
 abstract interface class IPresentumEventHandler<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
   /// {@macro presentum_event_handler}
   const IPresentumEventHandler();
 
-  /// Called when any presentation event occurs
-  FutureOr<void> call(PresentumEvent<TResolved, S, V> event);
+  /// Called when any presentation item event occurs
+  FutureOr<void> call(PresentumEvent<TItem, S, V> event);
 }
 
 /// {@template presentum_storage_event_handler}
 /// Event handler for the presentum storage.
 /// {@endtemplate}
 final class PresentumStorageEventHandler<
-  TResolved extends ResolvedPresentumVariant<PresentumPayload<S, V>, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    implements IPresentumEventHandler<TResolved, S, V> {
+    implements IPresentumEventHandler<TItem, S, V> {
   /// {@macro presentum_storage_event_handler}
   const PresentumStorageEventHandler({required this.storage});
 
@@ -150,28 +150,28 @@ final class PresentumStorageEventHandler<
   final PresentumStorage<S, V> storage;
 
   @override
-  FutureOr<void> call(PresentumEvent<TResolved, S, V> event) async {
+  FutureOr<void> call(PresentumEvent<TItem, S, V> event) async {
     switch (event) {
       case PresentumShownEvent(:final item, :final timestamp):
         await storage.recordShown(
           item.id,
           at: timestamp,
           surface: item.surface,
-          variant: item.visualVariant,
+          variant: item.variant,
         );
       case PresentumDismissedEvent(:final item, :final timestamp):
         await storage.recordDismissed(
           item.id,
           at: timestamp,
           surface: item.surface,
-          variant: item.visualVariant,
+          variant: item.variant,
         );
       case PresentumConvertedEvent(:final item, :final timestamp):
         await storage.recordConverted(
           item.id,
           at: timestamp,
           surface: item.surface,
-          variant: item.visualVariant,
+          variant: item.variant,
         );
     }
   }

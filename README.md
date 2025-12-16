@@ -44,38 +44,28 @@ Surfaces implement `PresentumSurface`, usually via enums:
 enum AppSurface with PresentumSurface {
   homeTopBanner,
   watchlistHeader;
-
-  @override
-  DateTime? dismissedUntilDuration<TResolved>(
-    DateTime now,
-    TResolved resolvedVariant,
-  ) {
-    // Centralise per‑surface dismissal behaviour if needed.
-    // Return null to let guards/storage decide.
-    return null;
-  }
 }
 ```
 
 All engine generics use `S extends PresentumSurface`, not raw `Enum`. Surfaces describe **where** something is presented, independent of which domain owns it.
 
-### Payloads and variants
+### Payloads and options
 
 A **payload** is the domain object you want to show: a campaign, a tip, a system message, and so on. It has:
 
 - an id and priority
 - metadata for your domain
-- a list of variants describing how it may appear on different surfaces
+- a list of options describing how it may appear on different surfaces
 
 ```dart
-enum CampaignVariant { banner, inline, dialog }
+enum CampaignVisual { banner, inline, dialog }
 
-class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVisual> {
   CampaignPayload({
     required this.id,
     required this.priority,
     required this.metadata,
-    required this.variants,
+    required this.options,
   });
 
   @override
@@ -88,16 +78,16 @@ class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
   final Map<String, Object?> metadata;
 
   @override
-  final List<PresentumVariant<AppSurface, CampaignVariant>> variants;
+  final List<PresentumOption<AppSurface, CampaignVisual>> options;
 }
 ```
 
-Each variant ties a payload to a surface and a visual variant:
+Each option ties a payload to a surface and a visual style:
 
 ```dart
-const homeBanner = PresentumVariant<AppSurface, CampaignVariant>(
+const homeBanner = PresentumOption<AppSurface, CampaignVisual>(
   surface: AppSurface.homeTopBanner,
-  variant: CampaignVariant.banner,
+  visual: CampaignVisual.banner,
   stage: 0,
   maxImpressions: 5,
   cooldownMinutes: 60,
@@ -106,23 +96,23 @@ const homeBanner = PresentumVariant<AppSurface, CampaignVariant>(
 );
 ```
 
-### Resolved presentations
+### Presentation items
 
-A **resolved presentation** is a concrete decision: “show payload P with variant V on surface S now”.
+A **presentation item** is a concrete decision: "show payload P with option V on surface S now".
 
 ```dart
-typedef ResolvedCampaign = ResolvedPresentumVariant<
+typedef CampaignItem = PresentumItem<
   CampaignPayload,
   AppSurface,
-  CampaignVariant
+  CampaignVisual
 >;
 ```
 
 This is the type that flows through state, guards and outlets. It gives you:
 
 - the domain payload (`payload`),
-- the variant (`variant`),
-- the derived `surface`, `visualVariant`, `priority`, `metadata` and `stage`.
+- the presentation option (`option`),
+- the derived `surface`, `visual`, `priority`, `metadata` and `stage`.
 
 ### Slots and state
 
@@ -132,14 +122,14 @@ State is modelled as **slots** per surface plus an **intention**:
 - an ordered `queue` of additional items per surface
 
 ```dart
-final slot = PresentumSlot<ResolvedCampaign, AppSurface>(
+final slot = PresentumSlot<CampaignItem, AppSurface>(
   surface: AppSurface.homeTopBanner,
-  active: resolvedCampaign,
-  queue: <ResolvedCampaign>[],
+  active: campaignItem,
+  queue: <CampaignItem>[],
 );
 ```
 
-`PresentumState<TResolved, S>` is a sealed root with immutable and mutable implementations:
+`PresentumState<TItem, S>` is a sealed root with immutable and mutable implementations:
 
 - `PresentumState$Immutable` is the snapshot exposed to widgets and observers,
 - `PresentumState$Mutable` is used inside the engine and guards to mutate slots.
@@ -167,7 +157,7 @@ class InMemoryPresentumStorage implements PresentumStorage {
   FutureOr<void> recordShown(
     String itemId, {
     required Enum surface,
-    required Enum variant,
+    required Enum visual,
     required DateTime at,
   }) {
     // Track impressions.
@@ -191,15 +181,15 @@ Guards are the behaviour layer. Here is what they do:
 
 ```dart
 class CampaignGuard
-    extends PresentumGuard<ResolvedCampaign, AppSurface> {
+    extends PresentumGuard<CampaignItem, AppSurface> {
   CampaignGuard({super.refresh});
 
   @override
-  FutureOr<PresentumState<ResolvedCampaign, AppSurface>> call(
+  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
     PresentumStorage storage,
-    List<PresentumHistoryEntry<ResolvedCampaign, AppSurface>> history,
-    PresentumState$Mutable<ResolvedCampaign, AppSurface> state,
-    List<ResolvedCampaign> candidates,
+    List<PresentumHistoryEntry<CampaignItem, AppSurface>> history,
+    PresentumState$Mutable<CampaignItem, AppSurface> state,
+    List<CampaignItem> candidates,
     Map<String, Object?> context,
   ) {
     // Example: only allow the highest priority campaign per surface.
@@ -223,16 +213,16 @@ Guards can subscribe to external changes using the optional `refresh` `Listenabl
 
 Presentum is split into:
 
-- **`Presentum<TResolved, S>`** - the main controller API:
+- **`Presentum<TItem, S>`** - the main controller API:
   - exposes `state`, `observer`, `history`
   - provides `transaction`, `pushSlot`, `markShown`, `markDismissed`, `markConverted`, `removeById`, `setState` and others
   - owns a `PresentumConfig` instance
-- **`PresentumEngine<TResolved, S>`** - pure core engine that:
+- **`PresentumEngine<TItem, S>`** - pure core engine that:
   - holds the current immutable state and history (via the observer)
   - processes transitions through a queue
   - runs guards in order
   - commits new state to the observer
-- **`PresentumStateObserver<TResolved, S>`** - wraps the latest immutable state and a history list
+- **`PresentumStateObserver<TItem, S>`** - wraps the latest immutable state and a history list
 
 You only implement this logic: collect candidates from providers and events, apply diffing algorithm to identify inserts/updates/removes, and update state with new candidates in the engine via `setCandidates`. This separation keeps the engine generic and testable while leaving integrations up to you.
 
@@ -240,25 +230,25 @@ You only implement this logic: collect candidates from providers and events, app
 
 Outlets are simple widgets that render whatever the state implies for a surface. There is no business logic in the widgets themselves.
 
-- `PresentumOutlet<TResolved, S>` renders at most one item (the active one)
-- `PresentumOutlet$Composition<TResolved, S>` resolved active + queue from a surface slot and passes them to the builder
+- `PresentumOutlet<TItem, S>` renders at most one item (the active one)
+- `PresentumOutlet$Composition<TItem, S>` resolved active + queue from a surface slot and passes them to the builder
 - `PresentumOutlet$Composition2` and `PresentumOutlet$Composition3` can merge items across two or three different presentums
 
 ```dart
 class HomeTopBannerOutlet
-    extends PresentumOutlet<ResolvedCampaign, AppSurface> {
+    extends PresentumOutlet<CampaignItem, AppSurface> {
   const HomeTopBannerOutlet({super.key})
       : super(surface: AppSurface.homeTopBanner);
 
   @override
-  PresentumBuilder<ResolvedCampaign> get builder =>
+  PresentumBuilder<CampaignItem> get builder =>
       (context, item) {
         final payload = item.payload;
         return BannerWidget(
           title: payload.metadata['title'] as String? ?? '',
           onClose: () =>
               context
-                  .presentum<ResolvedCampaign, AppSurface>()
+                  .presentum<CampaignItem, AppSurface>()
                   .markDismissed(item),
         );
       };
@@ -269,38 +259,30 @@ If no item is active for the surface, outlets render `SizedBox.shrink()`.
 
 ## Quick start
 
-### 1. Define surfaces and variants
+### 1. Define surfaces and visual styles
 
 ```dart
 enum AppSurface with PresentumSurface {
   homeTopBanner,
   watchlistHeader;
-
-  @override
-  DateTime? dismissedUntilDuration<TResolved>(
-    DateTime now,
-    TResolved resolvedVariant,
-  ) {
-    // Example: keep dismissals for 24 hours on the home top banner.
-    if (this == AppSurface.homeTopBanner) {
-      return now.add(const Duration(hours: 24));
-    }
-    return null;
-  }
 }
 
-enum CampaignVariant { banner, inline, dialog }
+enum CampaignVisual with PresentumVisualVariant {
+  banner,
+  inline,
+  dialog;
+}
 ```
 
-### 2. Define payload and resolved types
+### 2. Define payload and item types
 
 ```dart
-class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVisual> {
   CampaignPayload({
     required this.id,
     required this.priority,
     required this.metadata,
-    required this.variants,
+    required this.options,
   });
 
   @override
@@ -313,13 +295,13 @@ class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
   final Map<String, Object?> metadata;
 
   @override
-  final List<PresentumVariant<AppSurface, CampaignVariant>> variants;
+  final List<PresentumOption<AppSurface, CampaignVisual>> options;
 }
 
-typedef ResolvedCampaign = ResolvedPresentumVariant<
+typedef CampaignItem = PresentumItem<
   CampaignPayload,
   AppSurface,
-  CampaignVariant
+  CampaignVisual
 >;
 ```
 
@@ -328,7 +310,7 @@ typedef ResolvedCampaign = ResolvedPresentumVariant<
 ```dart
 final storage = PersistentStorage();
 
-final guards = <IPresentumGuard<ResolvedCampaign, AppSurface>>[
+final guards = <IPresentumGuard<CampaignItem, AppSurface>>[
   CampaignGuard(),
 ];
 ```
@@ -336,11 +318,11 @@ final guards = <IPresentumGuard<ResolvedCampaign, AppSurface>>[
 ### 4. Create a Presentum instance
 
 ```dart
-final presentum = Presentum<ResolvedCampaign, AppSurface>(
+final presentum = Presentum<CampaignItem, AppSurface>(
   storage: storage,
-  bindings: PresentumBindings<ResolvedCampaign, AppSurface>(
+  bindings: PresentumBindings<CampaignItem, AppSurface>(
     surfaceOf: (item) => item.surface,
-    variantOf: (item) => item.visualVariant,
+    visualOf: (item) => item.visual,
   ),
   guards: guards,
 );
@@ -370,13 +352,13 @@ You can later access the same `presentum` instance with:
 
 ```dart
 final presentum = context
-    .presentum<ResolvedCampaign, AppSurface>();
+    .presentum<CampaignItem, AppSurface>();
 ```
 
 or:
 
 ```dart
-final presentum = Presentum.of<ResolvedCampaign, AppSurface>(context);
+final presentum = Presentum.of<CampaignItem, AppSurface>(context);
 ```
 
 ### 6. Feed candidates into the engine
@@ -385,7 +367,7 @@ You collect candidates (for example from the Firebase Remote config), process di
 
 ```dart
 Future<void> updateCampaigns(
-  List<ResolvedCampaign> next,
+  List<CampaignItem> next,
 ) async {
   await presentum.config.engine.setCandidates(
     (state, current) {

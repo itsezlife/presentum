@@ -9,6 +9,7 @@ export 'src/controller/events.dart';
 export 'src/controller/guard.dart';
 export 'src/controller/observer.dart';
 export 'src/controller/storage.dart';
+export 'src/controller/transitions.dart';
 export 'src/eligibility/eligibility.dart';
 export 'src/state/payload.dart';
 export 'src/state/state.dart';

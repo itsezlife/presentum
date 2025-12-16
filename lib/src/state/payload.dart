@@ -1,21 +1,23 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:presentum/src/state/state.dart';
 
-/// {@template presentum_variant}
-/// One renderable option of an item for a given `surface` and `variant`.
+/// {@template presentum_option}
+/// One renderable option of an item for a given `surface` and visual `variant`
+/// style.
 /// {@endtemplate}
 @immutable
-abstract class PresentumVariant<
+abstract class PresentumOption<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
-  /// {@macro presentum_variant}
-  const PresentumVariant();
+  /// {@macro presentum_option}
+  const PresentumOption();
 
-  /// The surface where the variant can be presented.
+  /// The surface where the option can be presented.
   abstract final S surface;
 
-  /// The variant of the payload, e.g dialog, banner, inline, etc.
+  /// The visual variant of presentation, e.g dialog, banner, inline, etc.
   abstract final V variant;
 
   /// Sequence hint within a surface (e.g. fullscreen -> dialog).
@@ -34,16 +36,40 @@ abstract class PresentumVariant<
   abstract final bool isDismissible;
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PresentumOption<S, V> &&
+          surface == other.surface &&
+          variant == other.variant &&
+          stage == other.stage &&
+          maxImpressions == other.maxImpressions &&
+          cooldownMinutes == other.cooldownMinutes &&
+          alwaysOnIfEligible == other.alwaysOnIfEligible &&
+          isDismissible == other.isDismissible;
+
+  @override
+  int get hashCode => Object.hash(
+    surface,
+    variant,
+    stage,
+    maxImpressions,
+    cooldownMinutes,
+    alwaysOnIfEligible,
+    isDismissible,
+  );
+
+  @override
   String toString() =>
-      'PresentumVariant(surface: $surface, variant: $variant, stage: $stage, '
+      'PresentumOption(surface: $surface, variant: $variant, stage: $stage, '
       'maxImpressions: $maxImpressions, cooldownMinutes: $cooldownMinutes, '
       'alwaysOnIfEligible: $alwaysOnIfEligible, isDismissible: $isDismissible)';
 }
 
 /// {@template presentum_payload}
-/// Generic payload that contain variants that can be presented across
+/// Generic payload that contain options that can be presented across
 /// multiple surfaces.
 /// {@endtemplate}
+@immutable
 abstract class PresentumPayload<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
@@ -60,35 +86,53 @@ abstract class PresentumPayload<
   /// Arbitrary domain metadata.
   abstract final Map<String, Object?> metadata;
 
-  /// All possible variants of this item.
-  abstract final List<PresentumVariant<S, V>> variants;
+  /// All possible presentation options for this item.
+  abstract final List<PresentumOption<S, V>> options;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PresentumPayload<S, V> &&
+          id == other.id &&
+          priority == other.priority &&
+          const DeepCollectionEquality().equals(metadata, other.metadata) &&
+          const ListEquality<PresentumOption>().equals(options, other.options);
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    priority,
+    const DeepCollectionEquality().hash(metadata),
+    const ListEquality<PresentumOption>().hash(options),
+  );
 
   @override
   String toString() =>
       'PresentumPayload(id: $id, priority: $priority, metadata: $metadata, '
-      'variants: $variants)';
+      'options: $options)';
 }
 
-/// {@template resolved_presentum_variant}
-/// A concrete decision: "show `payload` with `variant` on `surface` now".
+/// {@template presentum_item}
+/// A concrete decision: "show `payload` with `option` on `surface` now".
 /// {@endtemplate}
-abstract class ResolvedPresentumVariant<
+@immutable
+abstract class PresentumItem<
   TPayload extends PresentumPayload<S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
-  /// {@macro resolved_presentum_variant}
-  const ResolvedPresentumVariant();
+  /// {@macro presentum_item}
+  const PresentumItem();
 
   /// The payload that was resolved.
   abstract final TPayload payload;
 
-  /// The variant that was resolved.
-  abstract final PresentumVariant<S, V> variant;
+  /// The exact option chosen to present the payload.
+  abstract final PresentumOption<S, V> option;
 
-  /// The unique identifier of the resolved variant.
+  /// The unique identifier of the item.
   String get id =>
-      '${payload.id}::${visualVariant.name}::${variant.surface.name}';
+      '${payload.id}::${option.variant.name}::${option.surface.name}';
 
   /// The priority of the item.
   int get priority => payload.priority;
@@ -96,16 +140,25 @@ abstract class ResolvedPresentumVariant<
   /// Arbitrary domain metadata.
   Map<String, Object?> get metadata => payload.metadata;
 
-  /// The surface where the variant can be presented.
-  S get surface => variant.surface;
+  /// The surface where the option can be presented.
+  S get surface => option.surface;
 
-  /// The variant of the payload, e.g dialog, banner, inline, etc.
-  V get visualVariant => variant.variant;
+  /// The visual style of the presentation, e.g dialog, banner, inline, etc.
+  V get variant => option.variant;
 
   /// Sequence hint within a surface (e.g. fullscreen -> dialog).
-  int? get stage => variant.stage;
+  int? get stage => option.stage;
 
   @override
-  String toString() =>
-      'ResolvedPresentumVariant(payload: $payload, variant: $variant)';
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PresentumItem<TPayload, S, V> &&
+          payload == other.payload &&
+          option == other.option;
+
+  @override
+  int get hashCode => Object.hash(payload, option);
+
+  @override
+  String toString() => 'PresentumItem(payload: $payload, option: $option)';
 }
