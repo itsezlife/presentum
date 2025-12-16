@@ -73,7 +73,7 @@ FakeItem createFakeItem(String id, FakeSurface surface, FakeVariant variant) =>
     FakeItem(
       payload: FakePayload(
         id: id,
-        metadata: {},
+        metadata: const {},
         priority: 0,
         options: [FakeOption(surface: surface, variant: variant)],
       ),
