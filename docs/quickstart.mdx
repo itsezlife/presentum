@@ -1,80 +1,531 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Build your first Presentum-powered presentation in 5 minutes"
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+In this guide, you'll create a campaign banner system that:
 
-### Step 1: Set up your local environment
+- Shows promotional banners
+- Tracks impressions and dismissals
+- Respects impression limits and cooldowns
+- Handles user interactions
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Info>
+**Time estimate:** 5 minutes
 
-### Step 2: Deploy your changes
+**Prerequisites:** Flutter project with Presentum installed ([Installation guide](/installation))
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+</Info>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Step 1: Define surfaces and variants
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Create `lib/presentation/surfaces.dart`:
 
-### Step 3: Go live
+```dart lib/presentation/surfaces.dart
+import 'package:presentum/presentum.dart';
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+/// Where presentations can appear
+enum AppSurface with PresentumSurface {
+  homeTopBanner,
+  profileAlert,
+  popup;
+}
+
+/// How presentations are displayed
+enum CampaignVariant with PresentumVisualVariant {
+  banner,
+  dialog,
+  inline;
+}
+```
+
+<Tip>
+  **Surfaces** are locations (homeTopBanner, popup). **Variants** are display
+  styles (banner, dialog).
+</Tip>
+
+## Step 2: Create payload and option classes
+
+Create `lib/presentation/payload.dart`:
+
+```dart lib/presentation/payload.dart
+import 'package:presentum/presentum.dart';
+import 'surfaces.dart';
+
+class CampaignPresentumOption
+    extends PresentumOption<AppSurface, CampaignVariant> {
+  const CampaignPresentumOption({
+    required this.surface,
+    required this.variant,
+    required this.isDismissible,
+    this.stage,
+    this.maxImpressions,
+    this.cooldownMinutes,
+    this.alwaysOnIfEligible = false,
+  });
+
+  @override
+  final AppSurface surface;
+
+  @override
+  final CampaignVariant variant;
+
+  @override
+  final bool isDismissible;
+
+  @override
+  final int? stage;
+
+  @override
+  final int? maxImpressions;
+
+  @override
+  final int? cooldownMinutes;
+
+  @override
+  final bool alwaysOnIfEligible;
+}
+
+class CampaignPayload
+    extends PresentumPayload<AppSurface, CampaignVariant> {
+  const CampaignPayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+  });
+
+  @override
+  final String id;
+
+  @override
+  final int priority;
+
+  @override
+  final Map<String, Object?> metadata;
+
+  @override
+  final List<CampaignPresentumOption> options;
+}
+
+class CampaignPresentumItem
+    extends PresentumItem<CampaignPayload, AppSurface, CampaignVariant> {
+  const CampaignPresentumItem({
+    required this.payload,
+    required this.option,
+  });
+
+  @override
+  final CampaignPayload payload;
+
+  @override
+  final CampaignPresentumOption option;
+}
+```
+
+[See production payload with JSON serialization ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+
+## Step 3: Implement storage
+
+Create `lib/presentation/storage.dart`:
+
+```dart lib/presentation/storage.dart
+import 'dart:async';
+import 'package:presentum/presentum.dart';
+import 'surfaces.dart';
+
+class InMemoryStorage implements PresentumStorage<AppSurface, CampaignVariant> {
+  final Map<String, DateTime> _lastShown = {};
+  final Map<String, int> _shownCount = {};
+  final Map<String, DateTime> _dismissedAt = {};
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> clear() async {
+    _lastShown.clear();
+    _shownCount.clear();
+    _dismissedAt.clear();
+  }
+
+  @override
+  FutureOr<void> recordShown(
+    String itemId, {
+    required AppSurface surface,
+    required CampaignVariant variant,
+    required DateTime at,
+  }) {
+    final key = _makeKey(itemId, surface, variant);
+    _lastShown[key] = at;
+    _shownCount[key] = (_shownCount[key] ?? 0) + 1;
+  }
+
+  @override
+  FutureOr<DateTime?> getLastShown(
+    String itemId, {
+    required AppSurface surface,
+    required CampaignVariant variant,
+  }) {
+    final key = _makeKey(itemId, surface, variant);
+    return _lastShown[key];
+  }
+
+  @override
+  FutureOr<int> getShownCount(
+    String itemId, {
+    required Duration period,
+    required AppSurface surface,
+    required CampaignVariant variant,
+  }) {
+    final key = _makeKey(itemId, surface, variant);
+    return _shownCount[key] ?? 0;
+  }
+
+  @override
+  FutureOr<void> recordDismissed(
+    String itemId, {
+    required AppSurface surface,
+    required CampaignVariant variant,
+    required DateTime at,
+  }) {
+    final key = _makeKey(itemId, surface, variant);
+    _dismissedAt[key] = at;
+  }
+
+  @override
+  FutureOr<DateTime?> getDismissedAt(
+    String itemId, {
+    required AppSurface surface,
+    required CampaignVariant variant,
+  }) {
+    final key = _makeKey(itemId, surface, variant);
+    return _dismissedAt[key];
+  }
+
+  @override
+  FutureOr<void> recordConverted(
+    String itemId, {
+    required AppSurface surface,
+    required CampaignVariant variant,
+    required DateTime at,
+  }) {
+    // Implement conversion tracking
+  }
+
+  String _makeKey(String itemId, Enum surface, Enum variant) =>
+      '$itemId::${surface.name}::${variant.name}';
+}
+```
+
+<Warning>
+  This is an in-memory implementation for demo purposes. For production, use
+  SharedPreferences or a backend.
+</Warning>
+
+[See production SharedPreferences storage ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_storage.dart)
+
+## Step 4: Create a guard
+
+Create `lib/presentation/guards.dart`:
+
+```dart lib/presentation/guards.dart
+import 'dart:async';
+import 'package:presentum/presentum.dart';
+import 'payload.dart';
+import 'surfaces.dart';
+
+class CampaignGuard
+    extends PresentumGuard<CampaignPresentumItem, AppSurface, CampaignVariant> {
+  @override
+  FutureOr<PresentumState<CampaignPresentumItem, AppSurface, CampaignVariant>> call(
+    PresentumStorage storage,
+    List<PresentumHistoryEntry> history,
+    PresentumState$Mutable state,
+    List<CampaignPresentumItem> candidates,
+    Map<String, Object?> context,
+  ) async {
+    for (final candidate in candidates) {
+      final option = candidate.option;
+
+      // Check impression limit
+      if (option.maxImpressions case final max?) {
+        final count = await storage.getShownCount(
+          candidate.id,
+          period: const Duration(days: 365),
+          surface: candidate.surface,
+          variant: candidate.variant,
+        );
+        if (count >= max) continue;
+      }
+
+      // Check cooldown
+      if (option.cooldownMinutes case final cooldown?) {
+        final lastShown = await storage.getLastShown(
+          candidate.id,
+          surface: candidate.surface,
+          variant: candidate.variant,
+        );
+        if (lastShown case final last?) {
+          final minutesSince = DateTime.now().difference(last).inMinutes;
+          if (minutesSince < cooldown) continue;
+        }
+      }
+
+      // All checks passed
+      state.setActive(candidate.surface, candidate);
+    }
+
+    return state;
+  }
+}
+```
+
+[See production guards ->](https://github.com/itsezlife/presentum/tree/master/campaigns/presentum/guards)
+
+## Step 5: Initialize Presentum
+
+Update `lib/main.dart`:
+
+```dart lib/main.dart
+import 'package:flutter/material.dart';
+import 'package:presentum/presentum.dart';
+import 'presentation/surfaces.dart';
+import 'presentation/payload.dart';
+import 'presentation/storage.dart';
+import 'presentation/guards.dart';
+
+late final Presentum<CampaignPresentumItem, AppSurface, CampaignVariant>
+    campaignPresentum;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize storage
+  final storage = InMemoryStorage();
+  await storage.init();
+
+  // Create Presentum instance
+  campaignPresentum = Presentum(
+    storage: storage,
+    eventHandlers: [
+      PresentumStorageEventHandler(storage: storage),
+    ],
+    guards: [
+      CampaignGuard(),
+    ],
+  );
+
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Wrap app with Presentum engine
+    return campaignPresentum.config.engine.build(
+      context,
+      MaterialApp(
+        title: 'Presentum Quickstart',
+        home: const HomeScreen(),
+      ),
+    );
+  }
+}
+```
+
+[See production initialization ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaigns_presentum_state_mixin.dart)
+
+## Step 6: Create an outlet
+
+Create `lib/widgets/campaign_outlet.dart`:
+
+```dart lib/widgets/campaign_outlet.dart
+import 'package:flutter/material.dart';
+import 'package:presentum/presentum.dart';
+import '../presentation/surfaces.dart';
+import '../presentation/payload.dart';
+
+class HomeTopBannerOutlet extends StatelessWidget {
+  const HomeTopBannerOutlet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<CampaignPresentumItem, AppSurface, CampaignVariant>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.metadata['title'] as String? ?? '',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () {
+                  context
+                      .presentum<CampaignPresentumItem, AppSurface, CampaignVariant>()
+                      .markDismissed(item);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+```
+
+## Step 7: Use the outlet
+
+Add the outlet to your home screen:
+
+```dart lib/screens/home_screen.dart
+import 'package:flutter/material.dart';
+import '../widgets/campaign_outlet.dart';
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Home')),
+      body: Column(
+        children: [
+          const HomeTopBannerOutlet(),
+          Expanded(
+            child: ListView(
+              children: const [
+                ListTile(title: Text('Your app content')),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _addTestCampaign(context),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _addTestCampaign(BuildContext context) {
+    final campaign = CampaignPayload(
+      id: 'test-campaign',
+      priority: 100,
+      metadata: {'title': 'Welcome to Presentum!'},
+      options: [
+        CampaignPresentumOption(
+          surface: AppSurface.homeTopBanner,
+          variant: CampaignVariant.banner,
+          maxImpressions: 3,
+          cooldownMinutes: 60,
+          isDismissible: true,
+        ),
+      ],
+    );
+
+    final item = CampaignPresentumItem(
+      payload: campaign,
+      option: campaign.options.first,
+    );
+
+    // Feed to engine
+    context
+        .presentum<CampaignPresentumItem, AppSurface, CampaignVariant>()
+        .config
+        .engine
+        .setCandidates(
+          (state, current) => [...current, item],
+        );
+  }
+}
+```
+
+## Step 8: Run your app
+
+<Steps>
+  <Step title="Run the app">```bash flutter run ```</Step>
+
+  <Step title="Tap the + button">
+    This creates and displays a test campaign banner.
+  </Step>
+
+  <Step title="Dismiss the banner">Click the X to dismiss it.</Step>
+
+  <Step title="Try again">
+    Notice cooldown and impression limits work automatically!
+  </Step>
+</Steps>
+
+<Check>
+  **Congratulations!** You've built your first Presentum presentation.
+</Check>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
+  <Card title="Core concepts" icon="lightbulb" href="/core-concepts/overview">
+    Deep dive into architecture
+  </Card>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+  <Card
+    title="Production storage"
+    icon="database"
+    href="/guides/implementing-storage">
+    Implement persistent storage
+  </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+  <Card
+    title="Advanced guards"
+    icon="shield"
+    href="/guides/implementing-guards">
+    Build complex eligibility rules
+  </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card
+    title="Real example"
+    icon="code"
+    href="https://github.com/itsezlife/presentum/tree/master/campaigns">
+    See production implementation
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Common questions
+
+<AccordionGroup>
+  <Accordion title="How do I integrate with Firebase Remote Config?">
+    Fetch campaigns from Firebase and feed them using `setCandidates` or
+    `setCandidatesWithDiff`. See [Remote Config recipe](/recipes/remote-config)
+    for a complete example.
+  </Accordion>
+
+  <Accordion title="Can I use multiple Presentum instances?">
+    Yes! Create separate instances for different presentation types (campaigns,
+    tips, app updates). Each has independent state.
+  </Accordion>
+
+  <Accordion title="How do I test guards?">
+    Guards are functions - easy to test! Mock storage and verify state
+    mutations. See [Testing guide](/guides/testing).
+  </Accordion>
+</AccordionGroup>

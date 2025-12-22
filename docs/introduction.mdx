@@ -1,0 +1,367 @@
+---
+title: "Introduction"
+description: "Learn what Presentum is and how it helps you build dynamic, conditional UI at scale"
+---
+
+## What is Presentum?
+
+Presentum is a declarative Flutter engine for building dynamic, conditional UI at scale. It helps you manage campaigns, app updates, special offers, tips, notifications, and more with clean, testable, type-safe code.
+
+Instead of spreading show/hide logic across your widgets, you describe **what** should be shown as data, and Presentum's engine, guards, and outlets handle **where**, **when**, and **how** it appears.
+
+<Tip>
+Think of Presentum as a **presentation orchestrator** that coordinates what users see based on rules, not imperative commands.
+</Tip>
+
+## The problem
+
+Most apps manage presentations by mixing logic across widgets and state managers:
+
+```dart
+// ❌ Logic spread everywhere, hard to test
+class HomeScreen extends StatefulWidget {
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _showBanner = false;
+  Campaign? _campaign;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkEligibility();
+  }
+
+  Future<void> _checkEligibility() async {
+    final count = await prefs.getInt('banner_count') ?? 0;
+    final lastShown = await prefs.getInt('banner_last_shown');
+
+    if (count < 3 && (lastShown == null || /* complex check */)) {
+      final campaign = await fetchCampaign();
+      if (campaign != null && campaign.isActive && !userIsPremium) {
+        setState(() {
+          _showBanner = true;
+          _campaign = campaign;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (_campaign case final campaign? when _showBanner)
+          BannerWidget(
+            campaign: campaign,
+            onClose: () => _handleDismiss(),
+          ),
+        // other content
+      ],
+    );
+  }
+}
+```
+
+<Warning>
+**Problems:**
+- Business logic mixed with UI code
+- Hard to test eligibility rules
+- Difficult to coordinate multiple presentations
+- Impression tracking code everywhere
+- No single source of truth
+</Warning>
+
+## The solution
+
+Presentum separates **what** (payloads), **when** (guards), **where** (surfaces), and **how** (outlets):
+
+```dart
+// ✅ Declarative, testable, maintainable
+
+// 1. Define domain data
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+  final String id;
+  final int priority;
+  final Map<String, Object?> metadata;
+  final List<PresentumOption<AppSurface, CampaignVariant>> options;
+}
+
+// 2. Define logic in guards
+class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
+  @override
+  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
+    storage, history, state, candidates, context,
+  ) async {
+    for (final candidate in candidates) {
+      if (await isEligible(candidate, storage)) {
+        state.setActive(candidate.surface, candidate);
+      }
+    }
+    return state;
+  }
+}
+
+// 3. Display widget with outlet
+class HomeTopBannerOutlet extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<CampaignItem, AppSurface>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) {
+        return BannerWidget(
+          campaign: item.payload,
+          onClose: () => context
+              .presentum<CampaignItem, AppSurface>()
+              .markDismissed(item),
+        );
+      },
+    );
+  }
+}
+```
+
+<Check>
+**All eligibility logic is centralized.** The outlet renders. The payload is data. Guards contain business rules. Everything is testable.
+</Check>
+
+## When to use Presentum
+
+<CardGroup cols={2}>
+  <Card title="Perfect for" icon="check">
+    - Marketing campaigns and banners
+    - App update notifications (Shorebird, CodePush)
+    - Special offers with discount codes
+    - Onboarding tips and tutorials
+    - Feature announcements
+    - System maintenance alerts
+    - User-targeted messaging
+    - A/B testing content
+  </Card>
+  
+  <Card title="Not designed for" icon="xmark">
+    - Navigation/routing (use GoRouter, AutoRoute)
+    - Layout management (use Flutter widgets)
+    - General app state (use Riverpod, BLoC)
+    - Real-time chat messages
+    - Transient toasts/snackbars
+  </Card>
+</CardGroup>
+
+## What Presentum handles
+
+Presentum can evaluate **ANY condition** you need:
+
+- User segments (premium, free, trial)
+- Geographic location (country, region, city)
+- App version (force update for old versions)
+- Device type (phone, tablet, platform)
+- OS type (iOS, Android, Web)
+- User behavior (purchase history, usage patterns)
+- Time-based rules (holidays, business hours, date ranges)
+- A/B test groups
+- Feature flags
+- Custom business logic
+
+The engine is flexible and scalable - if you can write a rule for it, Presentum can handle it.
+
+## How it works
+
+Presentum coordinates the flow between your data sources, eligibility rules, and UI:
+
+<Steps>
+  <Step title="Fetch candidates">
+    Your app fetches presentations from Firebase Remote Config, APIs, or local sources.
+  </Step>
+  
+  <Step title="Feed to engine">
+    Convert to items and feed to Presentum using `setCandidates` or `setCandidatesWithDiff`.
+  </Step>
+  
+  <Step title="Guards process">
+    Engine runs all guards in sequence to determine eligibility, apply rules, and update state.
+  </Step>
+  
+  <Step title="State committed">
+    New state is committed and observers are notified.
+  </Step>
+  
+  <Step title="Outlets rebuild">
+    Outlets watching affected surfaces rebuild with new active items.
+  </Step>
+  
+  <Step title="User interacts">
+    User dismisses or converts, which records to storage and may trigger guard re-evaluation.
+  </Step>
+</Steps>
+
+## Key concepts
+
+<Steps>
+  <Step title="Surfaces">
+    **Where** presentations appear. Named locations in your UI.
+    
+    ```dart
+    enum AppSurface with PresentumSurface {
+      homeTopBanner,
+      watchlistHeader,
+      popup;
+    }
+    ```
+    
+    [Learn more →](/core-concepts/surfaces)
+  </Step>
+  
+  <Step title="Payloads">
+    **What** you want to show. Your domain objects with metadata.
+    
+    ```dart
+    class CampaignPayload extends PresentumPayload<S, V> {
+      final String id;
+      final int priority;
+      final Map<String, Object?> metadata;
+      final List<PresentumOption<S, V>> options;
+    }
+    ```
+    
+    [Learn more →](/core-concepts/payloads-options-items)
+  </Step>
+  
+  <Step title="Guards">
+    **When** to show. Your business logic and eligibility rules.
+    
+    ```dart
+    class CampaignGuard extends PresentumGuard<Item, Surface> {
+      // Decide what gets shown based on rules
+    }
+    ```
+    
+    [Learn more →](/core-concepts/guards)
+  </Step>
+  
+  <Step title="Outlets">
+    **Rendering** presentations. Just UI code, no business logic.
+    
+    ```dart
+    PresentumOutlet<Item, Surface>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) => MyWidget(item),
+    )
+    ```
+    
+    [Learn more →](/core-concepts/outlets)
+  </Step>
+</Steps>
+
+## Production example
+
+Here's a real-world implementation from a production app:
+
+<CodeGroup>
+
+```dart Surfaces
+enum CampaignSurface with PresentumSurface {
+  popup,
+  watchlistHeader,
+  watchlistFooter,
+  menuTile;
+}
+
+enum CampaignVariant with PresentumVisualVariant {
+  fullscreenDialog,
+  dialog,
+  banner,
+  inline;
+}
+```
+
+```dart Payload with JSON
+class CampaignPayload extends PresentumPayload<CampaignSurface, CampaignVariant> {
+  const CampaignPayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+  });
+
+  factory CampaignPayload.fromJson(Map<String, Object?> json) {
+    // Parse from Firebase Remote Config
+    return CampaignPayload(
+      id: json['id'] as String,
+      priority: (json['priority'] as num?)?.toInt() ?? 0,
+      metadata: json['metadata'] as Map<String, Object?>,
+      options: (json['options'] as List)
+          .map((o) => CampaignPresentumOption.fromJson(o))
+          .toList(),
+    );
+  }
+
+  final String id;
+  final int priority;
+  final Map<String, Object?> metadata;
+  final List<CampaignPresentumOption> options;
+}
+```
+
+```dart Guards chain
+campaignPresentum = Presentum<Item, Surface, Variant>(
+  storage: storage,
+  eventHandlers: [
+    PresentumStorageEventHandler(storage: storage),
+  ],
+  guards: [
+    AppOpenedCountGuard(
+      appOpenedCount: userRepository.fetchAppOpenedCount,
+    ),
+    AppLifecycleChangedGuard(
+      refresh: AppLifecycleChangedRefresh(),
+    ),
+    SyncStateWithCandidatesGuard(),
+    CampaignSchedulingGuard(eligibility),
+    RemoveIneligibleCampaignsGuard(eligibility),
+  ],
+);
+```
+
+</CodeGroup>
+
+[See full production implementation →](https://github.com/itsezlife/presentum/tree/master/campaigns)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Build your first presentation in 5 minutes
+  </Card>
+  
+  <Card
+    title="Core concepts"
+    icon="lightbulb"
+    href="/core-concepts/overview"
+  >
+    Understand the architecture
+  </Card>
+  
+  <Card
+    title="Production example"
+    icon="code"
+    href="https://github.com/itsezlife/presentum/tree/master/campaigns"
+  >
+    See real-world implementation
+  </Card>
+  
+  <Card
+    title="API reference"
+    icon="book"
+    href="/api-reference/presentum"
+  >
+    Complete API documentation
+  </Card>
+</CardGroup>
+

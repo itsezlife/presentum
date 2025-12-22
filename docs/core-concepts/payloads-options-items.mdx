@@ -1,0 +1,410 @@
+---
+title: "Payloads, Options & Items"
+description: "Learn about the core data types that flow through Presentum"
+---
+
+## Overview
+
+Presentum uses three related types to represent presentations:
+
+- **Payloads** - Your domain data (campaigns, tips, updates)
+- **Options** - How payloads appear (surface + variant + rules)
+- **Items** - Concrete decisions (payload + option)
+
+## Payloads
+
+Payloads are your domain objects containing all presentation data:
+
+```dart
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+  const CampaignPayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+  });
+
+  @override
+  final String id;
+
+  @override
+  final int priority;
+
+  @override
+  final Map<String, Object?> metadata;
+
+  @override
+  final List<PresentumOption<AppSurface, CampaignVariant>> options;
+}
+```
+
+### Required fields
+
+<ParamField path="id" type="String" required>
+  Unique identifier for the payload. Used for tracking and deduplication.
+</ParamField>
+
+<ParamField path="priority" type="int" required>
+  Display priority. Higher priority items shown first. Typical range: 0-1000.
+</ParamField>
+
+<ParamField path="metadata" type="Map<String, Object?>" required>
+  Arbitrary domain data. Store titles, images, URLs, eligibility data, etc.
+</ParamField>
+
+<ParamField path="options" type="List<PresentumOption>" required>
+  How this payload can be presented across different surfaces.
+</ParamField>
+
+### Production example
+
+From a real app with JSON deserialization:
+
+```dart
+class CampaignPayload extends PresentumPayload<CampaignSurface, CampaignVariant>
+    implements HasMetadata {
+  const CampaignPayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+  });
+
+  factory CampaignPayload.fromJson(Map<String, Object?> json) {
+    return CampaignPayload(
+      id: json['id'] as String,
+      priority: (json['priority'] as num?)?.toInt() ?? 0,
+      metadata: json['metadata'] as Map<String, Object?>,
+      options: (json['options'] as List)
+          .map((o) => CampaignPresentumOption.fromJson(o))
+          .toList(),
+    );
+  }
+
+  @override
+  final String id;
+
+  @override
+  final int priority;
+
+  @override
+  final Map<String, Object?> metadata;
+
+  @override
+  final List<CampaignPresentumOption> options;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'priority': priority,
+    'metadata': metadata,
+    'options': options.map((o) => o.toJson()).toList(),
+  };
+}
+```
+
+[See full payload implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+
+## Options
+
+Options describe how a payload appears on a specific surface:
+
+```dart
+class CampaignPresentumOption
+    extends PresentumOption<AppSurface, CampaignVariant> {
+  const CampaignPresentumOption({
+    required this.surface,
+    required this.variant,
+    required this.isDismissible,
+    this.stage,
+    this.maxImpressions,
+    this.cooldownMinutes,
+    this.alwaysOnIfEligible = false,
+  });
+
+  @override
+  final AppSurface surface;
+
+  @override
+  final CampaignVariant variant;
+
+  @override
+  final bool isDismissible;
+
+  @override
+  final int? stage;
+
+  @override
+  final int? maxImpressions;
+
+  @override
+  final int? cooldownMinutes;
+
+  @override
+  final bool alwaysOnIfEligible;
+}
+```
+
+### Option fields
+
+<ParamField path="surface" type="S extends PresentumSurface" required>
+  Where this option appears (e.g., `AppSurface.homeTopBanner`)
+</ParamField>
+
+<ParamField path="variant" type="V extends PresentumVisualVariant" required>
+  How this option is displayed (e.g., `CampaignVariant.banner`)
+</ParamField>
+
+<ParamField path="isDismissible" type="bool" required>
+  Whether users can close this presentation
+</ParamField>
+
+<ParamField path="stage" type="int?">
+  Sequence hint for multi-stage flows (e.g., 0 = fullscreen, 1 = dialog)
+</ParamField>
+
+<ParamField path="maxImpressions" type="int?">
+  Maximum times to show. `null` = unlimited
+</ParamField>
+
+<ParamField path="cooldownMinutes" type="int?">
+  Minutes to wait between shows. `null` = no cooldown
+</ParamField>
+
+<ParamField path="alwaysOnIfEligible" type="bool">
+  Show immediately when eligible without requiring explicit activation
+</ParamField>
+
+### Multi-surface payloads
+
+One payload can have multiple options for different surfaces:
+
+```dart
+CampaignPayload(
+  id: 'black-friday-2025',
+  priority: 100,
+  metadata: {
+    'title': 'Black Friday Sale',
+    'discount': '50%',
+  },
+  options: [
+    // Popup option
+    CampaignPresentumOption(
+      surface: AppSurface.popup,
+      variant: CampaignVariant.fullscreenDialog,
+      maxImpressions: 1,
+      cooldownMinutes: null,
+      isDismissible: true,
+    ),
+    // Banner option
+    CampaignPresentumOption(
+      surface: AppSurface.homeTopBanner,
+      variant: CampaignVariant.banner,
+      maxImpressions: null,
+      cooldownMinutes: 1440, // 24 hours
+      isDismissible: true,
+      alwaysOnIfEligible: true,
+    ),
+  ],
+)
+```
+
+This lets the same campaign appear as both a popup and a banner, with different rules for each.
+
+## Items
+
+Items combine a payload with a specific option:
+
+```dart
+class CampaignPresentumItem
+    extends PresentumItem<CampaignPayload, AppSurface, CampaignVariant> {
+  const CampaignPresentumItem({
+    required this.payload,
+    required this.option,
+  });
+
+  @override
+  final CampaignPayload payload;
+
+  @override
+  final CampaignPresentumOption option;
+}
+```
+
+Items provide derived properties:
+
+```dart
+final item = CampaignPresentumItem(
+  payload: campaign,
+  option: campaign.options.first,
+);
+
+item.id          // "black-friday-2025::fullscreenDialog::popup"
+item.surface     // AppSurface.popup
+item.variant     // CampaignVariant.fullscreenDialog
+item.priority    // 100 (from payload)
+item.metadata    // {'title': 'Black Friday Sale', ...}
+item.stage       // 0 (from option)
+```
+
+### Creating items
+
+Convert payloads to items when feeding to engine:
+
+```dart
+final payload = CampaignPayload(/* ... */);
+
+// Create items from all options
+final items = payload.options.map((option) {
+  return CampaignPresentumItem(
+    payload: payload,
+    option: option,
+  );
+}).toList();
+
+// Feed to engine
+engine.setCandidatesWithDiff((state) => items);
+```
+
+## Type aliases
+
+Use type aliases for cleaner code:
+
+```dart
+// Define once
+typedef CampaignItem = CampaignPresentumItem;
+typedef CampaignGuard = PresentumGuard<CampaignItem, CampaignSurface, CampaignVariant>;
+typedef CampaignState = PresentumState<CampaignItem, CampaignSurface, CampaignVariant>;
+
+// Use everywhere
+class MyGuard extends CampaignGuard {
+  @override
+  FutureOr<CampaignState> call(...) async {
+    // Much cleaner!
+  }
+}
+```
+
+[See production typedefs ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/typedefs.dart)
+
+## Metadata patterns
+
+### Campaign metadata
+
+```dart
+metadata: {
+  'title': 'Black Friday Sale',
+  'message': '50% off premium features',
+  'imageUrl': 'https://...',
+  'ctaText': 'Shop Now',
+  'ctaUrl': '/shop/black-friday',
+  'backgroundColor': '#1E293B',
+  'time_range': {
+    'start': '2025-11-29T00:00:00Z',
+    'end': '2025-12-02T23:59:59Z',
+  },
+  'required_segments': ['active_users'],
+  'is_active': true,
+}
+```
+
+### App update metadata
+
+```dart
+metadata: {
+  'version': '2.0.0',
+  'buildNumber': 42,
+  'isForced': false,
+  'releaseNotes': 'New features and improvements',
+  'downloadUrl': 'https://...',
+  'minRequiredVersion': '1.5.0',
+}
+```
+
+### Tip metadata
+
+```dart
+metadata: {
+  'title': 'Swipe to refresh',
+  'description': 'Pull down to see latest updates',
+  'iconName': 'refresh',
+  'helpUrl': '/help/refresh',
+  'requiredCompletedSteps': ['signup', 'onboarding'],
+}
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Keep metadata flat when possible">
+    Flat metadata is easier to work with in eligibility extractors:
+    
+    **Good:**
+    ```dart
+    metadata: {
+      'title': 'Sale',
+      'discount': '50%',
+      'start_date': '2025-11-29',
+    }
+    ```
+    
+    **Acceptable:**
+    ```dart
+    metadata: {
+      'title': 'Sale',
+      'time_range': {
+        'start': '2025-11-29',
+        'end': '2025-12-02',
+      },
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Use priority ranges">
+    Establish priority ranges for different types:
+    
+    - 0-99: Low priority tips
+    - 100-199: Regular campaigns
+    - 200-299: Important updates
+    - 300+: Critical alerts (maintenance, force updates)
+  </Accordion>
+  
+  <Accordion title="Implement serialization">
+    Add `fromJson`/`toJson` for Remote Config integration:
+    
+    ```dart
+    factory CampaignPayload.fromJson(Map<String, Object?> json) {
+      // Deserialize
+    }
+
+    Map<String, Object?> toJson() {
+      // Serialize
+    }
+    ```
+
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Slots & State"
+    href="/core-concepts/slots-state"
+    icon="layer-group">
+    How items flow through state
+  </Card>
+
+  <Card
+    title="Creating payloads guide"
+    href="/guides/creating-payloads"
+    icon="wrench">
+    Step-by-step payload building
+  </Card>
+
+  <Card
+    title="Production example"
+    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart"
+    icon="code">
+    Real-world payload implementation
+  </Card>
+</CardGroup>

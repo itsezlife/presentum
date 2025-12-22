@@ -1,0 +1,724 @@
+---
+title: "Guards"
+description: "Learn how guards control when and what presentations are shown"
+---
+
+## What are guards?
+
+Guards are the **brain** of Presentum. They contain your business logic for deciding what gets shown, when, and in what order.
+
+Guards run every time candidates change or when external triggers fire. They inspect:
+
+- Current state and history
+- Storage (impressions, dismissals, conversions)
+- Candidates (potential presentations)
+- Context (user data, app state)
+
+Then they **mutate state** by adding, removing, or reordering items in slots.
+
+<Tip>
+  Guards are your primary tool for scheduling presentations, removing ineligible
+  items, periodic refreshes, and complex eligibility rules.
+</Tip>
+
+## Basic guard
+
+Here's a simple guard that sets the highest priority campaign as active:
+
+```dart
+class CampaignGuard
+    extends PresentumGuard<CampaignItem, AppSurface, CampaignVariant> {
+  @override
+  FutureOr<PresentumState> call(
+    PresentumStorage storage,
+    List<PresentumHistoryEntry> history,
+    PresentumState$Mutable state,
+    List<CampaignItem> candidates,
+    Map<String, Object?> context,
+  ) async {
+    for (final candidate in candidates) {
+      final existing = state.slots[candidate.surface]?.active;
+
+      if (existing == null || candidate.priority > existing.priority) {
+        state.setActive(candidate.surface, candidate);
+      }
+    }
+
+    return state;
+  }
+}
+```
+
+## Guard parameters
+
+<ParamField path="storage" type="PresentumStorage" required>
+  Persistence layer for tracking impressions, dismissals, and conversions.
+</ParamField>
+
+<ParamField path="history" type="List<PresentumHistoryEntry>" required>
+  Complete history of state changes. Useful for analyzing past decisions.
+</ParamField>
+
+<ParamField path="state" type="PresentumState$Mutable" required>
+  Mutable state you can modify. Changes you make here will be committed after
+  all guards run.
+</ParamField>
+
+<ParamField path="candidates" type="List<TItem>" required>
+  All potential presentations. These are the items guards evaluate for
+  eligibility.
+</ParamField>
+
+<ParamField path="context" type="Map<String, Object?>" required>
+  Shared data between guards. Pass information from one guard to the next.
+</ParamField>
+
+## Production examples
+
+### Scheduling guard
+
+This guard from a production app handles priority, sequencing, impression limits, and cooldowns:
+
+```dart
+class CampaignSchedulingGuard extends CampaignGuard {
+  CampaignSchedulingGuard(this._eligibility);
+
+  final EligibilityResolver<CampaignPayload> _eligibility;
+
+  @override
+  FutureOr<CampaignPresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // 1) Filter eligible campaigns
+    final eligiblePayloadIds = <String>{};
+    final campaigns = candidates.map((e) => e.payload).toSet();
+
+    for (final campaign in campaigns) {
+      if (eligiblePayloadIds.contains(campaign.id)) continue;
+      final isEligible = await _eligibility.isEligible(campaign, context);
+      if (isEligible) eligiblePayloadIds.add(campaign.id);
+    }
+
+    if (eligiblePayloadIds.isEmpty) return state;
+
+    // 2) Sort by priority and stage
+    final eligibleEntries = candidates
+        .where((e) => eligiblePayloadIds.contains(e.payload.id))
+        .toList()
+      ..sort((a, b) {
+        final p = b.payload.priority.compareTo(a.payload.priority);
+        if (p != 0) return p;
+        final sa = a.stage ?? 0;
+        final sb = b.stage ?? 0;
+        return sa.compareTo(sb);
+      });
+
+    // 3) Handle always-on banners/inline presentations
+    for (final entry in eligibleEntries) {
+      if (!entry.option.alwaysOnIfEligible) continue;
+
+      final slot = state.slots[entry.surface];
+      if (slot?.active != null) continue; // Don't override
+
+      state.setActive(entry.surface, entry);
+    }
+
+    // 4) Schedule popup with impression/cooldown checks
+    final popupCandidates = await _popupCandidates(
+      storage,
+      eligibleEntries,
+      context,
+    );
+
+    if (popupCandidates.isEmpty) return state;
+
+    state.setActive(CampaignSurface.popup, popupCandidates.first);
+    if (popupCandidates.length > 1) {
+      state.setQueue(CampaignSurface.popup, popupCandidates.sublist(1));
+    }
+
+    return state;
+  }
+
+  Future<List<CampaignItem>> _popupCandidates(
+    storage, items, context,
+  ) async {
+    final result = <CampaignItem>[];
+    final now = DateTime.now();
+
+    for (final entry in items) {
+      if (entry.surface != CampaignSurface.popup) continue;
+
+      // Check cooldown
+      final lastShown = await storage.getLastShown(
+        entry.id,
+        surface: entry.surface,
+        variant: entry.variant,
+      );
+
+      if (lastShown case final last?) {
+        final minutesSince = now.difference(last).inMinutes;
+        final cooldown = entry.option.cooldownMinutes ?? 0;
+        if (minutesSince < cooldown) continue;
+      }
+
+      // Check impression cap
+      if (entry.option.maxImpressions case final cap? when cap >= 0) {
+        final count = await storage.getShownCount(
+          entry.id,
+          period: const Duration(days: 365),
+          surface: entry.surface,
+          variant: entry.variant,
+        );
+        if (count >= cap) continue;
+      }
+
+      result.add(entry);
+    }
+
+    return result;
+  }
+}
+```
+
+[Full scheduling guard implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+
+### Remove ineligible guard
+
+Removes items that are no longer eligible (e.g., expired campaigns):
+
+```dart
+class RemoveIneligibleCampaignsGuard extends CampaignGuard {
+  RemoveIneligibleCampaignsGuard(this.eligibility);
+
+  final EligibilityResolver<CampaignPayload> eligibility;
+
+  @override
+  FutureOr<CampaignPresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    final checkedCampaigns = <String>{};
+    final ineligibleCampaigns = <String>{};
+
+    // Check eligibility for all campaigns in state
+    final lastState = history.isNotEmpty ? history.last.state : null;
+    final slots = lastState?.slots ?? state.slots;
+
+    for (final entry in slots.entries) {
+      final slot = entry.value;
+
+      // Check active item
+      if (slot.active case final active?) {
+        final campaignId = active.payload.id;
+        if (!checkedCampaigns.contains(campaignId)) {
+          checkedCampaigns.add(campaignId);
+          final eligible = await eligibility.isEligible(
+            active.payload,
+            context,
+          );
+          if (!eligible) ineligibleCampaigns.add(campaignId);
+        }
+      }
+
+      // Check queue
+      for (final queuedItem in slot.queue) {
+        final campaignId = queuedItem.payload.id;
+        if (!checkedCampaigns.contains(campaignId)) {
+          checkedCampaigns.add(campaignId);
+          final eligible = await eligibility.isEligible(
+            queuedItem.payload,
+            context,
+          );
+          if (!eligible) ineligibleCampaigns.add(campaignId);
+        }
+      }
+    }
+
+    // Remove ineligible campaigns from all surfaces
+    if (ineligibleCampaigns.isNotEmpty) {
+      state.removeWhere(
+        (item) => ineligibleCampaigns.contains(item.payload.id),
+      );
+    }
+
+    return state;
+  }
+}
+```
+
+[Full remove ineligible guard ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/remove_ineligible_campaigns_guard.dart)
+
+### Sync state with candidates guard
+
+Keeps state synchronized with latest candidate data using diff algorithm:
+
+```dart
+class SyncStateWithCandidatesGuard extends CampaignGuard {
+  @override
+  FutureOr<CampaignPresentumState> call(
+    storage, history, state, candidates, context,
+  ) {
+    // Build map of candidates by ID for fast lookup
+    final candidateMap = <String, CampaignItem>{};
+    for (final candidate in candidates) {
+      candidateMap[candidate.id] = candidate;
+    }
+
+    // Process each surface's slot
+    for (final surfaceEntry in state.slots.entries) {
+      final surface = surfaceEntry.key;
+      final slot = surfaceEntry.value;
+
+      final currentItems = <CampaignItem>[
+        if (slot.active case final active?) active,
+        ...slot.queue,
+      ];
+
+      if (currentItems.isEmpty) continue;
+
+      final syncedItems = <CampaignItem>[];
+      var itemsChanged = false;
+
+      for (final currentItem in currentItems) {
+        final candidateMatch = candidateMap[currentItem.id];
+
+        if (candidateMatch == null) {
+          // Item removed from candidates
+          itemsChanged = true;
+          continue;
+        }
+
+        // Check if content changed
+        if (!_areContentsTheSame(currentItem, candidateMatch)) {
+          syncedItems.add(candidateMatch); // Use updated version
+          itemsChanged = true;
+        } else {
+          syncedItems.add(currentItem); // Keep as-is
+        }
+      }
+
+      if (itemsChanged) {
+        if (syncedItems.isEmpty) {
+          state.clearSurface(surface);
+        } else {
+          state.setActive(surface, syncedItems.first);
+          if (syncedItems.length > 1) {
+            state.setQueue(surface, syncedItems.sublist(1));
+          }
+        }
+      }
+    }
+
+    return state;
+  }
+
+  bool _areContentsTheSame(CampaignItem oldItem, CampaignItem newItem) {
+    // Compare metadata and option properties
+    return oldItem.priority == newItem.priority &&
+           _areMetadataEqual(oldItem.metadata, newItem.metadata);
+  }
+}
+```
+
+[Full sync guard implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/sync_state_with_candidates_guard.dart)
+
+## Guard execution order
+
+Guards run **in sequence**, with each guard receiving the state mutated by previous guards:
+
+```dart
+presentum = Presentum(
+  storage: storage,
+  guards: [
+    AppOpenedCountGuard(),        // 1. Add app context
+    AppLifecycleChangedGuard(),   // 2. Handle app lifecycle
+    SyncStateWithCandidatesGuard(), // 3. Sync with latest data
+    CampaignSchedulingGuard(),    // 4. Apply scheduling logic
+    RemoveIneligibleGuard(),      // 5. Filter out ineligible
+  ],
+);
+```
+
+<Info>
+  Order matters! Guards early in the chain prepare data for later guards.
+</Info>
+
+## Refresh triggers
+
+Guards can subscribe to external changes and re-run automatically:
+
+```dart
+class MyGuard extends PresentumGuard<Item, Surface, Variant> {
+  MyGuard({required ValueNotifier<AppLifecycle> lifecycle})
+      : super(refresh: lifecycle);
+
+  @override
+  FutureOr<PresentumState> call(...) async {
+    // This runs when lifecycle notifies
+    return state;
+  }
+}
+```
+
+When `lifecycle.notifyListeners()` is called, the engine re-runs all guards with current state.
+
+## State mutation methods
+
+Inside guards, you can mutate state freely:
+
+<Tabs>
+  <Tab title="Set active">
+    ```dart
+    // Set active item for a surface
+    state.setActive(surface, item);
+    
+    // With intention control
+    state.setActive(
+      surface, 
+      item,
+      intention: PresentumStateIntention.replace,
+    );
+    ```
+  </Tab>
+  
+  <Tab title="Queue management">
+    ```dart
+    // Add to queue
+    state.enqueue(surface, item);
+    
+    // Set entire queue
+    state.setQueue(surface, [item1, item2, item3]);
+    
+    // Remove from queue
+    state.dequeue(surface);
+    ```
+  </Tab>
+  
+  <Tab title="Remove items">
+    ```dart
+    // Remove by predicate
+    state.removeWhere((item) => item.priority < 50);
+    
+    // Remove from specific surface
+    state.removeFromSurface(
+      surface,
+      (item) => item.id == 'expired-campaign',
+    );
+    
+    // Remove by ID
+    state.removeById('campaign-123');
+    
+    // Clear entire surface
+    state.clearSurface(surface);
+    ```
+  </Tab>
+  
+  <Tab title="Cancel transition">
+    ```dart
+    // Abort state change
+    if (userIsOffline) {
+      state.intention = PresentumStateIntention.cancel;
+      return state;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Context sharing
+
+Pass data between guards using the `context` parameter:
+
+```dart
+class FirstGuard extends MyGuard {
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // Set context data for next guards
+    context['userSegment'] = 'premium';
+    context['abTestGroup'] = 'variant_a';
+    return state;
+  }
+}
+
+class SecondGuard extends MyGuard {
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // Read context from previous guard
+    final segment = context['userSegment'] as String?;
+
+    if (segment == 'premium') {
+      // Show premium campaigns
+    }
+
+    return state;
+  }
+}
+```
+
+## Production guard chain
+
+Here's how a production app structures guards:
+
+```dart
+campaignPresentum = Presentum(
+  storage: storage,
+  eventHandlers: [
+    PresentumStorageEventHandler(storage: storage),
+  ],
+  guards: [
+    // 1. Add app-specific context
+    AppOpenedCountGuard(
+      appOpenedCount: userRepository.fetchAppOpenedCount,
+    ),
+
+    // 2. Handle app lifecycle changes
+    AppLifecycleChangedGuard(
+      refresh: AppLifecycleChangedRefresh(),
+    ),
+
+    // 3. Sync with latest candidate data
+    SyncStateWithCandidatesGuard(),
+
+    // 4. Apply scheduling logic (priority, sequencing, rules)
+    CampaignSchedulingGuard(eligibilityResolver),
+
+    // 5. Remove items that became ineligible
+    RemoveIneligibleCampaignsGuard(eligibilityResolver),
+  ],
+);
+```
+
+[See full production initialization ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaigns_presentum_state_mixin.dart)
+
+<Tip>
+  **Order matters!** Early guards prepare data, middle guards apply logic, late
+  guards clean up.
+</Tip>
+
+## Guard patterns
+
+### Impression limiting
+
+```dart
+class ImpressionLimitGuard extends MyGuard {
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    for (final candidate in candidates) {
+      if (candidate.option.maxImpressions case final max?) {
+        final count = await storage.getShownCount(
+          candidate.id,
+          period: const Duration(days: 365),
+          surface: candidate.surface,
+          variant: candidate.variant,
+        );
+
+        if (count >= max) continue; // Skip
+      }
+
+      state.setActive(candidate.surface, candidate);
+    }
+
+    return state;
+  }
+}
+```
+
+### Cooldown management
+
+```dart
+class CooldownGuard extends MyGuard {
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    final now = DateTime.now();
+
+    for (final candidate in candidates) {
+      if (candidate.option.cooldownMinutes case final cooldown?) {
+        final lastShown = await storage.getLastShown(
+          candidate.id,
+          surface: candidate.surface,
+          variant: candidate.variant,
+        );
+
+        if (lastShown case final last?) {
+          final minutesSince = now.difference(last).inMinutes;
+          if (minutesSince < cooldown) continue; // Still in cooldown
+        }
+      }
+
+      state.setActive(candidate.surface, candidate);
+    }
+
+    return state;
+  }
+}
+```
+
+### User targeting
+
+```dart
+class UserTargetingGuard extends MyGuard {
+  UserTargetingGuard(this.userService);
+
+  final UserService userService;
+
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    final userSegment = userService.currentSegment;
+
+    for (final candidate in candidates) {
+      final requiredSegments = candidate.metadata['required_segments']
+          as List<String>?;
+
+      if (requiredSegments != null &&
+          !requiredSegments.contains(userSegment)) {
+        continue; // User not in required segment
+      }
+
+      state.setActive(candidate.surface, candidate);
+    }
+
+    return state;
+  }
+}
+```
+
+### Sequencing logic
+
+```dart
+class SequencingGuard extends MyGuard {
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // Group by surface
+    final bySurface = <Surface, List<Item>>{};
+    for (final candidate in candidates) {
+      bySurface.putIfAbsent(candidate.surface, () => []).add(candidate);
+    }
+
+    // For each surface, set highest priority as active, rest in queue
+    for (final entry in bySurface.entries) {
+      final surface = entry.key;
+      final items = entry.value;
+
+      // Sort by priority
+      items.sort((a, b) => b.priority.compareTo(a.priority));
+
+      state.setActive(surface, items.first);
+      if (items.length > 1) {
+        state.setQueue(surface, items.sublist(1));
+      }
+    }
+
+    return state;
+  }
+}
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Keep guards focused">
+    Each guard should have one responsibility. Don't create one giant guard that
+    does everything. **Good:** `ImpressionLimitGuard`, `CooldownGuard`,
+    `SegmentTargetingGuard` **Bad:** `MegaGuardThatDoesEverything`
+  </Accordion>
+
+  <Accordion title="Use eligibility system">
+    For complex conditions, use the built-in eligibility system instead of
+    manual if/else chains. ```dart final eligible = await
+    eligibilityResolver.isEligible( candidate.payload, context, ); ``` [Learn
+    more about eligibility ->](/features/eligibility-system)
+  </Accordion>
+
+  <Accordion title="Share data via context">
+    Use the `context` parameter to pass data between guards instead of external
+    state. ```dart // In first guard context['premiumUser'] = true; // In later
+    guard if (context['premiumUser'] == true) {/* ... */}
+    ```
+  </Accordion>
+
+  <Accordion title="Don't call notifyListeners in guards">
+    This creates infinite loops. Guards run automatically when needed.
+  </Accordion>
+</AccordionGroup>
+
+## Common mistakes
+
+<Warning>
+**Don't mutate state outside guards**
+
+```dart
+// ❌ Wrong
+state.slots[surface] = newSlot; // Won't compile (immutable)
+
+// ✅ Correct
+await presentum.setState((state) {
+  state.setActive(surface, item);
+  return state;
+});
+```
+
+</Warning>
+
+<Warning>
+**Don't fetch data in guards**
+
+```dart
+// ❌ Wrong - slow, unreliable
+@override
+FutureOr<PresentumState> call(...) async {
+  final campaigns = await api.fetchCampaigns(); // Don't do this
+  // ...
+}
+
+// ✅ Correct - feed candidates from provider
+class CampaignProvider {
+  Future<void> fetchAndUpdate() async {
+    final campaigns = await api.fetchCampaigns();
+    await presentum.config.engine.setCandidates(
+      (state, current) => campaigns,
+    );
+  }
+}
+```
+
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Implementing guards"
+    icon="shield"
+    href="/guides/implementing-guards">
+    Step-by-step guard building guide
+  </Card>
+
+  <Card
+    title="Eligibility system"
+    icon="check-circle"
+    href="/features/eligibility-system">
+    Use declarative eligibility rules
+  </Card>
+
+  <Card title="Storage" icon="database" href="/core-concepts/storage">
+    Understand the storage interface
+  </Card>
+
+  <Card
+    title="Production examples"
+    icon="code"
+    href="https://github.com/itsezlife/presentum/tree/master/campaigns/presentum/guards">
+    See real-world guards
+  </Card>
+</CardGroup>

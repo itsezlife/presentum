@@ -1,4 +1,4 @@
-# Presentum
+# [Presentum: A Declarative Presentation Engine for Flutter](https://docs.presentum.dev)
 
 [![License: MIT][license_badge]][license_link]
 [![Linter][linter_badge]][linter_link]
@@ -7,6 +7,10 @@
 **Presentum** is a declarative Flutter engine for building dynamic, conditional UI at scale. It helps you manage campaigns, app updates, special offers, tips, notifications and so much more with clean, testable, type-safe code.
 
 Modern apps need personalized, adaptive experiences: show the right message to the right user at the right time, with impression limits, cooldowns, A/B testing, and analytics. Presentum handles all of that.
+
+Instead of spreading show/hide logic across your widgets, you describe **what** should be shown as data, and Presentum’s engine, guards, and outlets handle **where**, **when**, and **how** it appears.
+
+**📚 [Full Documentation](https://docs.presentum.dev)** · **🚀 [Quick Start](https://docs.presentum.dev/quickstart)**
 
 ## The problem
 
@@ -219,11 +223,19 @@ Presentum handles ANY condition you need:
 - Custom business logic
 
 The engine is flexible and scalable - if you can write a rule for it, Presentum can handle it.
-With Presentum the only limit is your imagination.
+The only limit is your imagination.
 
-## Core concepts
+## [Installation](https://docs.presentum.dev/installation)
 
-### Surfaces
+Add Presentum to your `pubspec.yaml`:
+
+```sh
+dart pub add presentum
+```
+
+## [Core concepts](https://docs.presentum.dev/core-concepts/overview)
+
+### [Surfaces](https://docs.presentum.dev/core-concepts/surfaces)
 
 **Where** presentations appear. Named locations in your UI:
 
@@ -236,7 +248,7 @@ enum AppSurface with PresentumSurface {
 }
 ```
 
-### Payloads
+### [Payloads](https://docs.presentum.dev/core-concepts/payloads-options-items)
 
 **What** you want to show. Your domain objects:
 
@@ -249,7 +261,9 @@ class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
 }
 ```
 
-### Options
+[Example: Production campaign payload with JSON serialization](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+
+### [Options](https://docs.presentum.dev/core-concepts/payloads-options-items)
 
 **How** payloads appear, with constraints:
 
@@ -274,7 +288,7 @@ CampaignPresentumOption(
 )
 ```
 
-### Outlets
+### [Outlets](https://docs.presentum.dev/core-concepts/outlets)
 
 **Rendering** widgets. Just UI code:
 
@@ -299,7 +313,9 @@ class MyOutlet extends StatelessWidget {
 }
 ```
 
-## How to present
+[Example: Popup host for dialog presentations](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart)
+
+## [How to present](https://docs.presentum.dev/guides/state-management)
 
 Use the `context.presentum.setState((state) => ...)` method as a basic presentum method.
 
@@ -317,15 +333,21 @@ You can truly do anything you want.
 Just change the state, slots, active items, and queues as you please.
 Everything is in your hands and just works fine, that's a declarative approach as it should be.
 
-Guards should be your primary tool for scheduling presentations, removing ineligible items, periodic refreshes, and complex eligibility rules. Use direct state changes when you need a very explicit controll.
+However, guards should be your primary tool for scheduling presentations, removing ineligible items, periodic refreshes, and complex eligibility rules. Use direct state changes when you need a very explicit controll.
 
-## Guards
+## [Guards](https://docs.presentum.dev/core-concepts/guards)
 
 Guards are a powerful tool for controlling presentations.
 They allow you to check the state and mutate/filter items based on eligibility rules.
 For example, you can check user preferences, storage, history, impression limits, cooldowns, or A/B test segments to determine what should be shown.
 
-## Eligibility system
+**Examples:**
+
+1. [Scheduling guard with priority and sequencing](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+2. [Remove ineligible campaigns guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/remove_ineligible_campaigns_guard.dart)
+3. [Sync state with candidates guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/sync_state_with_candidates_guard.dart)
+
+## [Eligibility system](https://docs.presentum.dev/features/eligibility-system)
 
 Build complex eligibility checks using conditions, rules, and extractors:
 
@@ -369,7 +391,7 @@ if (isEligible) {
 }
 ```
 
-## Transition observers
+## [Transition observers](https://docs.presentum.dev/features/transition-observers)
 
 React to state changes with comprehensive diff snapshots. Useful for integrating with BLoC, Provider, or other state management:
 
@@ -405,7 +427,7 @@ presentum = Presentum(
 );
 ```
 
-## Event system
+## [Event system](https://docs.presentum.dev/features/events)
 
 Capture user interactions with a flexible event system:
 
@@ -443,10 +465,10 @@ presentum = Presentum(
 );
 
 // Manually add custom events
-await presentum.addEvent(MyCustomEvent(item: item, timestamp: DateTime.now()));
+await context.presentum.addEvent(MyCustomEvent(item: item, timestamp: DateTime.now()));
 ```
 
-## Auto-tracking widgets
+## [Auto-tracking widgets](https://docs.presentum.dev/features/auto-tracking)
 
 Widgets that automatically call `markShown` when widget renders and persists
 `showed` value in `PageStorage` to prevent any redundant calls:
@@ -460,7 +482,7 @@ TrackedWidget(
 )
 ```
 
-## State structure
+## [State structure](https://docs.presentum.dev/core-concepts/slots-state)
 
 Under the hood, Presentum manages state as a map of **slots**, where each slot represents one surface in your app.
 
@@ -608,7 +630,7 @@ homeTopBanner
 └─ queue: ["Swipe to refresh"]
 ```
 
-This happens automatically via `state.clearActive(surface)` or when you call `presentum.markDismissed(item)`.
+This happens automatically via `state.clearActive(surface)` or when you call `context.presentum.markDismissed(item)`.
 
 ## Changelog
 

@@ -1,0 +1,50 @@
+---
+title: "Implementing storage"
+description: "Build the storage layer for tracking impressions, dismissals, and conversions"
+---
+
+## Overview
+
+Storage tracks presentation events across sessions. This guide shows you how to implement the `PresentumStorage` interface.
+
+## Quick implementation
+
+Use SharedPreferences for simple apps:
+
+```dart
+class MyStorage implements PresentumStorage<AppSurface, CampaignVariant> {
+  late SharedPreferencesWithCache _prefs;
+
+  @override
+  Future<void> init() async {
+    _prefs = await SharedPreferencesWithCache.create(
+      cacheOptions: const SharedPreferencesWithCacheOptions(),
+    );
+  }
+
+  @override
+  Future<void> recordShown(
+    String itemId, {
+    required AppSurface surface,
+    required CampaignVariant variant,
+    required DateTime at,
+  }) async {
+    final key = '$itemId::${surface.name}::${variant.name}';
+    final count = _prefs.getInt('${key}_count') ?? 0;
+    await _prefs.setInt('${key}_count', count + 1);
+    await _prefs.setString('${key}_last', at.toIso8601String());
+  }
+
+  // Implement other methods...
+}
+```
+
+<Card
+  title="See production storage"
+  icon="code"
+  href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_storage.dart"
+  horizontal
+>
+  Complete SharedPreferences implementation
+</Card>
+

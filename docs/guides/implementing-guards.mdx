@@ -1,0 +1,47 @@
+---
+title: "Implementing guards"
+description: "Step-by-step guide to building guards for eligibility logic"
+---
+
+## Overview
+
+Guards are where your presentation business logic lives. This guide shows you how to build guards from simple to production-level complexity.
+
+## Basic guard
+
+Start with a simple guard that sets the highest priority item as active:
+
+```dart
+class SimpleCampaignGuard extends PresentumGuard<CampaignItem, AppSurface, CampaignVariant> {
+  @override
+  FutureOr<PresentumState> call(
+    PresentumStorage storage,
+    List<PresentumHistoryEntry> history,
+    PresentumState$Mutable state,
+    List<CampaignItem> candidates,
+    Map<String, Object?> context,
+  ) async {
+    for (final candidate in candidates) {
+      state.setActive(candidate.surface, candidate);
+    }
+    return state;
+  }
+}
+```
+
+## Production guard examples
+
+See real implementations:
+- [Scheduling guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+- [Remove ineligible guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/remove_ineligible_campaigns_guard.dart)
+- [Sync state guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/sync_state_with_candidates_guard.dart)
+
+<Card
+  title="See all production guards"
+  icon="code"
+  href="https://github.com/itsezlife/presentum/tree/master/campaigns/presentum/guards"
+  horizontal
+>
+  Complete guard implementations from a live app
+</Card>
+

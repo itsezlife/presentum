@@ -1,0 +1,463 @@
+---
+title: "Eligibility system"
+description: "Build complex eligibility rules with conditions, rules, and extractors"
+---
+
+## Overview
+
+The eligibility system helps you declaratively check if presentations should be shown based on complex conditions like time ranges, user segments, app versions, feature flags, and more.
+
+Instead of writing nested if/else statements, you compose `Eligibility` conditions that are evaluated by `EligibilityRule`s.
+
+<Tip>
+  The eligibility system is optional but recommended for complex targeting
+  logic. You can still use manual checks in guards if you prefer.
+</Tip>
+
+## Quick example
+
+```dart
+// Define eligibility conditions
+final eligibility = AllOfEligibility(conditions: [
+  TimeRangeEligibility(
+    start: DateTime(2025, 12, 1),
+    end: DateTime(2025, 12, 31),
+  ),
+  AnySegmentEligibility(
+    contextKey: 'user_segments',
+    requiredSegments: {'premium', 'verified'},
+  ),
+  NumericComparisonEligibility(
+    contextKey: 'app_version',
+    comparison: NumericComparison.greaterThanOrEqual,
+    threshold: 2.0,
+  ),
+]);
+
+// Create resolver
+final resolver = DefaultEligibilityResolver(
+  rules: createStandardRules(),
+  extractors: [
+    TimeRangeExtractor(),
+    AnySegmentExtractor(),
+    NumericComparisonExtractor(),
+  ],
+);
+
+// Evaluate
+final context = {
+  'user_segments': {'premium', 'trial'},
+  'app_version': 2.1,
+};
+
+final isEligible = await resolver.isEligible(campaign, context);
+```
+
+## Built-in conditions
+
+### TimeRangeEligibility
+
+Show only during specific time periods:
+
+```dart
+TimeRangeEligibility(
+  start: DateTime(2025, 11, 29),  // Black Friday starts
+  end: DateTime(2025, 12, 2),     // Cyber Monday ends
+)
+```
+
+### AnySegmentEligibility
+
+User must belong to at least one segment:
+
+```dart
+AnySegmentEligibility(
+  contextKey: 'user_segments',
+  requiredSegments: {'premium', 'verified', 'early_adopter'},
+)
+```
+
+Context must provide:
+
+```dart
+{
+  'user_segments': {'premium', 'active'},  // Set or List
+}
+```
+
+### SetMembershipEligibility
+
+Value must be in allowed set:
+
+```dart
+SetMembershipEligibility(
+  contextKey: 'user_country',
+  allowedValues: {'US', 'CA', 'UK'},
+)
+```
+
+### BooleanFlagEligibility
+
+Boolean flag must match:
+
+```dart
+BooleanFlagEligibility(
+  contextKey: 'is_premium',
+  requiredValue: true,
+)
+```
+
+### NumericComparisonEligibility
+
+Numeric comparisons:
+
+```dart
+NumericComparisonEligibility(
+  contextKey: 'app_version',
+  comparison: NumericComparison.greaterThanOrEqual,
+  threshold: 2.0,
+)
+```
+
+**Comparison operators:**
+
+- `lessThan` - Less than
+- `lessThanOrEqual` - Less than or equal
+- `equal` - Equal
+- `greaterThanOrEqual` - Greater than or equal
+- `greaterThan` - Greater than
+- `notEqual` - Not equal
+
+### StringMatchEligibility
+
+Regex pattern matching:
+
+```dart
+StringMatchEligibility(
+  contextKey: 'device_model',
+  pattern: r'^iPhone\d+',
+  caseSensitive: false,
+)
+```
+
+## Combining conditions
+
+### AllOfEligibility (AND)
+
+ALL conditions must pass:
+
+```dart
+AllOfEligibility(conditions: [
+  TimeRangeEligibility(/* ... */),
+  AnySegmentEligibility(/* ... */),
+  BooleanFlagEligibility(/* ... */),
+])
+```
+
+### AnyOfEligibility (OR)
+
+At least ONE condition must pass:
+
+```dart
+AnyOfEligibility(conditions: [
+  SetMembershipEligibility(
+    contextKey: 'user_country',
+    allowedValues: {'US'},
+  ),
+  SetMembershipEligibility(
+    contextKey: 'user_country',
+    allowedValues: {'CA'},
+  ),
+])
+```
+
+### NotEligibility (NOT)
+
+Invert condition:
+
+```dart
+NotEligibility(
+  condition: BooleanFlagEligibility(
+    contextKey: 'has_purchased',
+    requiredValue: true,
+  ),
+)
+// Shows only to users who haven't purchased
+```
+
+## Complex example
+
+Combine conditions for sophisticated targeting:
+
+```dart
+final eligibility = AllOfEligibility(conditions: [
+  // Must be during Black Friday weekend
+  TimeRangeEligibility(
+    start: DateTime(2025, 11, 29),
+    end: DateTime(2025, 12, 2),
+  ),
+
+  // AND user is premium or verified
+  AnyOfEligibility(conditions: [
+    AnySegmentEligibility(
+      contextKey: 'user_segments',
+      requiredSegments: {'premium'},
+    ),
+    AnySegmentEligibility(
+      contextKey: 'user_segments',
+      requiredSegments: {'verified'},
+    ),
+  ]),
+
+  // AND app version >= 2.0
+  NumericComparisonEligibility(
+    contextKey: 'app_version',
+    comparison: NumericComparison.greaterThanOrEqual,
+    threshold: 2.0,
+  ),
+
+  // AND NOT already purchased
+  NotEligibility(
+    condition: BooleanFlagEligibility(
+      contextKey: 'has_purchased_premium',
+      requiredValue: true,
+    ),
+  ),
+]);
+```
+
+## Extractors
+
+Extractors pull eligibility conditions from your payloads:
+
+```dart
+class TimeRangeExtractor
+    implements EligibilityExtractor<CampaignPayload> {
+  const TimeRangeExtractor({this.metadataKey = 'time_range'});
+
+  final String metadataKey;
+
+  @override
+  List<Eligibility> extract(CampaignPayload subject) {
+    final timeRange = subject.metadata[metadataKey] as Map<String, Object?>?;
+    if (timeRange == null) return [];
+
+    final startStr = timeRange['start'] as String?;
+    final endStr = timeRange['end'] as String?;
+
+    if (startStr == null || endStr == null) return [];
+
+    return [
+      TimeRangeEligibility(
+        start: DateTime.parse(startStr),
+        end: DateTime.parse(endStr),
+      ),
+    ];
+  }
+}
+```
+
+## Using in guards
+
+Integrate eligibility checks in your guards:
+
+```dart
+class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface, CampaignVariant> {
+  CampaignGuard(this.eligibilityResolver);
+
+  final EligibilityResolver<CampaignPayload> eligibilityResolver;
+
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    for (final candidate in candidates) {
+      // Check eligibility
+      final isEligible = await eligibilityResolver.isEligible(
+        candidate.payload,
+        context,
+      );
+
+      if (!isEligible) continue;
+
+      state.setActive(candidate.surface, candidate);
+    }
+
+    return state;
+  }
+}
+```
+
+## Get ineligible condition
+
+Find out WHY something is ineligible:
+
+```dart
+final ineligibleCondition = await resolver.getIneligibleCondition(
+  campaign,
+  context,
+);
+
+if (ineligibleCondition case TimeRangeEligibility(:final start)) {
+  // Campaign hasn't started yet - schedule for later
+  scheduleForFuture(campaign, start);
+} else if (ineligibleCondition != null) {
+  // Campaign is ineligible for other reasons - remove it
+  removeCampaign(campaign);
+}
+```
+
+[See production usage ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart)
+
+## Production example
+
+Here's how a production app uses eligibility:
+
+```dart
+// Define resolver
+final eligibilityResolver = const DefaultEligibilityResolver<CampaignPayload>(
+  rules: [
+    TimeRangeRule(),
+    AnySegmentRule(),
+    ConstantRule(),
+  ],
+  extractors: [
+    TimeRangeExtractor(),
+    AnySegmentExtractor(),
+    ConstantExtractor(metadataKey: 'is_active'),
+  ],
+);
+
+// Use in guards
+class SchedulingGuard extends CampaignGuard {
+  SchedulingGuard(this.eligibility);
+
+  final EligibilityResolver<CampaignPayload> eligibility;
+
+  @override
+  FutureOr<CampaignPresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // Filter eligible campaigns
+    final eligibleIds = <String>{};
+
+    for (final campaign in candidates.map((e) => e.payload).toSet()) {
+      final isEligible = await eligibility.isEligible(campaign, context);
+      if (isEligible) eligibleIds.add(campaign.id);
+    }
+
+    // Process only eligible campaigns
+    final eligible = candidates
+        .where((c) => eligibleIds.contains(c.payload.id))
+        .toList();
+
+    // Apply scheduling logic...
+
+    return state;
+  }
+}
+```
+
+[Full scheduling guard ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+
+## Create custom conditions
+
+Define your own eligibility conditions:
+
+```dart
+// 1. Create condition
+@immutable
+class GeoLocationEligibility extends Eligibility {
+  const GeoLocationEligibility({
+    required this.allowedCountries,
+    required this.allowedRegions,
+  });
+
+  final Set<String> allowedCountries;
+  final Set<String>? allowedRegions;
+}
+
+// 2. Create rule
+class GeoLocationRule implements EligibilityRule<GeoLocationEligibility> {
+  const GeoLocationRule();
+
+  @override
+  bool supports(Eligibility eligibility) =>
+      eligibility is GeoLocationEligibility;
+
+  @override
+  Future<bool> evaluate(
+    GeoLocationEligibility eligibility,
+    Map<String, dynamic> context,
+  ) async {
+    final country = context['user_country'] as String?;
+    final region = context['user_region'] as String?;
+
+    if (country == null) return false;
+
+    final countryMatch = eligibility.allowedCountries.contains(country);
+    if (!countryMatch) return false;
+
+    if (eligibility.allowedRegions case final regions?) {
+      return region != null && regions.contains(region);
+    }
+
+    return true;
+  }
+}
+
+// 3. Create extractor
+class GeoLocationExtractor implements EligibilityExtractor<CampaignPayload> {
+  const GeoLocationExtractor();
+
+  @override
+  List<Eligibility> extract(CampaignPayload subject) {
+    final geo = subject.metadata['geo_targeting'] as Map<String, Object?>?;
+    if (geo == null) return [];
+
+    final countries = (geo['countries'] as List?)?.cast<String>().toSet();
+    final regions = (geo['regions'] as List?)?.cast<String>().toSet();
+
+    if (countries == null) return [];
+
+    return [
+      GeoLocationEligibility(
+        allowedCountries: countries,
+        allowedRegions: regions,
+      ),
+    ];
+  }
+}
+
+// 4. Use in resolver
+final resolver = DefaultEligibilityResolver(
+  rules: [
+    ...createStandardRules(),
+    const GeoLocationRule(),
+  ],
+  extractors: [
+    const TimeRangeExtractor(),
+    const AnySegmentExtractor(),
+    const GeoLocationExtractor(),
+  ],
+);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Guards" icon="shield" href="/core-concepts/guards">
+    Use eligibility in guards
+  </Card>
+
+  <Card title="API reference" icon="book" href="/api-reference/eligibility">
+    Complete eligibility API
+  </Card>
+
+  <Card
+    title="Production example"
+    icon="code"
+    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaigns_presentum_state_mixin.dart">
+    See real-world usage
+  </Card>
+</CardGroup>

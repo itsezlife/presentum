@@ -1,0 +1,280 @@
+---
+title: "Core concepts overview"
+description: "Understand Presentum's architecture and key building blocks"
+---
+
+## Architecture
+
+Presentum separates presentation logic into five clear layers:
+
+<Steps>
+  <Step title="Fetch candidates">
+    Your app fetches presentations from Firebase Remote Config, APIs, or local sources.
+  </Step>
+  
+  <Step title="Feed to engine">
+    Convert to items and feed to Presentum using `setCandidates` or `setCandidatesWithDiff`.
+  </Step>
+  
+  <Step title="Guards process">
+    Engine runs all guards in sequence to determine eligibility, apply rules, and update state.
+  </Step>
+  
+  <Step title="State committed">
+    New state is committed and observers are notified.
+  </Step>
+  
+  <Step title="Outlets rebuild">
+    Outlets watching affected surfaces rebuild with new active items.
+  </Step>
+  
+  <Step title="User interacts">
+    User dismisses or converts, which records to storage and may trigger guard re-evaluation.
+  </Step>
+</Steps>
+
+## The five layers
+
+<CardGroup cols={2}>
+  <Card title="1. Payloads" icon="box" href="/core-concepts/payloads-options-items">
+    Domain data - campaigns, tips, app updates
+  </Card>
+  
+  <Card title="2. Guards" icon="shield" href="/core-concepts/guards">
+    Business logic - eligibility, targeting, scheduling
+  </Card>
+  
+  <Card title="3. Engine" icon="engine" href="/core-concepts/engine">
+    State management - slots, transitions, history
+  </Card>
+  
+  <Card title="4. Storage" icon="database" href="/core-concepts/storage">
+    Persistence - impressions, dismissals, conversions
+  </Card>
+  
+  <Card title="5. Outlets" icon="tv" href="/core-concepts/outlets">
+    UI rendering - widgets without business logic
+  </Card>
+</CardGroup>
+
+## Key concepts
+
+### Surfaces
+
+**Where** presentations appear. Named locations in your UI:
+
+```dart
+enum AppSurface with PresentumSurface {
+  homeTopBanner,
+  watchlistHeader,
+  popup;
+}
+```
+
+[Learn more ->](/core-concepts/surfaces)
+
+### Payloads
+
+**What** you show. Your domain objects:
+
+```dart
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+  final String id;
+  final int priority;
+  final Map<String, Object?> metadata;
+  final List<PresentumOption> options;
+}
+```
+
+[Learn more ->](/core-concepts/payloads-options-items)
+
+### Items
+
+Concrete decisions: "show this payload with this option on this surface":
+
+```dart
+final item = CampaignPresentumItem(
+  payload: campaign,
+  option: campaign.options.first,
+);
+
+// Derived properties
+item.id        // "campaign-123::banner::homeTopBanner"
+item.surface   // AppSurface.homeTopBanner
+item.variant   // CampaignVariant.banner
+item.priority  // 100
+```
+
+[Learn more ->](/core-concepts/payloads-options-items)
+
+### Slots
+
+Each surface has one slot containing:
+- **Active item** - Currently displayed (or null)
+- **Queue** - FIFO list of items waiting
+
+```dart
+PresentumSlot(
+  surface: AppSurface.homeTopBanner,
+  active: campaignItem,
+  queue: [tipItem, alertItem],
+)
+```
+
+[Learn more ->](/core-concepts/slots-state)
+
+### Guards
+
+Business logic that decides what gets shown:
+
+```dart
+class CampaignGuard extends PresentumGuard {
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // Apply your rules
+    return state;
+  }
+}
+```
+
+[Learn more ->](/core-concepts/guards)
+
+## Data flow
+
+<Steps>
+  <Step title="Fetch candidates">
+    Your app fetches presentations from Firebase, APIs, or local sources.
+    
+    ```dart
+    final campaigns = await fetchCampaigns();
+    ```
+  </Step>
+  
+  <Step title="Feed to engine">
+    Convert to items and feed to Presentum.
+    
+    ```dart
+    final items = campaigns.map((c) => CampaignItem(
+      payload: c,
+      option: c.options.first,
+    )).toList();
+
+    engine.setCandidatesWithDiff((state) => items);
+    ```
+  </Step>
+  
+  <Step title="Guards process">
+    Engine runs all guards to determine eligibility.
+    
+    ```dart
+    // In guard
+    for (final candidate in candidates) {
+      if (await isEligible(candidate)) {
+        state.setActive(candidate.surface, candidate);
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="State committed">
+    New state is committed and observers notified.
+  </Step>
+  
+  <Step title="Outlets rebuild">
+    Outlets watching affected surfaces rebuild.
+    
+    ```dart
+    PresentumOutlet(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) => BannerWidget(item),
+    )
+    ```
+  </Step>
+  
+  <Step title="User interacts">
+    User dismisses or converts, triggering new guard evaluation.
+    
+    ```dart
+    await presentum.markDismissed(item);
+    // -> Guards re-run
+    // -> State updates
+    // -> Outlets rebuild
+    ```
+  </Step>
+</Steps>
+
+## Production example
+
+Here's how a production app structures everything:
+
+```dart
+// Surfaces
+enum CampaignSurface with PresentumSurface {
+  popup,
+  watchlistHeader,
+  watchlistFooter,
+  menuTile;
+}
+
+// Variants
+enum CampaignVariant with PresentumVisualVariant {
+  fullscreenDialog,
+  dialog,
+  banner,
+  inline;
+}
+
+// Payload
+class CampaignPayload extends PresentumPayload<CampaignSurface, CampaignVariant> {
+  factory CampaignPayload.fromJson(Map<String, Object?> json) { /* ... */ }
+  // ... fields
+}
+
+// Initialize
+final presentum = Presentum(
+  storage: storage,
+  eventHandlers: [
+    PresentumStorageEventHandler(storage: storage),
+  ],
+  guards: [
+    AppOpenedCountGuard(/* ... */),
+    AppLifecycleChangedGuard(/* ... */),
+    SyncStateWithCandidatesGuard(),
+    CampaignSchedulingGuard(eligibility),
+    RemoveIneligibleCampaignsGuard(eligibility),
+  ],
+);
+
+// Provider fetches from Firebase Remote Config
+final provider = CampaignProvider(
+  storage: storage,
+  engine: presentum.config.engine,
+  eligibility: eligibility,
+  remoteConfig: FirebaseRemoteConfig.instance,
+);
+```
+
+[See full implementation ->](https://github.com/itsezlife/presentum/tree/master/campaigns)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Surfaces" href="/core-concepts/surfaces" icon="location-dot">
+    Define UI locations
+  </Card>
+  
+  <Card title="Payloads" href="/core-concepts/payloads-options-items" icon="box">
+    Create domain objects
+  </Card>
+  
+  <Card title="Guards" href="/core-concepts/guards" icon="shield">
+    Build eligibility logic
+  </Card>
+  
+  <Card title="Outlets" href="/core-concepts/outlets" icon="tv">
+    Render presentations
+  </Card>
+</CardGroup>
+

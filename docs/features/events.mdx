@@ -1,0 +1,377 @@
+---
+title: "Event system"
+description: "Capture and handle presentation lifecycle events"
+---
+
+## Overview
+
+The event system lets you react to presentation lifecycle events like shown, dismissed, and converted.
+
+Events flow through **event handlers** that you register with Presentum. Each handler can perform actions like recording to storage, sending analytics, or triggering business logic.
+
+## Built-in events
+
+Presentum provides three core events:
+
+<CardGroup cols={3}>
+  <Card title="PresentumShownEvent" icon="eye">
+    Fired when a presentation is displayed to the user
+  </Card>
+  <Card title="PresentumDismissedEvent" icon="xmark">
+    Fired when a user dismisses a presentation
+  </Card>
+  <Card title="PresentumConvertedEvent" icon="check">
+    Fired when a user takes action on a presentation
+  </Card>
+</CardGroup>
+
+## Event structure
+
+All events extend `PresentumEvent` and include:
+
+```dart
+abstract class PresentumEvent<TItem, S, V> {
+  abstract final TItem item;        // The presentation item
+  abstract final DateTime timestamp; // When the event occurred
+}
+```
+
+### PresentumShownEvent
+
+```dart
+final event = PresentumShownEvent(
+  item: campaignItem,
+  timestamp: DateTime.now(),
+);
+```
+
+### PresentumDismissedEvent
+
+```dart
+final event = PresentumDismissedEvent(
+  item: campaignItem,
+  timestamp: DateTime.now(),
+);
+```
+
+### PresentumConvertedEvent
+
+```dart
+final event = PresentumConvertedEvent(
+  item: campaignItem,
+  timestamp: DateTime.now(),
+  conversionMetadata: {'source': 'banner', 'campaign_id': 'black-friday'},
+);
+```
+
+## Event handlers
+
+Create handlers by implementing `IPresentumEventHandler`:
+
+```dart
+class AnalyticsEventHandler
+    implements IPresentumEventHandler<CampaignItem, AppSurface, CampaignVariant> {
+  AnalyticsEventHandler(this.analytics);
+
+  final AnalyticsService analytics;
+
+  @override
+  FutureOr<void> call(PresentumEvent event) {
+    switch (event) {
+      case PresentumShownEvent(:final item, :final timestamp):
+        analytics.logImpression(
+          itemId: item.id,
+          surface: item.surface.name,
+          variant: item.variant.name,
+          timestamp: timestamp,
+        );
+
+      case PresentumDismissedEvent(:final item, :final timestamp):
+        analytics.logDismissal(
+          itemId: item.id,
+          surface: item.surface.name,
+          timestamp: timestamp,
+        );
+
+      case PresentumConvertedEvent(:final item, :final timestamp, :final conversionMetadata):
+        analytics.logConversion(
+          itemId: item.id,
+          metadata: {
+            ...item.metadata,
+            ...?conversionMetadata,
+          },
+          timestamp: timestamp,
+        );
+    }
+  }
+}
+```
+
+## Built-in storage handler
+
+`PresentumStorageEventHandler` automatically records events to storage:
+
+```dart
+final storageHandler = PresentumStorageEventHandler<
+  CampaignItem,
+  AppSurface,
+  CampaignVariant
+>(storage: storage);
+
+// Handles:
+// - PresentumShownEvent -> storage.recordShown()
+// - PresentumDismissedEvent -> storage.recordDismissed()
+// - PresentumConvertedEvent -> storage.recordConverted()
+```
+
+## Register handlers
+
+Add handlers when creating Presentum:
+
+```dart
+presentum = Presentum(
+  storage: storage,
+  guards: guards,
+  eventHandlers: [
+    PresentumStorageEventHandler(storage: storage),
+    AnalyticsEventHandler(analyticsService),
+    LoggingEventHandler(),
+    // Add more as needed
+  ],
+);
+```
+
+Handlers run in order. Each receives the same event.
+
+## Trigger events
+
+Events are automatically triggered when you call:
+
+```dart
+// Triggers PresentumShownEvent
+await presentum.markShown(item);
+
+// Triggers PresentumDismissedEvent
+await presentum.markDismissed(item);
+
+// Triggers PresentumConvertedEvent
+await presentum.markConverted(
+  item,
+  conversionMetadata: {'source': 'cta_button'},
+);
+```
+
+## Custom events
+
+Create your own events by extending `PresentumEvent`:
+
+```dart
+// 1. Define event
+final class CampaignViewedEvent<TItem, S, V> extends PresentumEvent<TItem, S, V> {
+  const CampaignViewedEvent({
+    required this.item,
+    required this.timestamp,
+    required this.viewDuration,
+  });
+
+  @override
+  final TItem item;
+
+  @override
+  final DateTime timestamp;
+
+  final Duration viewDuration;
+}
+
+// 2. Create handler
+class ViewDurationHandler implements IPresentumEventHandler<Item, Surface, Variant> {
+  @override
+  FutureOr<void> call(PresentumEvent event) {
+    if (event is CampaignViewedEvent) {
+      analytics.logViewDuration(
+        event.item.id,
+        event.viewDuration,
+      );
+    }
+  }
+}
+
+// 3. Trigger manually
+await presentum.addEvent(
+  CampaignViewedEvent(
+    item: campaignItem,
+    timestamp: DateTime.now(),
+    viewDuration: const Duration(seconds: 30),
+  ),
+);
+```
+
+## Production example
+
+Here's a complete event handling setup from a production app:
+
+```dart
+class CampaignAnalyticsHandler
+    implements IPresentumEventHandler<CampaignItem, CampaignSurface, CampaignVariant> {
+  CampaignAnalyticsHandler(this.analytics);
+
+  final AnalyticsService analytics;
+
+  @override
+  FutureOr<void> call(PresentumEvent event) async {
+    switch (event) {
+      case PresentumShownEvent(:final item):
+        await analytics.logEvent(
+          name: 'campaign_shown',
+          parameters: {
+            'campaign_id': item.payload.id,
+            'surface': item.surface.name,
+            'variant': item.variant.name,
+            'priority': item.priority,
+            ...item.metadata,
+          },
+        );
+
+      case PresentumDismissedEvent(:final item):
+        await analytics.logEvent(
+          name: 'campaign_dismissed',
+          parameters: {
+            'campaign_id': item.payload.id,
+            'surface': item.surface.name,
+            'variant': item.variant.name,
+          },
+        );
+
+      case PresentumConvertedEvent(:final item, :final conversionMetadata):
+        await analytics.logEvent(
+          name: 'campaign_converted',
+          parameters: {
+            'campaign_id': item.payload.id,
+            'surface': item.surface.name,
+            'variant': item.variant.name,
+            ...?conversionMetadata,
+          },
+        );
+    }
+  }
+}
+
+// Register
+presentum = Presentum(
+  storage: storage,
+  eventHandlers: [
+    PresentumStorageEventHandler(storage: storage),
+    CampaignAnalyticsHandler(analyticsService),
+  ],
+  guards: guards,
+);
+```
+
+## Event handler patterns
+
+### Logging handler
+
+```dart
+class LoggingEventHandler implements IPresentumEventHandler<Item, Surface, Variant> {
+  @override
+  FutureOr<void> call(PresentumEvent event) {
+    log('[Presentum Event] ${event.runtimeType}: ${event.item.id}');
+  }
+}
+```
+
+### Backend sync handler
+
+```dart
+class BackendSyncHandler implements IPresentumEventHandler<Item, Surface, Variant> {
+  BackendSyncHandler(this.api);
+
+  final ApiClient api;
+
+  @override
+  FutureOr<void> call(PresentumEvent event) async {
+    await api.post('/events', {
+      'type': event.runtimeType.toString(),
+      'item_id': event.item.id,
+      'timestamp': event.timestamp.toIso8601String(),
+    });
+  }
+}
+```
+
+### BLoC integration handler
+
+```dart
+class BlocEventHandler implements IPresentumEventHandler<Item, Surface, Variant> {
+  BlocEventHandler(this.bloc);
+
+  final CampaignBloc bloc;
+
+  @override
+  FutureOr<void> call(PresentumEvent event) {
+    switch (event) {
+      case PresentumShownEvent(:final item):
+        bloc.add(CampaignShown(item.id));
+      case PresentumDismissedEvent(:final item):
+        bloc.add(CampaignDismissed(item.id));
+      case PresentumConvertedEvent(:final item):
+        bloc.add(CampaignConverted(item.id));
+    }
+  }
+}
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Keep handlers fast">
+    Event handlers run synchronously. Avoid slow operations.
+    
+    **Bad:**
+    ```dart
+    @override
+    Future<void> call(PresentumEvent event) async {
+      await heavyDatabaseOperation(); // Blocks everything
+    }
+    ```
+    
+    **Good:**
+    ```dart
+    @override
+    Future<void> call(PresentumEvent event) {
+      unawaited(heavyDatabaseOperation()); // Fire and forget
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Use PresentumStorageEventHandler">
+    Always include the storage handler to record events:
+    
+    ```dart
+    eventHandlers: [
+      PresentumStorageEventHandler(storage: storage), // ✅ Always first
+      AnalyticsEventHandler(analytics),
+      // Other handlers...
+    ],
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Transition observers"
+    icon="diagram-project"
+    href="/features/transition-observers">
+    React to state changes
+  </Card>
+
+  <Card title="Storage" icon="database" href="/core-concepts/storage">
+    Implement storage interface
+  </Card>
+
+  <Card title="Analytics recipe" icon="chart-line" href="/recipes/analytics">
+    Complete analytics integration
+  </Card>
+</CardGroup>

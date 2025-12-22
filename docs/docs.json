@@ -1,60 +1,65 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "Presentum",
+  "description": "A declarative Flutter engine for building dynamic, conditional UI at scale",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://github.com/itsezlife/presentum"
+  },
+  "favicon": "/favicon.svg",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
     "dark": "#15803D"
   },
-  "favicon": "/favicon.svg",
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
             "group": "Getting started",
-            "pages": ["index", "quickstart", "development"]
+            "pages": ["introduction", "installation", "quickstart"]
           },
           {
-            "group": "Customization",
-            "pages": ["essentials/settings", "essentials/navigation"]
-          },
-          {
-            "group": "Writing content",
+            "group": "Core concepts",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "core-concepts/overview",
+              "core-concepts/surfaces",
+              "core-concepts/payloads-options-items",
+              "core-concepts/slots-state",
+              "core-concepts/guards",
+              "core-concepts/storage",
+              "core-concepts/outlets"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Guides",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/implementing-guards",
+              "guides/implementing-storage",
+              "guides/building-outlets",
+              "guides/state-management"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": ["api-reference/introduction"]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Features",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "features/eligibility-system",
+              "features/events",
+              "features/transition-observers",
+              "features/inherited-widgets"
             ]
+          },
+          {
+            "group": "Recipes",
+            "pages": ["recipes/remote-config"]
+          },
+          {
+            "group": "Advanced",
+            "pages": ["advanced/popup-hosts"]
           }
         ]
       }
@@ -62,33 +67,29 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "icon": "github",
+          "href": "https://github.com/itsezlife/presentum"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "pub.dev",
+          "icon": "box",
+          "href": "https://pub.dev/packages/presentum"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Discussions",
+        "href": "https://github.com/itsezlife/presentum/discussions"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Get Started",
+      "href": "/quickstart"
     }
   },
   "contextual": {
@@ -105,7 +106,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/presentum"
+      "github": "https://github.com/itsezlife/presentum"
     }
   }
 }

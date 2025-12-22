@@ -1,0 +1,41 @@
+---
+title: "Building outlets"
+description: "Create widgets that render presentations"
+---
+
+## Overview
+
+Outlets are widgets that render presentations. They watch a surface and rebuild when the active item changes.
+
+## Basic outlet
+
+```dart
+class MyOutlet extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) {
+        return BannerWidget(
+          title: item.metadata['title'] as String,
+          onClose: () => context
+              .presentum<CampaignItem, AppSurface, CampaignVariant>()
+              .markDismissed(item),
+        );
+      },
+    );
+  }
+}
+```
+
+[Learn more about outlets ->](/core-concepts/outlets)
+
+## Production example
+
+<Card
+  title="See popup host implementation"
+  icon="code"
+  href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart"
+  horizontal>
+  Real-world dialog management with queuing
+</Card>

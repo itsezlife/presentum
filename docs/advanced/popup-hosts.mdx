@@ -1,0 +1,394 @@
+---
+title: "Popup hosts"
+description: "Advanced dialog and overlay management with popup surface hosts"
+---
+
+## What are popup hosts?
+
+Popup hosts are widgets that watch a popup surface and automatically show/dismiss dialogs based on state changes. They handle the complexity of dialog lifecycle, queueing, and navigation integration.
+
+<Tip>
+  Use popup hosts for dialogs, fullscreen overlays, and modal presentations that
+  need to appear over your app content.
+</Tip>
+
+## Built-in mixin
+
+Presentum provides `PresentumPopupSurfaceStateMixin` for automatic popup management:
+
+```dart
+class CampaignPopupHost extends StatefulWidget {
+  const CampaignPopupHost({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<CampaignPopupHost> createState() => _CampaignPopupHostState();
+}
+
+class _CampaignPopupHostState extends State<CampaignPopupHost>
+    with PresentumPopupSurfaceStateMixin<
+      CampaignItem,
+      AppSurface,
+      CampaignVariant,
+      CampaignPopupHost
+    > {
+
+  @override
+  AppSurface get surface => AppSurface.popup;
+
+  @override
+  Future<void> markDismissed({
+    required CampaignItem entry,
+    bool pop = false,
+  }) async {
+    await context.presentum<CampaignItem, AppSurface, CampaignVariant>()
+        .markDismissed(entry);
+
+    if (pop && mounted) {
+      await Navigator.maybePop(context, true);
+    }
+  }
+
+  @override
+  Future<void> present(CampaignItem entry) async {
+    if (!mounted) return;
+
+    // Record impression
+    await context.presentum<CampaignItem, AppSurface, CampaignVariant>()
+        .markShown(entry);
+
+    if (!mounted) return;
+
+    final presentum = context.presentum<CampaignItem, AppSurface, CampaignVariant>();
+
+    // Show dialog
+    final result = await showDialog<bool?>(
+      context: context,
+      builder: (context) => InheritedPresentum.value(
+        value: presentum,
+        child: InheritedPresentumItem(
+          item: entry,
+          child: CampaignDialogWidget(entry),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    // Handle result
+    if (result == null || result == false) {
+      await markDismissed(entry: entry);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+## What the mixin provides
+
+The `PresentumPopupSurfaceStateMixin` automatically:
+
+1. **Watches the popup surface** for state changes
+2. **Shows dialogs** when active item changes
+3. **Dismisses dialogs** when active becomes null
+4. **Queues popups** - shows them one at a time
+5. **Prevents duplicates** - won't show same item twice
+
+### Required implementations
+
+You must implement:
+
+```dart
+@override
+PresentumSurface get surface; // Which surface to watch
+
+@override
+Future<void> markDismissed({required TItem entry, bool pop = false});
+
+@override
+Future<void> present(TItem entry);
+```
+
+## Production example
+
+Here's the full production popup host:
+
+```dart
+class CampaignPopupHost extends StatefulWidget {
+  const CampaignPopupHost({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<CampaignPopupHost> createState() => _CampaignPopupHostState();
+}
+
+class _CampaignPopupHostState extends State<CampaignPopupHost>
+    with PresentumPopupSurfaceStateMixin<
+      CampaignPresentumItem,
+      CampaignSurface,
+      CampaignVariant,
+      CampaignPopupHost
+    > {
+
+  @override
+  CampaignSurface get surface => CampaignSurface.popup;
+
+  @override
+  Future<void> markDismissed({
+    required CampaignPresentumItem entry,
+    bool pop = false,
+  }) async {
+    final campaigns = context.campaigns;
+    await campaigns.markDismissed(entry);
+
+    if (pop && mounted) {
+      await Navigator.maybePop(context, true);
+    }
+  }
+
+  @override
+  Future<void> present(CampaignPresentumItem entry) async {
+    try {
+      if (!mounted) return;
+
+      final campaigns = context.campaigns;
+      await campaigns.markShown(entry);
+
+      if (!mounted) return;
+
+      final factory = campaignsPresentationWidgetFactory;
+      final isFullscreen = entry.option.variant == CampaignVariant.fullscreenDialog;
+
+      // Show appropriate dialog type
+      final result = await showDialog<bool?>(
+        context: context,
+        builder: (context) => InheritedPresentum.value(
+          value: campaigns,
+          child: InheritedPresentumItem(
+            item: entry,
+            child: factory.buildPopup(context, entry),
+          ),
+        ),
+        barrierDismissible: false,
+        useSafeArea: !isFullscreen,
+      );
+
+      if (result == null || result == false) {
+        await markDismissed(entry: entry);
+      }
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'CampaignPopupHost',
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+[See full source ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart)
+
+## Usage
+
+Wrap your app or a subtree with the popup host:
+
+```dart
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return presentum.config.engine.build(
+      context,
+      CampaignPopupHost(
+        child: MaterialApp(
+          home: HomeScreen(),
+        ),
+      ),
+    );
+  }
+}
+```
+
+The host watches for popup surface changes and shows dialogs automatically.
+
+## Dialog widget
+
+Create dialogs that access the item via InheritedPresentumItem:
+
+```dart
+class CampaignDialogWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // Access item from InheritedPresentumItem
+    final item = context.presentumItem<
+      CampaignItem,
+      AppSurface,
+      CampaignVariant
+    >();
+
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              item.metadata['title'] as String,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+            Text(item.metadata['message'] as String),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Dismiss'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () async {
+                    await context
+                        .presentum<CampaignItem, AppSurface, CampaignVariant>()
+                        .markConverted(item);
+                    if (context.mounted) {
+                      Navigator.pop(context, true);
+                    }
+                  },
+                  child: const Text('Take Action'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+## Custom show logic
+
+Override `present` for custom dialog behavior:
+
+```dart
+@override
+Future<void> present(CampaignItem entry) async {
+  if (!mounted) return;
+
+  final presentum = context.presentum<CampaignItem, AppSurface, CampaignVariant>();
+  await presentum.markShown(entry);
+
+  if (!mounted) return;
+
+  // Custom routing or modal presentation
+  final result = await Navigator.of(context).push<bool>(
+    MaterialPageRoute(
+      builder: (context) => InheritedPresentum.value(
+        value: presentum,
+        child: InheritedPresentumItem(
+          item: entry,
+          child: FullscreenCampaignPage(entry),
+        ),
+      ),
+      fullscreenDialog: true,
+    ),
+  );
+
+  if (result == null || result == false) {
+    await markDismissed(entry: entry);
+  }
+}
+```
+
+## Queuing behavior
+
+Popup hosts automatically queue multiple popups:
+
+```
+State: popup surface has 3 items
+├─ active: Campaign A
+└─ queue: [Campaign B, Campaign C]
+
+User flow:
+1. Campaign A dialog shows
+2. User dismisses A
+3. Campaign B dialog shows automatically
+4. User dismisses B
+5. Campaign C dialog shows automatically
+```
+
+The mixin handles this automatically.
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Wrap InheritedPresentumItem">
+    Always wrap dialog content with `InheritedPresentumItem` so descendants can access the item:
+    
+    ```dart
+    builder: (context) => InheritedPresentumItem(
+      item: entry,
+      child: MyDialogContent(),
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Record impressions before showing">
+    Call `markShown` before displaying the dialog, not after:
+    
+    ```dart
+    // ✅ Good
+    await presentum.markShown(entry);
+    await showDialog(...);
+    
+    // ❌ Bad
+    await showDialog(...);
+    await presentum.markShown(entry); // Too late
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle dismissal properly">
+    Mark as dismissed only if user closed it (not if programmatically popped):
+    
+    ```dart
+    final result = await showDialog<bool?>(...);
+    
+    if (result == null || result == false) {
+      await markDismissed(entry: entry); // User dismissed
+    }
+    // result == true means user converted, no dismissal
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Outlets" icon="tv" href="/core-concepts/outlets">
+    Learn about outlet widgets
+  </Card>
+
+  <Card
+    title="Inherited widgets"
+    icon="sitemap"
+    href="/features/inherited-widgets">
+    Using InheritedPresentumItem
+  </Card>
+
+  <Card
+    title="Production example"
+    icon="code"
+    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart">
+    Complete popup host implementation
+  </Card>
+</CardGroup>

@@ -1,0 +1,275 @@
+---
+title: "Transition observers"
+description: "React to state changes with comprehensive diff snapshots"
+---
+
+## Overview
+
+Transition observers let you react to state changes in the Presentum engine. Unlike event handlers (which respond to user actions like shown/dismissed/converted), transition observers respond to **internal state changes**.
+
+Each transition includes a comprehensive diff showing exactly what changed between states.
+
+<Info>
+  **Use transition observers for:** - Integrating with BLoC, Provider, Cubit -
+  Conditional data fetching based on active items - Custom analytics for state
+  flow - Debug logging of state changes
+</Info>
+
+## Basic observer
+
+```dart
+class StateChangeObserver
+    implements IPresentumTransitionObserver<CampaignItem, AppSurface, CampaignVariant> {
+
+  @override
+  FutureOr<void> call(PresentumStateTransition transition) {
+    final diff = transition.diff;
+
+    log('State changed at ${transition.timestamp}');
+    log('Activated: ${diff.activated.length}');
+    log('Deactivated: ${diff.deactivated.length}');
+  }
+}
+```
+
+## Transition structure
+
+Every transition includes:
+
+<ParamField path="oldState" type="PresentumState$Immutable" required>
+  State before the transition
+</ParamField>
+
+<ParamField path="newState" type="PresentumState$Immutable" required>
+  State after the transition
+</ParamField>
+
+<ParamField path="timestamp" type="DateTime" required>
+  When the transition occurred
+</ParamField>
+
+<ParamField path="diff" type="PresentumStateDiff">
+  Lazily computed diff between old and new states
+</ParamField>
+
+## Diff information
+
+The `diff` property provides:
+
+```dart
+final diff = transition.diff;
+
+// Items that became active
+for (final change in diff.activated) {
+  print('${change.item.id} activated on ${change.surface}');
+}
+
+// Items that became inactive
+for (final change in diff.deactivated) {
+  print('${change.item.id} deactivated from ${change.surface}');
+}
+
+// Items added to queues
+for (final change in diff.queued) {
+  print('${change.item.id} queued on ${change.surface}');
+}
+
+// Items removed from queues
+for (final change in diff.dequeued) {
+  print('${change.item.id} dequeued from ${change.surface}');
+}
+
+// New surfaces that appeared
+for (final surface in diff.surfacesAdded) {
+  print('Surface added: $surface');
+}
+
+// Surfaces that were removed
+for (final surface in diff.surfacesRemoved) {
+  print('Surface removed: $surface');
+}
+```
+
+## Integrating with BLoC
+
+Fire events to your business logic layer:
+
+```dart
+class BlocTransitionObserver
+    implements IPresentumTransitionObserver<CampaignItem, AppSurface, CampaignVariant> {
+  BlocTransitionObserver(this.campaignBloc);
+
+  final CampaignBloc campaignBloc;
+
+  @override
+  FutureOr<void> call(PresentumStateTransition transition) {
+    final diff = transition.diff;
+
+    // Fire BLoC events for state changes
+    for (final change in diff.activated) {
+      campaignBloc.add(
+        PresentationActivated(
+          itemId: change.item.id,
+          surface: change.surface,
+        ),
+      );
+    }
+
+    for (final change in diff.deactivated) {
+      campaignBloc.add(
+        PresentationDeactivated(
+          itemId: change.item.id,
+          surface: change.surface,
+        ),
+      );
+    }
+
+    for (final change in diff.queued) {
+      campaignBloc.add(
+        PresentationQueued(
+          itemId: change.item.id,
+          surface: change.surface,
+          queuePosition: transition.newState.slots[change.surface]!.queue
+              .indexWhere((item) => item.id == change.item.id),
+        ),
+      );
+    }
+  }
+}
+```
+
+## Register observers
+
+Add transition observers when creating Presentum:
+
+```dart
+presentum = Presentum(
+  storage: storage,
+  guards: guards,
+  transitionObservers: [
+    BlocTransitionObserver(campaignBloc),
+    LoggingObserver(),
+  ],
+);
+```
+
+## Conditional data fetching
+
+Fetch additional data when specific presentations become active:
+
+```dart
+class DataFetchObserver
+    implements IPresentumTransitionObserver<CampaignItem, AppSurface, CampaignVariant> {
+  DataFetchObserver(this.dataService);
+
+  final DataService dataService;
+
+  @override
+  FutureOr<void> call(PresentumStateTransition transition) async {
+    for (final change in transition.diff.activated) {
+      // Fetch product details when product promo becomes active
+      if (change.item.metadata['type'] == 'product_promo') {
+        final productId = change.item.metadata['product_id'] as String;
+        await dataService.prefetchProductDetails(productId);
+      }
+    }
+  }
+}
+```
+
+## Debug logging
+
+Track state flow in development:
+
+```dart
+class DebugLoggingObserver
+    implements IPresentumTransitionObserver<CampaignItem, AppSurface, CampaignVariant> {
+
+  @override
+  FutureOr<void> call(PresentumStateTransition transition) {
+    final diff = transition.diff;
+
+    if (diff.activated.isEmpty &&
+        diff.deactivated.isEmpty &&
+        diff.queued.isEmpty) {
+      return; // No meaningful changes
+    }
+
+    log('═' * 50);
+    log('State transition at ${transition.timestamp}');
+    log('─' * 50);
+
+    if (diff.activated.isNotEmpty) {
+      log('✓ Activated:');
+      for (final change in diff.activated) {
+        log('  • ${change.item.id} on ${change.surface}');
+      }
+    }
+
+    if (diff.deactivated.isNotEmpty) {
+      log('✗ Deactivated:');
+      for (final change in diff.deactivated) {
+        log('  • ${change.item.id} from ${change.surface}');
+      }
+    }
+
+    if (diff.queued.isNotEmpty) {
+      log('⋯ Queued:');
+      for (final change in diff.queued) {
+        log('  • ${change.item.id} on ${change.surface}');
+      }
+    }
+
+    log('═' * 50);
+  }
+}
+```
+
+## Important notes
+
+<Warning>
+**Do NOT call `setState` or `transaction` inside transition observers.**
+
+This creates circular dependencies and infinite loops. Instead, dispatch events to your business logic layer (BLoC, Provider) which can then coordinate state changes through the public API.
+
+```dart
+// ❌ Wrong - causes infinite loop
+@override
+FutureOr<void> call(PresentumStateTransition transition) {
+  presentum.setState((state) => ...); // Don't do this!
+}
+
+// ✅ Correct - dispatch to business logic
+@override
+FutureOr<void> call(PresentumStateTransition transition) {
+  bloc.add(StateChanged(transition)); // Business logic decides what to do
+}
+```
+
+</Warning>
+
+<Info>
+Transition observers run **after guards approve** but **before** listeners are notified. They're synchronous in the state change flow.
+
+If an observer throws, the state transition continues. Other observers still run.
+
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Event system" icon="bolt" href="/features/events">
+    Handle user interaction events
+  </Card>
+
+  <Card title="Guards" icon="shield" href="/core-concepts/guards">
+    Control what gets shown
+  </Card>
+
+  <Card
+    title="State structure"
+    icon="diagram-project"
+    href="/core-concepts/slots-state">
+    Understand state and diffs
+  </Card>
+</CardGroup>

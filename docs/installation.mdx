@@ -1,0 +1,90 @@
+---
+title: "Installation"
+description: "Install Presentum in your Flutter project"
+---
+
+## Prerequisites
+
+<Info>
+Before installing Presentum, ensure you have the Flutter SDK installed. Visit [flutter.dev](https://docs.flutter.dev/get-started/install) for installation instructions.
+</Info>
+
+## Add Presentum
+
+Add Presentum to your Flutter project using the Dart CLI:
+
+```bash
+dart pub add presentum
+```
+
+Or manually add it to your `pubspec.yaml`:
+
+```yaml pubspec.yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  presentum: <version>
+```
+
+Then run:
+
+```bash
+flutter pub get
+```
+
+<Check>
+That's it! Presentum is now installed and ready to use.
+</Check>
+
+## Optional dependencies
+
+Depending on your use case, you might want to add:
+
+<Tabs>
+  <Tab title="SharedPreferences">
+    For simple persistent storage:
+    
+    ```bash
+    dart pub add shared_preferences
+    ```
+  </Tab>
+  
+  <Tab title="Firebase Remote Config">
+    For remote campaign management:
+    
+    ```bash
+    dart pub add firebase_remote_config
+    ```
+  </Tab>
+  
+  <Tab title="Analytics">
+    For tracking events:
+    
+    ```bash
+    dart pub add firebase_analytics
+    # or
+    dart pub add mixpanel_flutter
+    ```
+  </Tab>
+</Tabs>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Build your first presentation in 5 minutes
+  </Card>
+  
+  <Card
+    title="Core concepts"
+    icon="lightbulb"
+    href="/core-concepts/overview"
+  >
+    Learn the fundamentals
+  </Card>
+</CardGroup>
+
