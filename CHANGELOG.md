@@ -1,3 +1,6 @@
+## 0.3.1
+- **Feat**: Added PresentumPopupSurfaceStateMixin mixin to streamline popup presentum displaying with reactive observing, presenting and dismissing upon declarative removing from the active state slot.
+
 ## 0.3.0
 - **Docs**: Added comprehensive docs with Mintlify
 
