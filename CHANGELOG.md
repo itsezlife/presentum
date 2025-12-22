@@ -1,3 +1,6 @@
+## 0.3.1+1
+- **Chore**: renamed `popup_host.dart` file to `popup_surface_state_mixin.dart`
+
 ## 0.3.1
 - **Feat**: Added PresentumPopupSurfaceStateMixin mixin to streamline popup presentum displaying with reactive observing, presenting and dismissing upon declarative removing from the active state slot.
 
