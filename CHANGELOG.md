@@ -1,3 +1,7 @@
+## 0.2.6
+- **Chore**: Removed `moved` callback from `setCandidatesWithDiff` because detectMoves
+is false regardless.
+
 ## 0.2.5
 
 - **Feat(transitions):** add observer system for lifecycle hooks

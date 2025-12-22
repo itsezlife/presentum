@@ -93,7 +93,6 @@ final class PresentumEngine$Impl<
     bool Function(TItem oldItem, TItem newItem)? customContentsComparison,
     void Function(int position, List<TItem> newItems)? inserted,
     void Function(int position, int count)? removed,
-    void Function(int fromPosition, int toPosition)? moved,
     void Function(int position, int count, TItem? payload)? changed,
   }) async {
     final mutableState = _observer.value.mutate()
