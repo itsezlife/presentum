@@ -4,16 +4,16 @@
 [![Linter][linter_badge]][linter_link]
 [![GitHub stars](https://img.shields.io/github/stars/itsezlife/presentum?style=social)](https://github.com/itsezlife/presentum/)
 
-**Presentum** is a declarative Flutter engine for building dynamic, conditional UI at scale. It helps you manage campaigns, app updates, special offers, tips, and notifications with clean, testable, type-safe code.
+**Presentum** is a declarative Flutter engine for building dynamic, conditional UI at scale. It helps you manage campaigns, app updates, special offers, tips, notifications and so much more with clean, testable, type-safe code.
 
-Modern apps need personalized, adaptive experiences: show the right message to the right user at the right time, with impression limits, cooldowns, A/B testing, and analytics. Presentum handles this through declarative guards and rendering outlets.
+Modern apps need personalized, adaptive experiences: show the right message to the right user at the right time, with impression limits, cooldowns, A/B testing, and analytics. Presentum handles all of that.
 
 ## The problem
 
 Most apps manage presentations by mixing logic across widgets and state managers:
 
 ```dart
-// ❌ Logic spread everywhere, hard to test
+// ❌ Violates SOLID, doesn't scale, hard to test
 class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -33,13 +33,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final count = await prefs.getInt('banner_count') ?? 0;
     final lastShown = await prefs.getInt('banner_last_shown');
 
-    if (count < 3 &&
-        (lastShown == null ||
-         DateTime.now().difference(
-           DateTime.fromMillisecondsSinceEpoch(lastShown)
-         ).inHours > 24)) {
+    final withinTimeRange =
+            DateTime.now().difference(DateTime.prase(lastShown)).inHours > 24;
+    if (count < 3 && (lastShown == null || withinTimeRange)) {
       final campaign = await fetchCampaign();
-      if (campaign != null && campaign.isActive && !userIsPremium) {
+      if (campaign case final campaign?
+          when campaign.isActive && !userIsPremium) {
         setState(() {
           _showBanner = true;
           _campaign = campaign;
@@ -52,12 +51,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (_showBanner && _campaign != null)
+        if (_campaign case final campaign? when _showBanner)
           BannerWidget(
-            campaign: _campaign!,
+            campaign: _campaign,
             onClose: () => _handleDismiss(),
           ),
-        // ...
+        // other content
       ],
     );
   }
@@ -103,7 +102,7 @@ class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
         surface: candidate.surface,
         variant: candidate.variant,
       );
-      if (lastShown != null) {
+      if (lastShown case final lastShown?) {
         final hoursSince = DateTime.now().difference(lastShown).inHours;
         if (hoursSince < candidate.cooldownHours) continue;
       }
@@ -157,6 +156,8 @@ Presentum coordinates the flow between your data sources, eligibility rules, and
 
 ## What you can build
 
+This, and so much more:
+
 <table>
 <tr>
 <td width="50%">
@@ -204,19 +205,21 @@ Presentum coordinates the flow between your data sources, eligibility rules, and
 </tr>
 </table>
 
-**Presentum handles ANY condition you need:**
+Presentum handles ANY condition you need:
 
 - User segments (premium, free, trial)
 - Geographic location (country, region, city)
 - App version (force update for old versions)
 - Device type (phone, tablet, platform)
+- OS type (iPhone, Android, Web)
 - User behavior (purchase history, usage patterns)
 - Time-based rules (holidays, business hours)
 - A/B test groups
-- Feature flags
+- Feature flags (is_active)
 - Custom business logic
 
-The engine is flexible and scalable—if you can write a rule for it, Presentum can handle it.
+The engine is flexible and scalable - if you can write a rule for it, Presentum can handle it.
+With Presentum the only limit is your imagination.
 
 ## Core concepts
 
@@ -229,6 +232,7 @@ enum AppSurface with PresentumSurface {
   homeTopBanner,      // Top of home screen
   watchlistHeader,    // Watchlist header area
   profileAlert,       // Profile page alert
+  popup,              // Modal overlay dialogs
 }
 ```
 
@@ -250,30 +254,24 @@ class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
 **How** payloads appear, with constraints:
 
 ```dart
-PresentumOption(
+class CampaignPresentumOption
+    extends PresentumOption<CampaignSurface, CampaignVariant> {
+  final CampaignSurface surface;
+  final CampaignVariant variant;
+  final bool isDismissible;
+  final int? stage;
+  final int? maxImpressions;
+  final int? cooldownMinutes;
+  final bool alwaysOnIfEligible;
+}
+
+CampaignPresentumOption(
   surface: AppSurface.homeTopBanner,
   variant: CampaignVariant.banner,
   maxImpressions: 3,       // Show at most 3 times
   cooldownMinutes: 1440,   // Wait 24h between shows
   isDismissible: true,     // User can close it
 )
-```
-
-### Guards
-
-**When** to show. Your eligibility rules:
-
-```dart
-class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
-  @override
-  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
-    storage, history, state, candidates, context,
-  ) async {
-    // Apply your business logic here
-    // Check user segments, A/B tests, feature flags, etc.
-    return state;
-  }
-}
 ```
 
 ### Outlets
@@ -301,223 +299,157 @@ class MyOutlet extends StatelessWidget {
 }
 ```
 
-## Key features
+## How to present
 
-- **Type-safe**: Generics ensure compile-time correctness
-- **Predictable state**: Time-travel debugging and replay
-- **Testable**: Mock storage, test guards independently
-- **Eligibility engine**: Conditions, rules, metadata extractors
-- **Tracking**: Impressions, dismissals, conversions
-- **Lifecycle**: Monitor state transitions
-- **Multi-surface**: Coordinate across multiple locations
-- **Flexible storage**: SharedPreferences, SQLite, backend APIs
+Use the `context.presentum.setState((state) => ...)` method as a basic presentum method.
 
-## Installation
-
-Add Presentum to your `pubspec.yaml`:
-
-```sh
-dart pub add presentum
-```
-
-## Quick start
-
-### 1. Define surfaces and variants
+And realize any presentum logic inside the callback as you please.
 
 ```dart
-enum AppSurface with PresentumSurface {
-  homeTopBanner,
-  profileAlert;
-}
-
-enum CampaignVariant with PresentumVisualVariant {
-  banner,
-  dialog;
-}
+context.presentum.setState((state) {
+  state.setActive(AppSurface.homeTopBanner, campaignItem);
+  state.enqueue(AppSurface.profileAlert, alertItem);
+  return state;
+});
 ```
 
-### 2. Create your payload
+You can truly do anything you want.
+Just change the state, slots, active items, and queues as you please.
+Everything is in your hands and just works fine, that's a declarative approach as it should be.
+
+Guards should be your primary tool for scheduling presentations, removing ineligible items, periodic refreshes, and complex eligibility rules. Use direct state changes when you need a very explicit controll.
+
+## Guards
+
+Guards are a powerful tool for controlling presentations.
+They allow you to check the state and mutate/filter items based on eligibility rules.
+For example, you can check user preferences, storage, history, impression limits, cooldowns, or A/B test segments to determine what should be shown.
+
+## Eligibility system
+
+Build complex eligibility checks using conditions, rules, and extractors:
 
 ```dart
-class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
-  CampaignPayload({
-    required this.id,
-    required this.priority,
-    required this.metadata,
-    required this.options,
-  });
-
-  @override
-  final String id;
-
-  @override
-  final int priority;
-
-  @override
-  final Map<String, Object?> metadata;
-
-  @override
-  final List<PresentumOption<AppSurface, CampaignVariant>> options;
-}
-
-typedef CampaignItem = PresentumItem<
-  CampaignPayload,
-  AppSurface,
-  CampaignVariant
->;
-```
-
-### 3. Implement storage
-
-```dart
-class MyStorage implements PresentumStorage<AppSurface, CampaignVariant> {
-  // Implement: recordShown, getShownCount, getLastShown,
-  // recordDismissed, getDismissedAt, recordConverted, getConvertedAt
-}
-```
-
-### 4. Create a guard
-
-```dart
-class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
-  @override
-  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
-    storage, history, state, candidates, context,
-  ) async {
-    for (final candidate in candidates) {
-      if (await isEligible(candidate, storage)) {
-        state.setActive(candidate.surface, candidate);
-      }
-    }
-    return state;
-  }
-}
-```
-
-### 5. Initialize Presentum
-
-```dart
-final presentum = Presentum<CampaignItem, AppSurface>(
-  storage: MyStorage(),
-  guards: [CampaignGuard()],
-);
-
-// Wrap your app
-presentum.config.engine.build(
-  context,
-  MaterialApp(home: HomeScreen()),
-);
-```
-
-### 6. Create an outlet
-
-```dart
-class HomeTopBannerOutlet extends StatelessWidget {
-  const HomeTopBannerOutlet({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return PresentumOutlet<CampaignItem, AppSurface>(
-      surface: AppSurface.homeTopBanner,
-      builder: (context, item) {
-        return BannerWidget(
-          title: item.metadata['title'],
-          onClose: () => context
-              .presentum<CampaignItem, AppSurface>()
-              .markDismissed(item),
-        );
-      },
-    );
-  }
-}
-```
-
-### 7. Render it
-
-```dart
-class HomeScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const HomeTopBannerOutlet(),
-        // Your content...
-      ],
-    );
-  }
-}
-```
-
-### 8. Feed candidates
-
-```dart
-// From Firebase, API, local source, etc.
-final campaigns = await fetchCampaigns();
-final items = campaigns.map((c) => CampaignItem(
-  payload: c,
-  option: c.options.first,
-)).toList();
-
-// Feed to engine
-await presentum.config.engine.setCandidates(
-  (state, current) {
-    // Use built-in diff helper or custom logic
-    return DiffUtil.merge(current, items);
-  },
-);
-```
-
-## Advanced features
-
-### Eligibility system
-
-Build complex rules with conditions and extractors:
-
-```dart
-final rule = AndCondition([
-  MetadataCondition(
-    extractor: PathExtractor('/user/segment'),
-    rule: EqualsRule('premium'),
+// Define eligibility conditions
+final eligibility = AllOfEligibility(conditions: [
+  TimeRangeEligibility(
+    start: DateTime(2025, 1, 1),
+    end: DateTime(2025, 12, 31),
   ),
-  MetadataCondition(
-    extractor: PathExtractor('/campaign/region'),
-    rule: ContainsRule('US'),
+  AnySegmentEligibility(
+    contextKey: 'user_segments',
+    requiredSegments: {'premium', 'verified'},
+  ),
+  NumericComparisonEligibility(
+    contextKey: 'app_version',
+    comparison: NumericComparison.greaterThanOrEqual,
+    threshold: 2.0,
   ),
 ]);
 
-if (await rule.evaluate(item.metadata, storage)) {
-  state.setActive(surface, item);
+// Create resolver with standard rules
+final resolver = DefaultEligibilityResolver(
+  rules: createStandardRules(),
+  extractors: [
+    TimeRangeExtractor(),
+    AnySegmentExtractor(),
+    NumericComparisonExtractor(),
+  ],
+);
+
+// Evaluate in your guard
+final context = {
+  'user_segments': {'premium', 'trial'},
+  'app_version': 2.1,
+};
+
+final isEligible = await resolver.isEligible(candidate.payload, context);
+if (isEligible) {
+  state.setActive(candidate.surface, candidate);
 }
 ```
 
-### Transition observers
+## Transition observers
 
-Hook into lifecycle events:
+React to state changes with comprehensive diff snapshots. Useful for integrating with BLoC, Provider, or other state management:
 
 ```dart
-class AnalyticsObserver extends PresentumTransitionObserver<Item, Surface> {
-  @override
-  Future<void> onAfterShown(item, surface) async {
-    analytics.logImpression(item.id);
-  }
+class StateChangeObserver implements IPresentumTransitionObserver<Item, Surface, Variant> {
+  StateChangeObserver(this.bloc);
+
+  final MyBloc bloc;
 
   @override
-  Future<void> onAfterConverted(item, surface) async {
-    analytics.logConversion(item.id, item.metadata);
+  FutureOr<void> call(PresentumStateTransition<Item, Surface, Variant> transition) {
+    final diff = transition.diff;
+
+    // Fire events to your business logic layer
+    for (final change in diff.activated) {
+      bloc.add(PresentationActivated(change.item, change.surface));
+    }
+
+    for (final change in diff.deactivated) {
+      bloc.add(PresentationDeactivated(change.item, change.surface));
+    }
+
+    for (final change in diff.queued) {
+      bloc.add(PresentationQueued(change.item, change.surface));
+    }
   }
 }
 
 presentum = Presentum(
   storage: storage,
-  bindings: bindings,
   guards: guards,
-  observers: [AnalyticsObserver()],
+  transitionObservers: [StateChangeObserver(myBloc)],
 );
 ```
 
-### Auto-tracking widgets
+## Event system
 
-Widgets that automatically call `markShown`:
+Capture user interactions with a flexible event system:
+
+```dart
+// Built-in events: PresentumShownEvent, PresentumDismissedEvent, PresentumConvertedEvent
+
+// Create custom event handlers
+class AnalyticsEventHandler implements IPresentumEventHandler<Item, Surface, Variant> {
+  AnalyticsEventHandler(this.analytics);
+
+  final AnalyticsService analytics;
+
+  @override
+  FutureOr<void> call(PresentumEvent<Item, Surface, Variant> event) {
+    switch (event) {
+      case PresentumShownEvent(:final item, :final timestamp):
+        analytics.logImpression(item.id, timestamp);
+      case PresentumDismissedEvent(:final item, :final timestamp):
+        analytics.logDismissal(item.id, timestamp);
+      case PresentumConvertedEvent(:final item, :final timestamp, :final conversionMetadata):
+        analytics.logConversion(item.id, timestamp, conversionMetadata);
+    }
+  }
+}
+
+// Register event handlers
+presentum = Presentum(
+  storage: storage,
+  guards: guards,
+  eventHandlers: [
+    PresentumStorageEventHandler(storage: storage), // Built-in storage handler
+    AnalyticsEventHandler(analyticsService),
+    // Add more handlers as needed
+  ],
+);
+
+// Manually add custom events
+await presentum.addEvent(MyCustomEvent(item: item, timestamp: DateTime.now()));
+```
+
+## Auto-tracking widgets
+
+Widgets that automatically call `markShown` when widget renders and persists
+`showed` value in `PageStorage` to prevent any redundant calls:
 
 ```dart
 TrackedWidget(
@@ -528,23 +460,155 @@ TrackedWidget(
 )
 ```
 
-### Multi-surface composition
+## State structure
 
-Merge items from multiple surfaces:
+Under the hood, Presentum manages state as a map of **slots**, where each slot represents one surface in your app.
+
+Imagine you have three surfaces in your app showing different presentations:
+
+```
+homeTopBanner
+├─ active: Campaign "Black Friday Sale" (priority: 100)
+└─ queue: [
+     Campaign "New Year Promo" (priority: 80),
+     Tip "Swipe to refresh" (priority: 50)
+   ]
+
+profileAlert
+├─ active: AppUpdate "Version 2.0 Available" (priority: 200)
+└─ queue: []
+
+settingsNotice
+├─ active: null
+└─ queue: [
+     Tip "Enable notifications" (priority: 60)
+   ]
+```
+
+Let's create the following state to represent our expectations:
 
 ```dart
-PresentumOutlet$Composition(
-  surface: AppSurface.homeTopBanner,
-  builder: (context, active, queue) {
-    return Column(
-      children: [
-        if (active != null) ActiveWidget(active),
-        ...queue.map((item) => QueuedWidget(item)),
+final state = PresentumState$Immutable<CampaignItem, AppSurface, CampaignVariant>(
+  intention: PresentumStateIntention.auto,
+  slots: {
+    AppSurface.homeTopBanner: PresentumSlot(
+      surface: AppSurface.homeTopBanner,
+      active: CampaignItem(
+        payload: CampaignPayload(
+          id: 'black-friday-2025',
+          priority: 100,
+          metadata: {
+            'title': 'Black Friday Sale',
+            'discount': '50%',
+            'expiresAt': '2025-11-30T23:59:59Z',
+          },
+          options: [
+            CampaignOption(
+              surface: AppSurface.homeTopBanner,
+              variant: CampaignVariant.banner,
+              maxImpressions: 5,
+              cooldownMinutes: 1440,
+              isDismissible: true,
+            ),
+          ],
+        ),
+        option: CampaignOption(/* ... */),
+      ),
+      queue: [
+        CampaignItem(
+          payload: CampaignPayload(
+            id: 'new-year-promo-2026',
+            priority: 80,
+            metadata: {
+              'title': 'New Year Promo',
+              'discount': '30%',
+            },
+            options: [/* ... */],
+          ),
+          option: CampaignOption(/* ... */),
+        ),
+        TipItem(
+          payload: TipPayload(
+            id: 'tip-swipe-refresh',
+            priority: 50,
+            metadata: {
+              'title': 'Swipe to refresh',
+              'description': 'Pull down to see latest updates',
+            },
+            options: [/* ... */],
+          ),
+          option: TipOption(/* ... */),
+        ),
       ],
-    );
+    ),
+    AppSurface.profileAlert: PresentumSlot(
+      surface: AppSurface.profileAlert,
+      active: AppUpdateItem(
+        payload: AppUpdatePayload(
+          id: 'app-update-2.0',
+          priority: 200,
+          metadata: {
+            'version': '2.0.0',
+            'isForced': false,
+            'releaseNotes': 'New features and improvements',
+          },
+          options: [/* ... */],
+        ),
+        option: AppUpdateOption(/* ... */),
+      ),
+      queue: [],
+    ),
+    AppSurface.settingsNotice: PresentumSlot(
+      surface: AppSurface.settingsNotice,
+      active: null,  // Nothing currently shown
+      queue: [
+        TipItem(
+          payload: TipPayload(
+            id: 'tip-enable-notifications',
+            priority: 60,
+            metadata: {
+              'title': 'Enable notifications',
+              'description': 'Stay updated with important alerts',
+            },
+            options: [/* ... */],
+          ),
+          option: TipOption(/* ... */),
+        ),
+      ],
+    ),
   },
-)
+);
 ```
+
+Each slot is a container for one surface with:
+
+```dart
+PresentumSlot<TItem, S, V> {
+  final S surface;           // Where it appears
+  final TItem? active;       // What's showing now
+  final List<TItem> queue;   // What's waiting
+}
+```
+
+When you dismiss the active item, the next queued item automatically becomes active:
+
+Before dismissing an item:
+
+```
+homeTopBanner
+├─ active: "Black Friday Sale"
+└─ queue: ["New Year Promo", "Swipe to refresh"]
+```
+
+After dismissing or ineligibility removal:
+
+```
+homeTopBanner
+├─ active: "New Year Promo"  <- Promoted from queue
+└─ queue: ["Swipe to refresh"]
+```
+
+This happens automatically via `state.clearActive(surface)` or when you call `presentum.markDismissed(item)`.
 
 ## Changelog
 
