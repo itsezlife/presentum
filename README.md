@@ -1,442 +1,565 @@
 # Presentum
 
-<!-- [![Pub][pub_badge]][pub_link] -->
-<!-- [![CI][ci_badge]][ci_link] -->
-
-[![License: MIT][pub_badge]][license_link]
+[![License: MIT][license_badge]][license_link]
 [![Linter][linter_badge]][linter_link]
 [![GitHub stars](https://img.shields.io/github/stars/itsezlife/presentum?style=social)](https://github.com/itsezlife/presentum/)
 
-A declarative cross-platform Flutter engine with focus on state to display presentations, such as campaigns, banners, notifications, etc., anywhere, anytime.
+**Presentum** is a declarative Flutter engine for building dynamic, conditional UI at scale. It helps you manage campaigns, app updates, special offers, tips, and notifications with clean, testable, type-safe code.
 
-Presentum is a strongly typed presentation engine inspired by Octopus router. It lets you describe what should be shown on each presentation surface as immutable state, while a pure engine, guards, storage and outlets take care of:
+Modern apps need personalized, adaptive experiences: show the right message to the right user at the right time, with impression limits, cooldowns, A/B testing, and analytics. Presentum handles this through declarative guards and rendering outlets.
 
-- resolving which payloads are eligible
-- deciding how and where they appear
-- tracking impressions, dismissals and conversions
-- rendering them in the UI without business logic in widgets
+## The problem
 
-Presentum is **not** a router, **not** a layout system and **not** a generic rules engine. It focuses on one thing: orchestrating presentations such as campaigns, banners, tips, and system messages across your app.
-
-## Installation
-
-In order to use Presentum you must have the [Flutter SDK][flutter_install_link] installed.
-
-Add the package to your `pubspec.yaml`:
-
-```sh
-dart pub add presentum
-```
-
-## Core concepts
-
-### Surfaces
-
-A **surface** is a concrete place in your UI where presentations can appear, for example:
-
-- `homeTopBanner`
-- `watchlistHeader`
-- `tickerPageInlineTip`
-
-Surfaces implement `PresentumSurface`, usually via enums:
+Most apps manage presentations by mixing logic across widgets and state managers:
 
 ```dart
-enum AppSurface with PresentumSurface {
-  homeTopBanner,
-  watchlistHeader;
+// ❌ Logic spread everywhere, hard to test
+class HomeScreen extends StatefulWidget {
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
 }
-```
 
-All engine generics use `S extends PresentumSurface`, not raw `Enum`. Surfaces describe **where** something is presented, independent of which domain owns it.
-
-### Payloads and options
-
-A **payload** is the domain object you want to show: a campaign, a tip, a system message, and so on. It has:
-
-- an id and priority
-- metadata for your domain
-- a list of options describing how it may appear on different surfaces
-
-```dart
-enum CampaignVisual { banner, inline, dialog }
-
-class CampaignPayload extends PresentumPayload<AppSurface, CampaignVisual> {
-  CampaignPayload({
-    required this.id,
-    required this.priority,
-    required this.metadata,
-    required this.options,
-  });
+class _HomeScreenState extends State<HomeScreen> {
+  bool _showBanner = false;
+  Campaign? _campaign;
 
   @override
-  final String id;
-
-  @override
-  final int priority;
-
-  @override
-  final Map<String, Object?> metadata;
-
-  @override
-  final List<PresentumOption<AppSurface, CampaignVisual>> options;
-}
-```
-
-Each option ties a payload to a surface and a visual style:
-
-```dart
-const homeBanner = PresentumOption<AppSurface, CampaignVisual>(
-  surface: AppSurface.homeTopBanner,
-  visual: CampaignVisual.banner,
-  stage: 0,
-  maxImpressions: 5,
-  cooldownMinutes: 60,
-  alwaysOnIfEligible: false,
-  isDismissible: true,
-);
-```
-
-### Presentation items
-
-A **presentation item** is a concrete decision: "show payload P with option V on surface S now".
-
-```dart
-typedef CampaignItem = PresentumItem<
-  CampaignPayload,
-  AppSurface,
-  CampaignVisual
->;
-```
-
-This is the type that flows through state, guards and outlets. It gives you:
-
-- the domain payload (`payload`),
-- the presentation option (`option`),
-- the derived `surface`, `visual`, `priority`, `metadata` and `stage`.
-
-### Slots and state
-
-State is modelled as **slots** per surface plus an **intention**:
-
-- one `active` item per surface
-- an ordered `queue` of additional items per surface
-
-```dart
-final slot = PresentumSlot<CampaignItem, AppSurface>(
-  surface: AppSurface.homeTopBanner,
-  active: campaignItem,
-  queue: <CampaignItem>[],
-);
-```
-
-`PresentumState<TItem, S>` is a sealed root with immutable and mutable implementations:
-
-- `PresentumState$Immutable` is the snapshot exposed to widgets and observers,
-- `PresentumState$Mutable` is used inside the engine and guards to mutate slots.
-
-The `PresentumStateIntention` controls history and semantics:
-
-- `auto`: default; history is updated when values change,
-- `replace`: overwrite the last history entry,
-- `append`: explicitly push a new history entry,
-- `cancel`: abort transition, do not change state.
-
-### Storage
-
-`PresentumStorage` is the persistence contract for impressions, dismissals and conversions. You provide an implementation that fits your stack (shared preferences, SQLite, REST backend, analytics pipeline, and so on).
-
-```dart
-class InMemoryPresentumStorage implements PresentumStorage {
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> clear() async {}
-
-  @override
-  FutureOr<void> recordShown(
-    String itemId, {
-    required Enum surface,
-    required Enum visual,
-    required DateTime at,
-  }) {
-    // Track impressions.
+  void initState() {
+    super.initState();
+    _checkEligibility();
   }
 
-  // Implement getLastShown, getShownCount, recordDismissed,
-  // getDismissedUntil, recordConverted...
-}
-```
+  Future<void> _checkEligibility() async {
+    final count = await prefs.getInt('banner_count') ?? 0;
+    final lastShown = await prefs.getInt('banner_last_shown');
 
-Guards and commands use storage; the engine treats it as an abstraction.
-
-### Guards
-
-Guards are the behaviour layer. Here is what they do:
-
-- inspect history, storage, current mutable state and the current candidates
-- apply eligibility and sequencing rules
-- mutate the passed state (add/remove/replace items in slots)
-- optionally cancel transitions
-
-```dart
-class CampaignGuard
-    extends PresentumGuard<CampaignItem, AppSurface> {
-  CampaignGuard({super.refresh});
-
-  @override
-  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
-    PresentumStorage storage,
-    List<PresentumHistoryEntry<CampaignItem, AppSurface>> history,
-    PresentumState$Mutable<CampaignItem, AppSurface> state,
-    List<CampaignItem> candidates,
-    Map<String, Object?> context,
-  ) {
-    // Example: only allow the highest priority campaign per surface.
-    for (final candidate in candidates) {
-      final surface = candidate.surface;
-      final existing = state.slots[surface]?.active;
-      if (existing == null || candidate.priority > existing.priority) {
-        state.setActive(surface, candidate);
-        // maybe queue others...
+    if (count < 3 &&
+        (lastShown == null ||
+         DateTime.now().difference(
+           DateTime.fromMillisecondsSinceEpoch(lastShown)
+         ).inHours > 24)) {
+      final campaign = await fetchCampaign();
+      if (campaign != null && campaign.isActive && !userIsPremium) {
+        setState(() {
+          _showBanner = true;
+          _campaign = campaign;
+        });
       }
     }
-
-    return state;
   }
-}
-```
-
-Guards can subscribe to external changes using the optional `refresh` `Listenable`; when `notifyListeners` is called, the engine re‑runs all guards against the current state.
-
-### Architecture overview
-
-Presentum is split into:
-
-- **`Presentum<TItem, S>`** - the main controller API:
-  - exposes `state`, `observer`, `history`
-  - provides `transaction`, `pushSlot`, `markShown`, `markDismissed`, `markConverted`, `removeById`, `setState` and others
-  - owns a `PresentumConfig` instance
-- **`PresentumEngine<TItem, S>`** - pure core engine that:
-  - holds the current immutable state and history (via the observer)
-  - processes transitions through a queue
-  - runs guards in order
-  - commits new state to the observer
-- **`PresentumStateObserver<TItem, S>`** - wraps the latest immutable state and a history list
-
-You only implement this logic: collect candidates from providers and events, apply diffing algorithm to identify inserts/updates/removes, and update state with new candidates in the engine via `setCandidates`. This separation keeps the engine generic and testable while leaving integrations up to you.
-
-### Outlets
-
-Outlets are simple widgets that render whatever the state implies for a surface. There is no business logic in the widgets themselves.
-
-- `PresentumOutlet<TItem, S>` renders at most one item (the active one)
-- `PresentumOutlet$Composition<TItem, S>` resolved active + queue from a surface slot and passes them to the builder
-- `PresentumOutlet$Composition2` and `PresentumOutlet$Composition3` can merge items across two or three different presentums
-
-```dart
-class HomeTopBannerOutlet
-    extends PresentumOutlet<CampaignItem, AppSurface> {
-  const HomeTopBannerOutlet({super.key})
-      : super(surface: AppSurface.homeTopBanner);
-
-  @override
-  PresentumBuilder<CampaignItem> get builder =>
-      (context, item) {
-        final payload = item.payload;
-        return BannerWidget(
-          title: payload.metadata['title'] as String? ?? '',
-          onClose: () =>
-              context
-                  .presentum<CampaignItem, AppSurface>()
-                  .markDismissed(item),
-        );
-      };
-}
-```
-
-If no item is active for the surface, outlets render `SizedBox.shrink()`.
-
-## Quick start
-
-### 1. Define surfaces and visual styles
-
-```dart
-enum AppSurface with PresentumSurface {
-  homeTopBanner,
-  watchlistHeader;
-}
-
-enum CampaignVisual with PresentumVisualVariant {
-  banner,
-  inline,
-  dialog;
-}
-```
-
-### 2. Define payload and item types
-
-```dart
-class CampaignPayload extends PresentumPayload<AppSurface, CampaignVisual> {
-  CampaignPayload({
-    required this.id,
-    required this.priority,
-    required this.metadata,
-    required this.options,
-  });
-
-  @override
-  final String id;
-
-  @override
-  final int priority;
-
-  @override
-  final Map<String, Object?> metadata;
-
-  @override
-  final List<PresentumOption<AppSurface, CampaignVisual>> options;
-}
-
-typedef CampaignItem = PresentumItem<
-  CampaignPayload,
-  AppSurface,
-  CampaignVisual
->;
-```
-
-### 3. Provide storage and guards
-
-```dart
-final storage = PersistentStorage();
-
-final guards = <IPresentumGuard<CampaignItem, AppSurface>>[
-  CampaignGuard(),
-];
-```
-
-### 4. Create a Presentum instance
-
-```dart
-final presentum = Presentum<CampaignItem, AppSurface>(
-  storage: storage,
-  bindings: PresentumBindings<CampaignItem, AppSurface>(
-    surfaceOf: (item) => item.surface,
-    visualOf: (item) => item.visual,
-  ),
-  guards: guards,
-);
-```
-
-### 5. Wire the engine into the widget tree
-
-Use the engine to inject an `InheritedPresentum` into your app subtree:
-
-```dart
-class App extends StatelessWidget {
-  const App({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return presentum.config.engine.build(
-      context,
-      MaterialApp(
-        home: HomeScreen(),
-      ),
-    );
-  }
-}
-```
-
-You can later access the same `presentum` instance with:
-
-```dart
-final presentum = context
-    .presentum<CampaignItem, AppSurface>();
-```
-
-or:
-
-```dart
-final presentum = Presentum.of<CampaignItem, AppSurface>(context);
-```
-
-### 6. Feed candidates into the engine
-
-You collect candidates (for example from the Firebase Remote config), process diff against already existing candidates, and passes updated candidates to the engine. A typical pattern is to do this from a `Bloc`, `ChangeNotifier` or custom service:
-
-```dart
-Future<void> updateCampaigns(
-  List<CampaignItem> next,
-) async {
-  await presentum.config.engine.setCandidates(
-    (state, current) {
-      // your logic here ...
-    },
-  );
-}
-```
-
-Guards now receive the updated `candidates` list and can decide which ones should become active or queued in each slot.
-
-### 7. Render surfaces with outlets
-
-In your widgets, use outlets to render current state:
-
-```dart
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const HomeTopBannerOutlet(),
-        Expanded(
-          child: ListView(
-            children: const [
-              // Other content...
-            ],
+        if (_showBanner && _campaign != null)
+          BannerWidget(
+            campaign: _campaign!,
+            onClose: () => _handleDismiss(),
           ),
-        ),
+        // ...
       ],
     );
   }
 }
 ```
 
-For more complex layouts, use `PresentumOutlet$Composition` to combine active and queued items or merge multiple different surfaces by type.
+This doesn't scale. With multiple presentation types, surfaces, eligibility rules, and A/B tests, complexity grows fast.
+
+## The solution
+
+Presentum separates **what** (payloads), **when** (guards), **where** (surfaces), and **how** (outlets):
+
+```dart
+// ✅ Declarative, testable, maintainable
+
+// 1. Define domain data
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+  final String id;
+  final int priority;
+  final Map<String, Object?> metadata;
+  final List<PresentumOption<AppSurface, CampaignVariant>> options;
+  // Extend as needed, add whatever else you might need...
+}
+
+// 2. Define logic in guards
+class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
+  @override
+  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
+    storage, history, state, candidates, context,
+  ) async {
+    for (final candidate in candidates) {
+      // Check impression count
+      final count = await storage.getShownCount(
+        candidate.id,
+        surface: candidate.surface,
+        variant: candidate.variant,
+      );
+      if (count >= 3) continue;
+
+      // Check cooldown
+      final lastShown = await storage.getLastShown(
+        candidate.id,
+        surface: candidate.surface,
+        variant: candidate.variant,
+      );
+      if (lastShown != null) {
+        final hoursSince = DateTime.now().difference(lastShown).inHours;
+        if (hoursSince < candidate.cooldownHours) continue;
+      }
+
+      // Check user eligibility
+      if (!await _isEligible(candidate)) continue;
+
+      // All checks passed
+      state.setActive(candidate.surface, candidate);
+    }
+    return state;
+  }
+}
+
+// 3. Display widget with built-in outlet
+class HomeTopBannerOutlet extends StatelessWidget {
+  const HomeTopBannerOutlet({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<CampaignItem, AppSurface>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) {
+        return BannerWidget(
+          campaign: item.payload,
+          onClose: () => context
+              .presentum<CampaignItem, AppSurface>()
+              .markDismissed(item),
+        );
+      },
+    );
+  }
+}
+```
+
+**All eligibility logic is centralized.** The outlet renders. The payload is data. Guards contain business rules. Everything is testable.
+
+## How it works
+
+Presentum coordinates the flow between your data sources, eligibility rules, and UI:
+
+1. **Data Fetching**: Your app fetches candidates from Supabase, Firebase Remote config, APIs, or local sources
+2. **Engine Processing**: The Presentum Engine receives candidates and runs eligibility checks through guards
+3. **State Management**: Engine updates state, manages slots per surface, and tracks history/transitions
+4. **UI Rendering**: Outlets render active items based on current state
+5. **User Interaction**: Users interact with presented items (dismiss, convert, etc.)
+6. **Event Recording**: Storage layer records all user interactions and state changes
+7. **Re-evaluation**: Guards re-evaluate eligibility as needed based on new data or interactions
+
+## What you can build
+
+<table>
+<tr>
+<td width="50%">
+
+**App updates & maintenance**
+
+- Force update dialogs (Shorebird, CodePush)
+- Optional update prompts
+- Maintenance mode notices
+- Changelog announcements
+
+</td>
+<td width="50%">
+
+**Marketing & promotions**
+
+- Special offers with discount codes
+- Limited-time sales
+- Seasonal campaigns
+- Multi-variant A/B tests
+
+</td>
+</tr>
+<tr>
+<td>
+
+**User onboarding**
+
+- Feature discovery tips
+- Contextual tutorials
+- Progressive disclosure
+- Completion tracking
+
+</td>
+<td>
+
+**In-app messaging**
+
+- User-specific promotions
+- Survey requests
+- Upgrade prompts for premium features
+- Time-sensitive alerts
+
+</td>
+</tr>
+</table>
+
+**Presentum handles ANY condition you need:**
+
+- User segments (premium, free, trial)
+- Geographic location (country, region, city)
+- App version (force update for old versions)
+- Device type (phone, tablet, platform)
+- User behavior (purchase history, usage patterns)
+- Time-based rules (holidays, business hours)
+- A/B test groups
+- Feature flags
+- Custom business logic
+
+The engine is flexible and scalable—if you can write a rule for it, Presentum can handle it.
+
+## Core concepts
+
+### Surfaces
+
+**Where** presentations appear. Named locations in your UI:
+
+```dart
+enum AppSurface with PresentumSurface {
+  homeTopBanner,      // Top of home screen
+  watchlistHeader,    // Watchlist header area
+  profileAlert,       // Profile page alert
+}
+```
+
+### Payloads
+
+**What** you want to show. Your domain objects:
+
+```dart
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+  final String id;
+  final int priority;
+  final Map<String, Object?> metadata;
+  final List<PresentumOption<AppSurface, CampaignVariant>> options;
+}
+```
+
+### Options
+
+**How** payloads appear, with constraints:
+
+```dart
+PresentumOption(
+  surface: AppSurface.homeTopBanner,
+  variant: CampaignVariant.banner,
+  maxImpressions: 3,       // Show at most 3 times
+  cooldownMinutes: 1440,   // Wait 24h between shows
+  isDismissible: true,     // User can close it
+)
+```
+
+### Guards
+
+**When** to show. Your eligibility rules:
+
+```dart
+class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
+  @override
+  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // Apply your business logic here
+    // Check user segments, A/B tests, feature flags, etc.
+    return state;
+  }
+}
+```
+
+### Outlets
+
+**Rendering** widgets. Just UI code:
+
+```dart
+class MyOutlet extends StatelessWidget {
+  const MyOutlet({
+    required this.surface,
+    super.key,
+  });
+
+  final MySurface surface;
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<MyItem, MySurface>(
+      surface: surface,
+      builder: (context, item) {
+        return MyWidget(item);
+      },
+    );
+  }
+}
+```
+
+## Key features
+
+- **Type-safe**: Generics ensure compile-time correctness
+- **Predictable state**: Time-travel debugging and replay
+- **Testable**: Mock storage, test guards independently
+- **Eligibility engine**: Conditions, rules, metadata extractors
+- **Tracking**: Impressions, dismissals, conversions
+- **Lifecycle**: Monitor state transitions
+- **Multi-surface**: Coordinate across multiple locations
+- **Flexible storage**: SharedPreferences, SQLite, backend APIs
+
+## Installation
+
+Add Presentum to your `pubspec.yaml`:
+
+```sh
+dart pub add presentum
+```
+
+## Quick start
+
+### 1. Define surfaces and variants
+
+```dart
+enum AppSurface with PresentumSurface {
+  homeTopBanner,
+  profileAlert;
+}
+
+enum CampaignVariant with PresentumVisualVariant {
+  banner,
+  dialog;
+}
+```
+
+### 2. Create your payload
+
+```dart
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+  CampaignPayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+  });
+
+  @override
+  final String id;
+
+  @override
+  final int priority;
+
+  @override
+  final Map<String, Object?> metadata;
+
+  @override
+  final List<PresentumOption<AppSurface, CampaignVariant>> options;
+}
+
+typedef CampaignItem = PresentumItem<
+  CampaignPayload,
+  AppSurface,
+  CampaignVariant
+>;
+```
+
+### 3. Implement storage
+
+```dart
+class MyStorage implements PresentumStorage<AppSurface, CampaignVariant> {
+  // Implement: recordShown, getShownCount, getLastShown,
+  // recordDismissed, getDismissedAt, recordConverted, getConvertedAt
+}
+```
+
+### 4. Create a guard
+
+```dart
+class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
+  @override
+  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
+    storage, history, state, candidates, context,
+  ) async {
+    for (final candidate in candidates) {
+      if (await isEligible(candidate, storage)) {
+        state.setActive(candidate.surface, candidate);
+      }
+    }
+    return state;
+  }
+}
+```
+
+### 5. Initialize Presentum
+
+```dart
+final presentum = Presentum<CampaignItem, AppSurface>(
+  storage: MyStorage(),
+  guards: [CampaignGuard()],
+);
+
+// Wrap your app
+presentum.config.engine.build(
+  context,
+  MaterialApp(home: HomeScreen()),
+);
+```
+
+### 6. Create an outlet
+
+```dart
+class HomeTopBannerOutlet extends StatelessWidget {
+  const HomeTopBannerOutlet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<CampaignItem, AppSurface>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) {
+        return BannerWidget(
+          title: item.metadata['title'],
+          onClose: () => context
+              .presentum<CampaignItem, AppSurface>()
+              .markDismissed(item),
+        );
+      },
+    );
+  }
+}
+```
+
+### 7. Render it
+
+```dart
+class HomeScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const HomeTopBannerOutlet(),
+        // Your content...
+      ],
+    );
+  }
+}
+```
+
+### 8. Feed candidates
+
+```dart
+// From Firebase, API, local source, etc.
+final campaigns = await fetchCampaigns();
+final items = campaigns.map((c) => CampaignItem(
+  payload: c,
+  option: c.options.first,
+)).toList();
+
+// Feed to engine
+await presentum.config.engine.setCandidates(
+  (state, current) {
+    // Use built-in diff helper or custom logic
+    return DiffUtil.merge(current, items);
+  },
+);
+```
+
+## Advanced features
+
+### Eligibility system
+
+Build complex rules with conditions and extractors:
+
+```dart
+final rule = AndCondition([
+  MetadataCondition(
+    extractor: PathExtractor('/user/segment'),
+    rule: EqualsRule('premium'),
+  ),
+  MetadataCondition(
+    extractor: PathExtractor('/campaign/region'),
+    rule: ContainsRule('US'),
+  ),
+]);
+
+if (await rule.evaluate(item.metadata, storage)) {
+  state.setActive(surface, item);
+}
+```
+
+### Transition observers
+
+Hook into lifecycle events:
+
+```dart
+class AnalyticsObserver extends PresentumTransitionObserver<Item, Surface> {
+  @override
+  Future<void> onAfterShown(item, surface) async {
+    analytics.logImpression(item.id);
+  }
+
+  @override
+  Future<void> onAfterConverted(item, surface) async {
+    analytics.logConversion(item.id, item.metadata);
+  }
+}
+
+presentum = Presentum(
+  storage: storage,
+  bindings: bindings,
+  guards: guards,
+  observers: [AnalyticsObserver()],
+);
+```
+
+### Auto-tracking widgets
+
+Widgets that automatically call `markShown`:
+
+```dart
+TrackedWidget(
+  presentum: presentum,
+  item: campaignItem,
+  trackVisibility: true,
+  builder: (context) => MyCampaignWidget(),
+)
+```
+
+### Multi-surface composition
+
+Merge items from multiple surfaces:
+
+```dart
+PresentumOutlet$Composition(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, active, queue) {
+    return Column(
+      children: [
+        if (active != null) ActiveWidget(active),
+        ...queue.map((item) => QueuedWidget(item)),
+      ],
+    );
+  },
+)
+```
 
 ## Changelog
 
-Refer to the [Changelog](https://github.com/itsezlife/presentum/blob/master/CHANGELOG.md) to get all release notes.
-
-## Maintainers
-
-- [Emil Zulufov aka ezIT](https://ezit.vercel.app)
-
-<!-- ## Funding
-
-If you want to support the development of our library, there are several ways you can do it:
-
-- [Buy me a coffee](https://www.buymeacoffee.com/plugfox)
-- [Support on Patreon](https://www.patreon.com/plugfox)
-- [Subscribe through Boosty](https://boosty.to/plugfox) -->
-
-<!-- We appreciate any form of support, whether it's a financial donation or just a star on GitHub. It helps us to continue developing and improving our library. Thank you for your support! -->
+See [CHANGELOG.md](https://github.com/itsezlife/presentum/blob/master/CHANGELOG.md) for release notes.
 
 ## License
 
-Presentum is available under the [MIT License][license_link].
+MIT License. See [LICENSE](LICENSE) for details.
 
-[pub_badge]: https://img.shields.io/pub/v/presentum.svg
-[pub_link]: https://pub.dev/packages/presentum
-[ci_badge]: https://github.com/itsezlife/presentum/actions/workflows/main.yaml/badge.svg?branch=master
-[ci_link]: https://github.com/itsezlife/presentum/actions/workflows/main.yaml
-[coverage_badge]: coverage_badge.svg
-[coverage_link]: coverage/index.html
-[flutter_install_link]: https://docs.flutter.dev/get-started/install
-[github_actions_link]: https://docs.github.com/en/actions/learn-github-actions
+## Maintainers
+
+- [Emil Zulufov](https://ezit.vercel.app) ([@itsezlife](https://github.com/itsezlife))
+
+---
+
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT
 [linter_badge]: https://img.shields.io/badge/style-linter-40c4ff.svg
