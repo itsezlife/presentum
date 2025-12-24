@@ -1,0 +1,363 @@
+---
+title: "User preferences (feature toggles that remove UI everywhere)"
+description: "Build Settings toggles from a server-driven catalog, and make disabling/removal propagate across the entire app declaratively."
+---
+
+## Goal
+
+You want users to be able to **disable/enable parts of UI** from Settings. But you also want something stronger:
+
+> If a feature disappears from your data source, it should disappear from **Settings** and from **everywhere else** automatically.
+
+This recipe shows a clean pattern using Presentum:
+
+- A **server-driven feature catalog** (what toggles exist)
+- A **user preference store** (which features are enabled)
+- A **single guard** that enforces both across all presentations
+- A **settings surface** that renders toggle rows declaratively
+
+---
+
+## 1) Surfaces + variants
+
+```dart
+enum AppSurface with PresentumSurface {
+  homeHeader,
+  settingsToggles, // "settings list" is a Presentum surface too
+}
+
+enum AppVariant with PresentumVisualVariant {
+  banner,
+  settingToggleRow,
+}
+```
+
+---
+
+## 2) Feature catalog (data source → “these toggles exist”)
+
+This is *the* source of truth for what should be visible in Settings.
+
+```dart
+@immutable
+final class FeatureDefinition {
+  const FeatureDefinition({
+    required this.key,
+    required this.title,
+    required this.description,
+    this.defaultEnabled = true,
+  });
+
+  final String key;
+  final String title;
+  final String description;
+  final bool defaultEnabled;
+}
+
+final class FeatureCatalogStore extends ChangeNotifier {
+  Map<String, FeatureDefinition> _features = const {};
+
+  Map<String, FeatureDefinition> get features => _features;
+  bool exists(String key) => _features.containsKey(key);
+
+  void replaceAll(Iterable<FeatureDefinition> list) {
+    _features = {for (final f in list) f.key: f};
+    notifyListeners();
+  }
+}
+```
+
+When the server removes a feature, `replaceAll(...)` removes it from the map ⇒ it “doesn’t exist” anymore.
+
+---
+
+## 3) User preferences (per-user enabled/disabled)
+
+```dart
+final class FeaturePreferencesStore extends ChangeNotifier {
+  final Map<String, bool> _overrides = <String, bool>{};
+
+  bool? overrideFor(String featureKey) => _overrides[featureKey];
+
+  void setEnabled(String featureKey, bool enabled) {
+    _overrides[featureKey] = enabled;
+    notifyListeners();
+  }
+}
+```
+
+---
+
+## 4) Presentum modeling (payload / option / item)
+
+We’ll use one payload type for both:
+
+- “real UI presentations” (e.g. `homeHeader` banners)
+- “settings toggle rows” (rendered in a list)
+
+```dart
+@immutable
+final class FeatureOption extends PresentumOption<AppSurface, AppVariant> {
+  const FeatureOption({
+    required this.surface,
+    required this.variant,
+    required this.isDismissible,
+    this.stage,
+    this.maxImpressions,
+    this.cooldownMinutes,
+    this.alwaysOnIfEligible = true,
+  });
+
+  @override
+  final AppSurface surface;
+
+  @override
+  final AppVariant variant;
+
+  @override
+  final int? stage;
+
+  @override
+  final int? maxImpressions;
+
+  @override
+  final int? cooldownMinutes;
+
+  @override
+  final bool alwaysOnIfEligible;
+
+  @override
+  final bool isDismissible;
+}
+
+@immutable
+final class FeaturePayload extends PresentumPayload<AppSurface, AppVariant> {
+  const FeaturePayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+    required this.featureKey,
+  });
+
+  @override
+  final String id;
+
+  @override
+  final int priority;
+
+  @override
+  final Map<String, Object?> metadata;
+
+  @override
+  final List<PresentumOption<AppSurface, AppVariant>> options;
+
+  /// The feature this presentation belongs to (used by the preference guard).
+  final String featureKey;
+}
+
+@immutable
+final class FeatureItem
+    extends PresentumItem<FeaturePayload, AppSurface, AppVariant> {
+  const FeatureItem({required this.payload, required this.option});
+
+  @override
+  final FeaturePayload payload;
+
+  @override
+  final PresentumOption<AppSurface, AppVariant> option;
+}
+```
+
+---
+
+## 5) Provider: emit candidates for both Settings and real UI
+
+This provider is the bridge:
+
+- It reads the **catalog** to know what exists
+- It emits **settings toggle row** items for all features
+- It optionally emits some **real UI** items that depend on those features
+
+```dart
+final class FeatureDrivenProvider extends ChangeNotifier {
+  FeatureDrivenProvider({
+    required this.engine,
+    required this.catalog,
+  }) {
+    catalog.addListener(_sync);
+    // Initial sync so the Settings list is immediately populated.
+    Future.microtask(_sync);
+  }
+
+  final PresentumEngine<FeatureItem, AppSurface, AppVariant> engine;
+  final FeatureCatalogStore catalog;
+
+  Future<void> _sync() async {
+    final candidates = <FeatureItem>[];
+
+    // 1) Settings: one row per feature that exists right now.
+    for (final feature in catalog.features.values) {
+      final payload = FeaturePayload(
+        id: 'settings_toggle:${feature.key}',
+        featureKey: feature.key,
+        priority: 0,
+        metadata: {
+          'title': feature.title,
+          'description': feature.description,
+        },
+        options: const [
+          FeatureOption(
+            surface: AppSurface.settingsToggles,
+            variant: AppVariant.settingToggleRow,
+            isDismissible: false,
+            alwaysOnIfEligible: true,
+          ),
+        ],
+      );
+
+      for (final opt in payload.options) {
+        candidates.add(FeatureItem(payload: payload, option: opt));
+      }
+    }
+
+    // 2) Example “real UI”: a promo banner that belongs to a feature.
+    // If the feature is removed from the catalog, it disappears everywhere
+    // because the provider stops emitting it.
+    if (catalog.exists('new_year_theme')) {
+      final payload = FeaturePayload(
+        id: 'banner:new_year_theme',
+        featureKey: 'new_year_theme',
+        priority: 50,
+        metadata: {'title': 'Holiday theme enabled'},
+        options: const [
+          FeatureOption(
+            surface: AppSurface.homeHeader,
+            variant: AppVariant.banner,
+            isDismissible: true,
+            alwaysOnIfEligible: true,
+          ),
+        ],
+      );
+
+      for (final opt in payload.options) {
+        candidates.add(FeatureItem(payload: payload, option: opt));
+      }
+    }
+
+    await engine.setCandidatesWithDiff((state) => candidates);
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    catalog.removeListener(_sync);
+    super.dispose();
+  }
+}
+```
+
+---
+
+## 6) Guard: enforce “exists” + “user enabled” across the entire app
+
+This is where the magic happens.
+
+Rules:
+
+- If a feature **does not exist** in the catalog ⇒ remove it from state
+- If user **disabled** it ⇒ remove it from state
+
+```dart
+final class FeaturePreferenceGuard
+    extends PresentumGuard<FeatureItem, AppSurface, AppVariant> {
+  FeaturePreferenceGuard({
+    required this.catalog,
+    required this.prefs,
+  }) : super(refresh: Listenable.merge([catalog, prefs]));
+
+  final FeatureCatalogStore catalog;
+  final FeaturePreferencesStore prefs;
+
+  @override
+  PresentumState<FeatureItem, AppSurface, AppVariant> call(
+    storage,
+    history,
+    PresentumState$Mutable<FeatureItem, AppSurface, AppVariant> state,
+    candidates,
+    context,
+  ) {
+    bool isEnabledByUser(String featureKey) =>
+        prefs.overrideFor(featureKey) ?? (catalog.features[featureKey]?.defaultEnabled ?? true);
+
+    // Remove from slots + queues if the feature is gone or disabled.
+    state.removeWhere((item) {
+      final key = item.payload.featureKey;
+      if (!catalog.exists(key)) return true;
+      if (!isEnabledByUser(key)) return true;
+      return false;
+    });
+
+    return state;
+  }
+}
+```
+
+This guard applies to **everything** that carries `payload.featureKey`:
+
+- settings rows
+- banners
+- dialogs
+- inline widgets
+- any future surface you add
+
+---
+
+## 7) Settings UI: render many toggle rows from one surface
+
+Presentum slots are “active + queue”, but Settings wants a list.
+
+Use `PresentumOutlet$Composition` with `OutletGroupMode.custom` and a resolver that returns all items.
+
+```dart
+class SettingsFeatureTogglesOutlet extends StatelessWidget {
+  const SettingsFeatureTogglesOutlet({
+    required this.catalog,
+    required this.prefs,
+    super.key,
+  });
+
+  final FeatureCatalogStore catalog;
+  final FeaturePreferencesStore prefs;
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet$Composition<FeatureItem, AppSurface, AppVariant>(
+      surface: AppSurface.settingsToggles,
+      surfaceMode: OutletGroupMode.custom,
+      resolver: (items) => items,
+      builder: (context, items) {
+        return Column(
+          children: [
+            for (final item in items)
+              SettingToggleRow(
+                title: item.payload.metadata['title'] as String,
+                description: item.payload.metadata['description'] as String,
+                value: prefs.overrideFor(item.payload.featureKey) ??
+                    (catalog.features[item.payload.featureKey]?.defaultEnabled ??
+                        true),
+                onChanged: (enabled) => prefs.setEnabled(item.payload.featureKey, enabled),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+```
+
+Now the requirements are met:
+
+- Remove feature from server catalog ⇒ provider stops emitting the settings row ⇒ it disappears from Settings.
+- The same removal also stops emitting/allowing any other UI belonging to that feature ⇒ it disappears across the app.
+

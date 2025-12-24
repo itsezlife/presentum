@@ -55,7 +55,12 @@
           },
           {
             "group": "Recipes",
-            "pages": ["recipes/remote-config"]
+            "pages": [
+              "recipes/remote-config",
+              "recipes/happy-new-year",
+              "recipes/milestone-fullscreen-dialog",
+              "recipes/user-preferences-feature-toggles"
+            ]
           },
           {
             "group": "Advanced",
