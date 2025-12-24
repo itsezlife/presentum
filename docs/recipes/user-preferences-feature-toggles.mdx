@@ -43,15 +43,25 @@ This is *the* source of truth for what should be visible in Settings.
 final class FeatureDefinition {
   const FeatureDefinition({
     required this.key,
-    required this.title,
-    required this.description,
+    required this.titleKey,
+    required this.descriptionKey,
     this.defaultEnabled = true,
+    this.order = 0,
   });
 
+  /// Stable identifier (also safe as a sort tie-breaker).
   final String key;
-  final String title;
-  final String description;
+
+  /// Localization keys, not localized strings.
+  /// UI resolves these via your localization system (intl/ARB, etc.).
+  final String titleKey;
+  final String descriptionKey;
+
   final bool defaultEnabled;
+
+  /// Optional ordering hint for Settings (0 by default).
+  /// Lower comes first. Avoid ordering by localized titles.
+  final int order;
 }
 
 final class FeatureCatalogStore extends ChangeNotifier {
@@ -121,6 +131,7 @@ dart pub add shared_preferences
 ```
 
 ```dart
+// Uses JSON encoding, so import dart:convert in your implementation file.
 final class SharedPrefsFeaturePreferencesRepository
     implements FeaturePreferencesRepository {
   SharedPrefsFeaturePreferencesRepository(this.prefs);
@@ -267,21 +278,34 @@ final class FeatureDrivenProvider extends ChangeNotifier {
         featureKey: feature.key,
         priority: 0,
         metadata: {
-          'title': feature.title,
-          'description': feature.description,
+          // Localization keys (UI resolves them to strings).
+          'titleKey': feature.titleKey,
+          'descriptionKey': feature.descriptionKey,
         },
         options: const [
           FeatureOption(
             surface: AppSurface.settingsToggles,
             variant: AppVariant.settingToggleRow,
             isDismissible: false,
+            stage: null, // stage comes from catalog order (below)
             alwaysOnIfEligible: true,
           ),
         ],
       );
 
       for (final opt in payload.options) {
-        candidates.add(FeatureItem(payload: payload, option: opt));
+        // Use option.stage for ordering (Settings ordering is catalog-driven).
+        final orderedOpt = FeatureOption(
+          surface: opt.surface,
+          variant: opt.variant,
+          isDismissible: opt.isDismissible,
+          stage: feature.order,
+          maxImpressions: opt.maxImpressions,
+          cooldownMinutes: opt.cooldownMinutes,
+          alwaysOnIfEligible: opt.alwaysOnIfEligible,
+        );
+
+        candidates.add(FeatureItem(payload: payload, option: orderedOpt));
       }
     }
 
@@ -323,12 +347,9 @@ final class FeatureDrivenProvider extends ChangeNotifier {
 
 ---
 
-## 6) Guard (crucial): candidates → slots + enforce catalog + user prefs
+## 6) Guard: candidates → slots + enforce catalog + user prefs
 
-This is the missing piece you called out.
-
-- `setCandidatesWithDiff(...)` only updates **candidates**
-- a guard must decide what becomes **active** and what goes to the **queue**
+`setCandidatesWithDiff(...)` updates **candidates**. A guard decides what becomes **active** and what goes to the **queue**.
 
 In this recipe, we treat the Settings surface as a “list slot”:
 
@@ -381,17 +402,23 @@ final class FeatureSchedulingGuard
       final surface = entry.key;
       final items = entry.value;
 
-      // Deterministic ordering:
-      // - Settings: stable alphabetical order
-      // - Other surfaces: priority order
+      int stageOf(FeatureItem i) => i.stage ?? 0;
+
+      // Deterministic ordering (localization-safe):
+      // - primary: option.stage (catalog order)
+      // - tie-breaker: stable feature key (not localized title)
       if (surface == AppSurface.settingsToggles) {
         items.sort((a, b) {
-          final at = a.payload.metadata['title'] as String? ?? '';
-          final bt = b.payload.metadata['title'] as String? ?? '';
-          return at.compareTo(bt);
+          final stageCmp = stageOf(a).compareTo(stageOf(b));
+          if (stageCmp != 0) return stageCmp;
+          return a.payload.featureKey.compareTo(b.payload.featureKey);
         });
       } else {
-        items.sort((a, b) => b.priority.compareTo(a.priority));
+        items.sort((a, b) {
+          final stageCmp = stageOf(a).compareTo(stageOf(b));
+          if (stageCmp != 0) return stageCmp;
+          return b.priority.compareTo(a.priority);
+        });
       }
 
       state.addAll(surface, items);
@@ -432,8 +459,11 @@ class SettingsFeatureTogglesOutlet extends StatelessWidget {
           children: [
             for (final item in items)
               SettingToggleRow(
-                title: item.payload.metadata['title'] as String,
-                description: item.payload.metadata['description'] as String,
+                // Resolve localization keys to user-visible strings here.
+                // Example (pseudo):
+                // final title = l10n[item.payload.metadata['titleKey']]
+                title: resolveL10n(context, item.payload.metadata['titleKey'] as String),
+                description: resolveL10n(context, item.payload.metadata['descriptionKey'] as String),
                 value: prefs.overrideFor(item.payload.featureKey) ??
                     (catalog.features[item.payload.featureKey]?.defaultEnabled ??
                         true),
