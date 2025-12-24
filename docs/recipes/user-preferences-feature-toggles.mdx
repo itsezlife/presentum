@@ -13,7 +13,7 @@ This recipe shows a clean pattern using Presentum:
 
 - A **server-driven feature catalog** (what toggles exist)
 - A **user preference store** (which features are enabled)
-- A **single guard** that enforces both across all presentations
+- A **guard** that projects candidates → slots and enforces catalog + prefs
 - A **settings surface** that renders toggle rows declaratively
 
 ---
@@ -73,15 +73,74 @@ When the server removes a feature, `replaceAll(...)` removes it from the map ⇒
 
 ## 3) User preferences (per-user enabled/disabled)
 
+You usually want these toggles to persist across app restarts.
+
+### 3.1 Repository interface (swap storage later)
+
 ```dart
+abstract interface class FeaturePreferencesRepository {
+  Future<Map<String, bool>> loadOverrides();
+  Future<void> saveOverrides(Map<String, bool> overrides);
+}
+
 final class FeaturePreferencesStore extends ChangeNotifier {
-  final Map<String, bool> _overrides = <String, bool>{};
+  FeaturePreferencesStore({required this.repo});
+
+  final FeaturePreferencesRepository repo;
+
+  Map<String, bool> _overrides = <String, bool>{};
 
   bool? overrideFor(String featureKey) => _overrides[featureKey];
 
-  void setEnabled(String featureKey, bool enabled) {
-    _overrides[featureKey] = enabled;
+  Future<void> init() async {
+    _overrides = await repo.loadOverrides();
     notifyListeners();
+  }
+
+  Future<void> setEnabled(String featureKey, bool enabled) async {
+    _overrides[featureKey] = enabled;
+    await repo.saveOverrides(_overrides);
+    notifyListeners();
+  }
+
+  /// Cleanup: if a feature disappears from the catalog, remove its override too.
+  Future<void> pruneTo(Set<String> existingFeatureKeys) async {
+    final before = _overrides.length;
+    _overrides.removeWhere((k, _) => !existingFeatureKeys.contains(k));
+    if (_overrides.length == before) return;
+    notifyListeners();
+    await repo.saveOverrides(_overrides);
+  }
+}
+```
+
+### 3.2 Example persistence with `shared_preferences`
+
+```bash
+dart pub add shared_preferences
+```
+
+```dart
+final class SharedPrefsFeaturePreferencesRepository
+    implements FeaturePreferencesRepository {
+  SharedPrefsFeaturePreferencesRepository(this.prefs);
+
+  final SharedPreferences prefs;
+
+  static const _storageKey = 'presentum.feature_overrides.v1';
+
+  @override
+  Future<Map<String, bool>> loadOverrides() async {
+    final raw = prefs.getString(_storageKey);
+    if (raw == null || raw.isEmpty) return <String, bool>{};
+
+    final decoded = jsonDecode(raw) as Map<String, Object?>;
+    return decoded.map((k, v) => MapEntry(k, v as bool));
+  }
+
+  @override
+  Future<void> saveOverrides(Map<String, bool> overrides) async {
+    await prefs.setString(_storageKey, jsonEncode(overrides));
   }
 }
 ```
@@ -184,6 +243,7 @@ final class FeatureDrivenProvider extends ChangeNotifier {
   FeatureDrivenProvider({
     required this.engine,
     required this.catalog,
+    required this.prefs,
   }) {
     catalog.addListener(_sync);
     // Initial sync so the Settings list is immediately populated.
@@ -192,8 +252,12 @@ final class FeatureDrivenProvider extends ChangeNotifier {
 
   final PresentumEngine<FeatureItem, AppSurface, AppVariant> engine;
   final FeatureCatalogStore catalog;
+  final FeaturePreferencesStore prefs;
 
   Future<void> _sync() async {
+    // If features were removed upstream, prune user overrides too.
+    await prefs.pruneTo(catalog.features.keys.toSet());
+
     final candidates = <FeatureItem>[];
 
     // 1) Settings: one row per feature that exists right now.
@@ -259,19 +323,24 @@ final class FeatureDrivenProvider extends ChangeNotifier {
 
 ---
 
-## 6) Guard: enforce “exists” + “user enabled” across the entire app
+## 6) Guard (crucial): candidates → slots + enforce catalog + user prefs
 
-This is where the magic happens.
+This is the missing piece you called out.
 
-Rules:
+- `setCandidatesWithDiff(...)` only updates **candidates**
+- a guard must decide what becomes **active** and what goes to the **queue**
 
-- If a feature **does not exist** in the catalog ⇒ remove it from state
-- If user **disabled** it ⇒ remove it from state
+In this recipe, we treat the Settings surface as a “list slot”:
+
+- **active** = first row
+- **queue** = the rest of the rows
+
+`PresentumOutlet$Composition` then reads `active + queue` and gives you a normal list for rendering.
 
 ```dart
-final class FeaturePreferenceGuard
+final class FeatureSchedulingGuard
     extends PresentumGuard<FeatureItem, AppSurface, AppVariant> {
-  FeaturePreferenceGuard({
+  FeatureSchedulingGuard({
     required this.catalog,
     required this.prefs,
   }) : super(refresh: Listenable.merge([catalog, prefs]));
@@ -279,37 +348,59 @@ final class FeaturePreferenceGuard
   final FeatureCatalogStore catalog;
   final FeaturePreferencesStore prefs;
 
+  bool _enabled(String key) =>
+      prefs.overrideFor(key) ??
+      (catalog.features[key]?.defaultEnabled ?? true);
+
   @override
   PresentumState<FeatureItem, AppSurface, AppVariant> call(
     storage,
     history,
     PresentumState$Mutable<FeatureItem, AppSurface, AppVariant> state,
-    candidates,
+    List<FeatureItem> candidates,
     context,
   ) {
-    bool isEnabledByUser(String featureKey) =>
-        prefs.overrideFor(featureKey) ?? (catalog.features[featureKey]?.defaultEnabled ?? true);
-
-    // Remove from slots + queues if the feature is gone or disabled.
-    state.removeWhere((item) {
+    // 1) Filter: if feature is gone or disabled, it does not exist in the UI.
+    final filtered = candidates.where((item) {
       final key = item.payload.featureKey;
-      if (!catalog.exists(key)) return true;
-      if (!isEnabledByUser(key)) return true;
-      return false;
-    });
+      if (!catalog.exists(key)) return false;
+      if (!_enabled(key)) return false;
+      return true;
+    }).toList(growable: false);
+
+    // 2) Project candidates -> slots (active + queue)
+    // This is what makes Settings rows and UI banners actually appear.
+    state.clearAll();
+
+    final bySurface = <AppSurface, List<FeatureItem>>{};
+    for (final item in filtered) {
+      (bySurface[item.surface] ??= <FeatureItem>[]).add(item);
+    }
+
+    for (final entry in bySurface.entries) {
+      final surface = entry.key;
+      final items = entry.value;
+
+      // Deterministic ordering:
+      // - Settings: stable alphabetical order
+      // - Other surfaces: priority order
+      if (surface == AppSurface.settingsToggles) {
+        items.sort((a, b) {
+          final at = a.payload.metadata['title'] as String? ?? '';
+          final bt = b.payload.metadata['title'] as String? ?? '';
+          return at.compareTo(bt);
+        });
+      } else {
+        items.sort((a, b) => b.priority.compareTo(a.priority));
+      }
+
+      state.addAll(surface, items);
+    }
 
     return state;
   }
 }
 ```
-
-This guard applies to **everything** that carries `payload.featureKey`:
-
-- settings rows
-- banners
-- dialogs
-- inline widgets
-- any future surface you add
 
 ---
 
@@ -360,4 +451,9 @@ Now the requirements are met:
 
 - Remove feature from server catalog ⇒ provider stops emitting the settings row ⇒ it disappears from Settings.
 - The same removal also stops emitting/allowing any other UI belonging to that feature ⇒ it disappears across the app.
+
+And now it also works mechanically:
+
+- candidates are **scheduled into slots**
+- the Settings list comes from **active + queue**
 
