@@ -1,0 +1,87 @@
+name: example
+description: "Presentations example."
+
+publish_to: "none"
+
+homepage: https://github.com/itsezlife/presentum
+
+repository: https://github.com/itsezlife/presentum
+
+issue_tracker: https://github.com/itsezlife/presentum/issues
+
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
+topics:
+  - presentation
+  - state
+  - queue
+  - widgets
+  - presentum
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.8.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_web_plugins:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  ## Localization
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  ## Presentum package
+  presentum:
+    path: ../
+
+  web: ^1.1.1
+
+  ## Local packages
+  shared:
+    path: packages/shared
+  app_ui:
+    path: packages/app_ui
+
+  ## Storage
+  shared_preferences: ^2.5.4
+
+  ## Navigation
+  octopus:
+    git:
+      url: https://github.com/itsezlife/octopus.git
+      ref: master
+
+  ## Utilities
+  collection: any
+  async: any
+  meta: any
+  boxy: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  ## Code generation
+  build_runner: ^2.10.4
+  pubspec_generator: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+
+flutter:
+  generate: true
+  uses-material-design: true

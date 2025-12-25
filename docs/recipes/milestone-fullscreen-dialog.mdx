@@ -1,0 +1,376 @@
+---
+title: "Milestone achieved 🎉 (fullscreen dialog, declarative)"
+description: "Show a congratulations fullscreen dialog without calling showDialog from your feature code."
+---
+
+## Goal
+
+When a user achieves a milestone (e.g. “7‑day streak”, “100 workouts”, “first purchase”), show a **fullscreen congratulations dialog**.
+
+Key constraints:
+
+- **No imperative UI calls from business logic** (your feature code never calls `showDialog`)
+- **Fully declarative**: reaching a milestone updates state; a popup host reacts to state changes
+- **Safe + testable**: eligibility is in a guard, and “shown/dismissed” is tracked via storage
+
+---
+
+## 1) Surfaces + variants
+
+```dart
+enum AppSurface with PresentumSurface {
+  popup,
+}
+
+enum AppVariant with PresentumVisualVariant {
+  fullscreenCongrats,
+}
+```
+
+---
+
+## 2) Domain: milestone payload + option + item
+
+```dart
+@immutable
+final class MilestoneOption extends PresentumOption<AppSurface, AppVariant> {
+  const MilestoneOption({
+    required this.surface,
+    required this.variant,
+    required this.isDismissible,
+    this.stage,
+    this.maxImpressions,
+    this.cooldownMinutes,
+    this.alwaysOnIfEligible = true,
+  });
+
+  @override
+  final AppSurface surface;
+
+  @override
+  final AppVariant variant;
+
+  @override
+  final int? stage;
+
+  @override
+  final int? maxImpressions;
+
+  @override
+  final int? cooldownMinutes;
+
+  @override
+  final bool alwaysOnIfEligible;
+
+  @override
+  final bool isDismissible;
+}
+
+@immutable
+final class MilestonePayload extends PresentumPayload<AppSurface, AppVariant> {
+  const MilestonePayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+  });
+
+  @override
+  final String id;
+
+  @override
+  final int priority;
+
+  @override
+  final Map<String, Object?> metadata;
+
+  @override
+  final List<PresentumOption<AppSurface, AppVariant>> options;
+
+  String get milestoneKey => metadata['milestoneKey'] as String;
+  String get title => metadata['title'] as String;
+  String get subtitle => metadata['subtitle'] as String;
+}
+
+@immutable
+final class MilestoneItem
+    extends PresentumItem<MilestonePayload, AppSurface, AppVariant> {
+  const MilestoneItem({required this.payload, required this.option});
+
+  @override
+  final MilestonePayload payload;
+
+  @override
+  final PresentumOption<AppSurface, AppVariant> option;
+}
+```
+
+---
+
+## 3) “User progress store” (the only thing your app updates)
+
+Your product logic can update this store from anywhere (BLoC, Riverpod, Provider, your own service).
+
+```dart
+final class UserProgressStore extends ChangeNotifier {
+  final Set<String> _reached = <String>{};
+
+  bool hasReached(String milestoneKey) => _reached.contains(milestoneKey);
+
+  void markReached(String milestoneKey) {
+    if (_reached.add(milestoneKey)) {
+      notifyListeners();
+    }
+  }
+}
+```
+
+No dialogs. No navigation. Just state.
+
+---
+
+## 4) Provider: generate candidates from *current* app state
+
+This provider maps “user progress” → candidate milestone items.
+
+```dart
+final class MilestoneProvider extends ChangeNotifier {
+  MilestoneProvider({
+    required this.engine,
+    required this.progress,
+  }) {
+    progress.addListener(_sync);
+    // Initial sync so already-reached milestones can show.
+    Future.microtask(_sync);
+  }
+
+  final PresentumEngine<MilestoneItem, AppSurface, AppVariant> engine;
+  final UserProgressStore progress;
+
+  static const _milestones = <MilestonePayload>[
+    MilestonePayload(
+      id: 'milestone:streak_7',
+      priority: 100,
+      metadata: {
+        'milestoneKey': 'streak_7',
+        'title': '7‑day streak!',
+        'subtitle': 'You’re building something great. Keep going.',
+      },
+      options: [
+        MilestoneOption(
+          surface: AppSurface.popup,
+          variant: AppVariant.fullscreenCongrats,
+          isDismissible: true,
+          stage: 0,
+          maxImpressions: 1,
+          cooldownMinutes: null,
+          alwaysOnIfEligible: true,
+        ),
+      ],
+    ),
+  ];
+
+  Future<void> _sync() async {
+    final candidates = <MilestoneItem>[];
+
+    for (final payload in _milestones) {
+      if (!progress.hasReached(payload.milestoneKey)) continue;
+      for (final opt in payload.options) {
+        candidates.add(MilestoneItem(payload: payload, option: opt));
+      }
+    }
+
+    await engine.setCandidatesWithDiff((state) => candidates);
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    progress.removeListener(_sync);
+    super.dispose();
+  }
+}
+```
+
+---
+
+## 5) Guard: “show once” + queue behavior
+
+Here’s a simple rule:
+
+- if it was **dismissed** (or **shown once**, depending on your policy), don’t show again
+- otherwise schedule per surface by priority
+
+```dart
+final class MilestoneGuard
+    extends PresentumGuard<MilestoneItem, AppSurface, AppVariant> {
+  MilestoneGuard({required Listenable refresh}) : super(refresh: refresh);
+
+  @override
+  Future<PresentumState<MilestoneItem, AppSurface, AppVariant>> call(
+    PresentumStorage<AppSurface, AppVariant> storage,
+    history,
+    PresentumState$Mutable<MilestoneItem, AppSurface, AppVariant> state,
+    List<MilestoneItem> candidates,
+    context,
+  ) async {
+    final eligible = <MilestoneItem>[];
+
+    for (final item in candidates) {
+      // Treat dismissal as “done”
+      final dismissedAt = await storage.getDismissedAt(
+        item.id,
+        surface: item.surface,
+        variant: item.variant,
+      );
+      if (dismissedAt != null) continue;
+
+      // Or treat “shown once” as “done”
+      final shown = await storage.getShownCount(
+        item.id,
+        period: const Duration(days: 3650),
+        surface: item.surface,
+        variant: item.variant,
+      );
+      if (item.option.maxImpressions != null && shown >= item.option.maxImpressions!) {
+        continue;
+      }
+
+      eligible.add(item);
+    }
+
+    // Schedule: popup surface gets items by priority (active + queue)
+    eligible.sort((a, b) => b.priority.compareTo(a.priority));
+    state.clearSurface(AppSurface.popup);
+    state.addAll(AppSurface.popup, eligible);
+
+    return state;
+  }
+}
+```
+
+Use `refresh` so the guard re-runs whenever `progress` changes:
+
+```dart
+final guard = MilestoneGuard(refresh: progress);
+```
+
+---
+
+## 6) Popup host: the only place that “shows UI”
+
+Your business logic never calls `showDialog`. The host watches `AppSurface.popup` and does it automatically.
+
+This recipe uses the built-in `PresentumPopupSurfaceStateMixin` described in [Popup hosts](/advanced/popup-hosts).
+
+```dart
+class MilestonePopupHost extends StatefulWidget {
+  const MilestonePopupHost({required this.child, super.key});
+  final Widget child;
+
+  @override
+  State<MilestonePopupHost> createState() => _MilestonePopupHostState();
+}
+
+class _MilestonePopupHostState extends State<MilestonePopupHost>
+    with PresentumPopupSurfaceStateMixin<
+      MilestoneItem,
+      AppSurface,
+      AppVariant,
+      MilestonePopupHost
+    > {
+  @override
+  AppSurface get surface => AppSurface.popup;
+
+  @override
+  Future<void> markDismissed({required MilestoneItem entry, bool pop = false}) async {
+    await context.presentum<MilestoneItem, AppSurface, AppVariant>().markDismissed(entry);
+    if (pop && mounted) {
+      await Navigator.maybePop(context, true);
+    }
+  }
+
+  @override
+  Future<void> present(MilestoneItem entry) async {
+    if (!mounted) return;
+
+    final presentum = context.presentum<MilestoneItem, AppSurface, AppVariant>();
+    await presentum.markShown(entry);
+
+    if (!mounted) return;
+
+    final result = await showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => InheritedPresentum.value(
+        value: presentum,
+        child: InheritedPresentumItem(
+          item: entry,
+          child: const MilestoneFullscreenDialog(),
+        ),
+      ),
+    );
+
+    // If user closed without converting, treat as dismissed.
+    if (result != true) {
+      await markDismissed(entry: entry);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+---
+
+## 7) Dialog widget: read item from InheritedPresentumItem
+
+```dart
+class MilestoneFullscreenDialog extends StatelessWidget {
+  const MilestoneFullscreenDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final item = context.presentumItem<MilestoneItem, AppSurface, AppVariant>();
+
+    return Dialog.fullscreen(
+      child: Column(
+        children: [
+          Text(item.payload.title),
+          Text(item.payload.subtitle),
+          Row(
+            children: [
+              if (item.option.isDismissible)
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Not now'),
+                ),
+              ElevatedButton(
+                onPressed: () async {
+                  await context
+                      .presentum<MilestoneItem, AppSurface, AppVariant>()
+                      .markConverted(item, conversionMetadata: {
+                        'milestoneKey': item.payload.milestoneKey,
+                      });
+                  if (context.mounted) Navigator.pop(context, true);
+                },
+                child: const Text('Nice!'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+---
+
+## Why this pattern scales
+
+- **Feature code is pure state**: update `progress.markReached(...)`
+- **Eligibility is centralized**: show-once, cooldowns, queueing, priorities live in guards
+- **UI is reactive**: popup host reacts to Presentum state, so you don’t sprinkle dialog logic through the app
+

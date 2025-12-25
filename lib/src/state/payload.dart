@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:presentum/src/state/state.dart';
+import 'package:presentum/presentum.dart';
 
 /// {@template presentum_option}
 /// One renderable option of an item for a given `surface` and visual `variant`
@@ -120,7 +120,8 @@ abstract class PresentumItem<
   TPayload extends PresentumPayload<S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
-> {
+>
+    implements HasMetadata {
   /// {@macro presentum_item}
   const PresentumItem();
 
@@ -138,6 +139,7 @@ abstract class PresentumItem<
   int get priority => payload.priority;
 
   /// Arbitrary domain metadata.
+  @override
   Map<String, Object?> get metadata => payload.metadata;
 
   /// The surface where the option can be presented.

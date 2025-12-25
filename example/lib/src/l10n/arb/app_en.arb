@@ -1,0 +1,94 @@
+{
+  "@@locale": "en",
+  "language": "English",
+  "languageEn": "English",
+  "bottomNavBarTabLabel": "{tab, select, main{Home} settings{Settings} other{Other}}",
+  "@bottomNavBarTabLabel": {
+    "description": "The label for the bottom navigation bar tab.",
+    "placeholders": {
+      "tab": {
+        "type": "String",
+        "example": "home",
+        "description": "The label for the bottom navigation bar tab."
+      }
+    }
+  },
+  "featureName": "{featureKey, select, newYear{New Year} other{Unknown Feature}}",
+  "@featureName": {
+    "description": "The name of the feature.",
+    "placeholders": {
+      "featureKey": {
+        "type": "String",
+        "example": "newYear", 
+        "description": "The key of the feature."
+      }
+    }
+  },
+  "settingsNewYearDescription": "Enable the New Year for the app.",
+  "settingsCatalogFeaturesTitle": "Catalog Features", 
+  "settingsCatalogFeaturesDescription": "Enable or disable catalog feature from both settings and the app.",
+  "toggleFeatureTitle": "{featureName} feature",
+  "@toggleFeatureTitle": {
+    "description": "The title for the toggle feature button.",
+    "placeholders": {
+      "featureName": {
+        "type": "String",
+        "example": "New Year",
+        "description": "The name of the feature."
+      }
+    }
+  },
+  "removeCatalogFeatureDescription": "Add or completely remove {featureName} feature from the settings and the app.",
+  "@removeCatalogFeatureDescription": {
+    "description": "The description for the remove feature button.",
+    "placeholders": {
+      "featureName": {
+        "type": "String",
+        "example": "New Year Theme",
+        "description": "The name of the feature."
+      }
+    }
+  },
+  "resetFeaturePresentumItemsStorageTitle": "Reset feature presentum items storage",
+  "resetFeaturePresentumItemsStorageSubtitle": "Tap to reset storage for specific item",
+  "resetFeaturePresentumItemSurfaceVariant": "Surface: {surface}, Variant: {variant}",
+  "@resetFeaturePresentumItemSurfaceVariant": {
+    "description": "The surface and variant information for a presentum item.",
+    "placeholders": {
+      "surface": {
+        "type": "String",
+        "example": "mobile",
+        "description": "The surface name of the presentum item."
+      },
+      "variant": {
+        "type": "String",
+        "example": "default",
+        "description": "The variant name of the presentum item."
+      }
+    }
+  },
+  "resetFeaturePresentumItemId": "ID: {id}",
+  "@resetFeaturePresentumItemId": {
+    "description": "The ID of the presentum item.",
+    "placeholders": {
+      "id": {
+        "type": "String",
+        "example": "feature_123",
+        "description": "The unique identifier of the presentum item."
+      }
+    }
+  },
+  "newYearBannerTitle": "Happy New Year!",
+  "newYearBannerTitleWithYear": "Happy New {year} Year!",
+  "@newYearBannerTitleWithYear": {
+    "description": "The title for the New Year banner with year included.",
+    "placeholders": {
+      "year": {
+        "type": "String",
+        "example": "2026",
+        "description": "The year to display in the banner title."
+      }
+    }
+  },
+  "newYearBannerSubtitle": "Wishing you a year full of wins ✨"
+}

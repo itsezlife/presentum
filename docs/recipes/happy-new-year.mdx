@@ -1,0 +1,316 @@
+---
+title: "Happy New Year 🥳 (seasonal variants + scheduling)"
+description: "Ship a holiday experience with themed variants, time windows, cooldowns, and clean Presentum guards."
+---
+
+## Goal
+
+Show a **New Year experience** across your app that feels delightful and intentional:
+
+- **Inline surfaces** (home header banner, settings header, etc.)
+- **Popup surface** (optional fullscreen greeting)
+- **Multiple variants** (snowy banner vs. confetti card vs. fullscreen)
+- **Scheduling & limits** (time window, max impressions, cooldown)
+
+This recipe focuses on **business logic + guards + providers**. UI snippets are minimal and only there to show how variants are rendered.
+
+---
+
+## 1) Define surfaces + variants
+
+```dart
+enum AppSurface with PresentumSurface {
+  homeHeader,
+  popup,
+}
+
+enum AppVariant with PresentumVisualVariant {
+  snowyBanner,
+  confettiCard,
+  fullscreenGreeting,
+}
+```
+
+---
+
+## 2) Model payload / option / item
+
+Your payload is pure domain data. Options define **where/how** it can show.
+
+```dart
+@immutable
+final class HolidayOption extends PresentumOption<AppSurface, AppVariant> {
+  const HolidayOption({
+    required this.surface,
+    required this.variant,
+    required this.isDismissible,
+    this.stage,
+    this.maxImpressions,
+    this.cooldownMinutes,
+    this.alwaysOnIfEligible = false,
+  });
+
+  @override
+  final AppSurface surface;
+
+  @override
+  final AppVariant variant;
+
+  @override
+  final int? stage;
+
+  @override
+  final int? maxImpressions;
+
+  @override
+  final int? cooldownMinutes;
+
+  @override
+  final bool alwaysOnIfEligible;
+
+  @override
+  final bool isDismissible;
+}
+
+@immutable
+final class HolidayPayload extends PresentumPayload<AppSurface, AppVariant> {
+  const HolidayPayload({
+    required this.id,
+    required this.priority,
+    required this.metadata,
+    required this.options,
+  });
+
+  @override
+  final String id;
+
+  @override
+  final int priority;
+
+  @override
+  final Map<String, Object?> metadata;
+
+  @override
+  final List<PresentumOption<AppSurface, AppVariant>> options;
+
+  DateTime get startsAt => DateTime.parse(metadata['startsAt'] as String);
+  DateTime get endsAt => DateTime.parse(metadata['endsAt'] as String);
+}
+
+@immutable
+final class HolidayItem
+    extends PresentumItem<HolidayPayload, AppSurface, AppVariant> {
+  const HolidayItem({required this.payload, required this.option});
+
+  @override
+  final HolidayPayload payload;
+
+  @override
+  final PresentumOption<AppSurface, AppVariant> option;
+}
+```
+
+---
+
+## 3) Provider: build candidates (no UI involved)
+
+In real life, fetch from Remote Config / API. Here we keep it “business logic only”.
+
+```dart
+final class HolidayCampaignProvider extends ChangeNotifier {
+  HolidayCampaignProvider({required this.engine});
+
+  final PresentumEngine<HolidayItem, AppSurface, AppVariant> engine;
+
+  Future<void> syncNewYearCampaign() async {
+    final payload = HolidayPayload(
+      id: 'holiday:new_year_2026',
+      priority: 100,
+      metadata: {
+        'title': 'Happy New Year!',
+        'subtitle': 'Wishing you a year full of wins ✨',
+        // Scheduling window (UTC ISO)
+        'startsAt': '2025-12-31T18:00:00Z',
+        'endsAt': '2026-01-03T23:59:59Z',
+      },
+      options: const [
+        HolidayOption(
+          surface: AppSurface.homeHeader,
+          variant: AppVariant.snowyBanner,
+          isDismissible: true,
+          maxImpressions: 3,
+          cooldownMinutes: 12 * 60,
+          alwaysOnIfEligible: true,
+        ),
+        HolidayOption(
+          surface: AppSurface.popup,
+          variant: AppVariant.fullscreenGreeting,
+          isDismissible: true,
+          stage: 0,
+          maxImpressions: 1,
+          cooldownMinutes: 24 * 60,
+          alwaysOnIfEligible: false,
+        ),
+      ],
+    );
+
+    final items = payload.options
+        .map((opt) => HolidayItem(payload: payload, option: opt))
+        .toList(growable: false);
+
+    await engine.setCandidatesWithDiff((state) => items);
+    notifyListeners();
+  }
+}
+```
+
+---
+
+## 4) Guards: time window + impression limits + deterministic ordering
+
+### 4.1 A tiny “sync” guard (removes stale items everywhere)
+
+This is the key to “declarative removal”: if a provider stops emitting a candidate, it disappears from **slots + queues** automatically.
+
+```dart
+final class SyncSlotsToCandidatesGuard
+    extends PresentumGuard<HolidayItem, AppSurface, AppVariant> {
+  @override
+  PresentumState<HolidayItem, AppSurface, AppVariant> call(
+    storage,
+    history,
+    state,
+    candidates,
+    context,
+  ) {
+    final allowed = candidates.map((c) => c.id).toSet();
+    state.removeWhere((item) => !allowed.contains(item.id));
+    return state;
+  }
+}
+```
+
+### 4.2 Eligibility guard (time + cooldown + max impressions + dismissed)
+
+```dart
+final class HolidayEligibilityGuard
+    extends PresentumGuard<HolidayItem, AppSurface, AppVariant> {
+  @override
+  Future<PresentumState<HolidayItem, AppSurface, AppVariant>> call(
+    PresentumStorage<AppSurface, AppVariant> storage,
+    history,
+    PresentumState$Mutable<HolidayItem, AppSurface, AppVariant> state,
+    List<HolidayItem> candidates,
+    context,
+  ) async {
+    final now = DateTime.now().toUtc();
+
+    // Filter candidates
+    final eligible = <HolidayItem>[];
+    for (final item in candidates) {
+      final payload = item.payload;
+      if (now.isBefore(payload.startsAt.toUtc())) continue;
+      if (now.isAfter(payload.endsAt.toUtc())) continue;
+
+      // If dismissed, skip (you can model “dismissed until” externally if you want)
+      final dismissedAt = await storage.getDismissedAt(
+        item.id,
+        surface: item.surface,
+        variant: item.variant,
+      );
+      if (dismissedAt != null) continue;
+
+      // Cooldown check
+      final cooldown = item.option.cooldownMinutes;
+      if (cooldown != null) {
+        final last = await storage.getLastShown(
+          item.id,
+          surface: item.surface,
+          variant: item.variant,
+        );
+        if (last != null && now.difference(last.toUtc()).inMinutes < cooldown) {
+          continue;
+        }
+      }
+
+      // Impression cap check (per rolling 365d window for example)
+      final cap = item.option.maxImpressions;
+      if (cap != null) {
+        final shown = await storage.getShownCount(
+          item.id,
+          period: const Duration(days: 365),
+          surface: item.surface,
+          variant: item.variant,
+        );
+        if (shown >= cap) continue;
+      }
+
+      eligible.add(item);
+    }
+
+    // Deterministic scheduling: per-surface priority order.
+    final bySurface = <AppSurface, List<HolidayItem>>{};
+    for (final item in eligible) {
+      (bySurface[item.surface] ??= []).add(item);
+    }
+    for (final entry in bySurface.entries) {
+      final surface = entry.key;
+      final items = entry.value..sort((a, b) => b.priority.compareTo(a.priority));
+
+      state.clearSurface(surface);
+      state.addAll(surface, items);
+    }
+
+    return state;
+  }
+}
+```
+
+---
+
+## 5) Rendering: one outlet, many variants
+
+Use a single `PresentumOutlet` per surface and branch by `variant`. (Your UI can be as fancy as you want; Presentum only cares about state.)
+
+```dart
+class HomeHeaderHolidayOutlet extends StatelessWidget {
+  const HomeHeaderHolidayOutlet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<HolidayItem, AppSurface, AppVariant>(
+      surface: AppSurface.homeHeader,
+      builder: (context, item) {
+        switch (item.variant) {
+          case AppVariant.snowyBanner:
+            return SnowyBanner(
+              title: item.payload.metadata['title'] as String,
+              subtitle: item.payload.metadata['subtitle'] as String,
+              onClose: item.option.isDismissible
+                  ? () => context
+                      .presentum<HolidayItem, AppSurface, AppVariant>()
+                      .markDismissed(item)
+                  : null,
+            );
+          case AppVariant.confettiCard:
+            return ConfettiCard(/* ... */);
+          case AppVariant.fullscreenGreeting:
+            // This variant is intended for the popup host surface.
+            return const SizedBox.shrink();
+        }
+      },
+    );
+  }
+}
+```
+
+If you also want the fullscreen greeting, pair this with the popup host pattern in [Popup hosts](/advanced/popup-hosts) and make `AppSurface.popup` the watched surface.
+
+---
+
+## What this enables
+
+- **“Seasonal experiences” as data**: add/remove campaigns without rewriting UI
+- **Variants without branching app logic**: only the outlet branches by `variant`
+- **Fully declarative removal**: stop emitting candidates ⇒ the UI disappears everywhere
+
