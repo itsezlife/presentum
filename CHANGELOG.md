@@ -1,3 +1,12 @@
+## 0.3.2
+- **Docs**: added three comprehensive docs showcasing business-logic-first examples
+for New Year, user preferences and milestones.
+- **Feat**: added complete cross-platform example application showcasing various capabilities and best practices with Presentum.
+- **Fix**: fixed critical bugs with `PresentumPopupSurfaceStateMixin`
+- **Feat**: added various useful features and configurations to the `PresentumPopupSurfaceStateMixin` to better resolve duplications and queues.
+- **Chore**: added environmental logs that enabled if `presentum.logs` are enabled to log useful debug/development information.
+- **Chore**: added `toString` implementation to the `PresentumSlot` for better loggin.
+
 ## 0.3.1+1
 - **Chore**: renamed `popup_host.dart` file to `popup_surface_state_mixin.dart`
 

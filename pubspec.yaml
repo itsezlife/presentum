@@ -1,6 +1,6 @@
 name: presentum
 description: "A declarative cross-platform Flutter engine with focus on state to display presentations, such as campaigns, banners, notifications, etc., anywhere, anytime."
-version: 0.3.1+1
+version: 0.3.2
 
 homepage: https://github.com/itsezlife/presentum
 
