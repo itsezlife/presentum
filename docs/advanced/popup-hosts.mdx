@@ -44,19 +44,19 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
   }
 
   @override
-  Future<bool?> present(CampaignItem entry) async {
-    if (!mounted) return null;
+  Future<PopupPresentResult> present(CampaignItem entry) async {
+    if (!mounted) return PopupPresentResult.notPresented;
 
     // Record impression
     await context.presentum<CampaignItem, AppSurface, CampaignVariant>()
         .markShown(entry);
 
-    if (!mounted) return null;
+    if (!mounted) return PopupPresentResult.notPresented;
 
     final presentum = context.presentum<CampaignItem, AppSurface, CampaignVariant>();
 
-    // Show dialog and return result
-    return showDialog<bool?>(
+    // Show dialog
+    final result = await showDialog<bool?>(
       context: context,
       builder: (context) => InheritedPresentum.value(
         value: presentum,
@@ -67,6 +67,12 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
       ),
       barrierDismissible: false,
     );
+
+    // Map dialog result to PopupPresentResult
+    if (result == true) {
+      return PopupPresentResult.userDismissed;
+    }
+    return PopupPresentResult.systemDismissed;
   }
 
   @override
@@ -97,8 +103,14 @@ PresentumSurface get surface; // Which surface to watch
 Future<void> markDismissed({required TItem entry});
 
 @override
-Future<bool?> present(TItem entry); // Returns dialog result
+Future<PopupPresentResult> present(TItem entry); // Returns present result
 ```
+
+**Present result values:**
+
+- `PopupPresentResult.userDismissed` - User dismissed (won't call markDismissed)
+- `PopupPresentResult.systemDismissed` - System dismissed (will call markDismissed)
+- `PopupPresentResult.notPresented` - Not presented (won't call markDismissed)
 
 ### Optional overrides
 
@@ -207,20 +219,20 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
   }
 
   @override
-  Future<bool?> present(CampaignPresentumItem entry) async {
+  Future<PopupPresentResult> present(CampaignPresentumItem entry) async {
     try {
-      if (!mounted) return null;
+      if (!mounted) return PopupPresentResult.notPresented;
 
       final campaigns = context.campaigns;
       await campaigns.markShown(entry);
 
-      if (!mounted) return null;
+      if (!mounted) return PopupPresentResult.notPresented;
 
       final factory = campaignsPresentationWidgetFactory;
       final isFullscreen = entry.option.variant == CampaignVariant.fullscreenDialog;
 
-      // Show appropriate dialog type and return result
-      return await showDialog<bool?>(
+      // Show appropriate dialog type
+      final result = await showDialog<bool?>(
         context: context,
         builder: (context) => InheritedPresentum.value(
           value: campaigns,
@@ -232,6 +244,11 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
         barrierDismissible: false,
         useSafeArea: !isFullscreen,
       );
+
+      // Map dialog result to PopupPresentResult
+      return result == true
+          ? PopupPresentResult.userDismissed
+          : PopupPresentResult.systemDismissed;
     } catch (error, stackTrace) {
       FlutterError.reportError(
         FlutterErrorDetails(
@@ -240,7 +257,7 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
           library: 'CampaignPopupHost',
         ),
       );
-      return null;
+      return PopupPresentResult.systemDismissed;
     }
   }
 
@@ -336,16 +353,16 @@ Override `present` for custom dialog behavior:
 
 ```dart
 @override
-Future<bool?> present(CampaignItem entry) async {
-  if (!mounted) return null;
+Future<PopupPresentResult> present(CampaignItem entry) async {
+  if (!mounted) return PopupPresentResult.notPresented;
 
   final presentum = context.presentum<CampaignItem, AppSurface, CampaignVariant>();
   await presentum.markShown(entry);
 
-  if (!mounted) return null;
+  if (!mounted) return PopupPresentResult.notPresented;
 
   // Custom routing or modal presentation
-  return Navigator.of(context).push<bool>(
+  final result = await Navigator.of(context).push<bool>(
     MaterialPageRoute(
       builder: (context) => InheritedPresentum.value(
         value: presentum,
@@ -357,13 +374,19 @@ Future<bool?> present(CampaignItem entry) async {
       fullscreenDialog: true,
     ),
   );
+
+  // Map route result to PopupPresentResult
+  return result == true
+      ? PopupPresentResult.userDismissed
+      : PopupPresentResult.systemDismissed;
 }
 ```
 
 The mixin automatically handles the result:
 
-- If `true`: user dismissed it (typically after conversion)
-- If `null` or `false`: mixin calls `markDismissed()` automatically
+- `PopupPresentResult.userDismissed`: Won't call `markDismissed()` (user handled it)
+- `PopupPresentResult.systemDismissed`: Will call `markDismissed()` automatically
+- `PopupPresentResult.notPresented`: Won't call `markDismissed()` (wasn't shown)
 
 ## Queuing behavior
 
@@ -417,21 +440,30 @@ With other strategies:
     ```
   </Accordion>
   
-  <Accordion title="Return dialog result correctly">
-    Return the dialog result from `present()` - the mixin handles dismissal:
+  <Accordion title="Return correct PopupPresentResult">
+    Map dialog results to the appropriate `PopupPresentResult` enum value:
     
     ```dart
     @override
-    Future<bool?> present(CampaignItem entry) async {
+    Future<PopupPresentResult> present(CampaignItem entry) async {
+      if (!mounted) return PopupPresentResult.notPresented;
+      
       // ... mark shown, setup ...
       
-      // Return the dialog result directly
-      return showDialog<bool?>(...);
+      final result = await showDialog<bool?>(...);
+      
+      // Map to enum
+      return result == true
+          ? PopupPresentResult.userDismissed
+          : PopupPresentResult.systemDismissed;
     }
     ```
     
-    The mixin automatically calls `markDismissed()` if result is `null` or `false`.
-    Return `true` when user took action (e.g., converted) to skip auto-dismissal.
+    - Return `userDismissed` when user took action (e.g., converted)
+    - Return `systemDismissed` when user just closed it
+    - Return `notPresented` when couldn't show (not mounted)
+    
+    The mixin only calls `markDismissed()` for `systemDismissed` results.
   </Accordion>
 </AccordionGroup>
 

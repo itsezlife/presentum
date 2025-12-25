@@ -26,7 +26,9 @@ abstract base class StateController<State extends Object> extends Controller
   void setState(State state) {
     runZonedGuarded<void>(
       () => Controller.observer?.onStateChanged(this, _$state, state),
-      (error, stackTrace) {/* ignore */},
+      (error, stackTrace) {
+        /* ignore */
+      },
     );
     _$state = state;
     if (isDisposed) return;

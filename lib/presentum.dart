@@ -18,4 +18,5 @@ export 'src/utils/diff_util_helpers.dart';
 export 'src/widgets/build_context_extension.dart';
 export 'src/widgets/inherited_presentum.dart';
 export 'src/widgets/outlet.dart';
+export 'src/widgets/popup_surface_state_mixin.dart';
 export 'src/widgets/presentum_context.dart';

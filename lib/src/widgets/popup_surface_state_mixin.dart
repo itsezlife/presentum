@@ -17,6 +17,21 @@ enum PopupConflictStrategy {
   queue,
 }
 
+/// Result of presenting a popup.
+enum PopupPresentResult {
+  /// The popup was dismissed by the user (e.g., after conversion).
+  /// The mixin will NOT call [markDismissed] as it's already handled.
+  userDismissed,
+
+  /// The popup was dismissed by the system or closed without user action.
+  /// The mixin WILL call [markDismissed] automatically.
+  systemDismissed,
+
+  /// The popup was not presented (e.g., widget not mounted).
+  /// The mixin will NOT call [markDismissed].
+  notPresented,
+}
+
 /// {@template presentum_popup_surface_state_mixin}
 /// Watches the popup surface and presents dialogs/fullscreen widgets.
 /// {@endtemplate}
@@ -152,14 +167,12 @@ mixin PresentumPopupSurfaceStateMixin<
         _lastShownAt = DateTime.now();
         fine('Presenting entry: ${entry.id}');
 
-        // Result is true if dismissed by user (already marked as dismissed),
-        // null/false if dismissed by system or otherwise, without marking.
         final result = await present(entry);
 
         fine('Entry ${entry.id} result: $result');
 
-        // If result is null or false, mark as dismissed
-        if (result == null || result == false) {
+        // Only mark as dismissed if system dismissed it
+        if (result == PopupPresentResult.systemDismissed) {
           await markDismissed(entry: entry);
         }
 
@@ -200,7 +213,7 @@ mixin PresentumPopupSurfaceStateMixin<
   /// Override to customize pop behavior (e.g., custom navigator).
   void pop() {
     if (mounted) {
-      Navigator.maybePop(context);
+      Navigator.maybePop(context, PopupPresentResult.userDismissed);
     }
   }
 
@@ -210,11 +223,16 @@ mixin PresentumPopupSurfaceStateMixin<
 
   /// Present the entry.
   ///
-  /// Returns the dialog result:
-  /// - `true` if dismissed by user (user already marked it as dismissed)
-  /// - `null` or `false` if dismissed by system (mixin will call
-  /// [markDismissed])
+  /// Returns [PopupPresentResult] indicating how the popup was dismissed:
+  /// - [PopupPresentResult.userDismissed]: User explicitly dismissed it
+  ///   (e.g., after conversion). The mixin will NOT call [markDismissed].
+  /// - [PopupPresentResult.systemDismissed]: Dismissed by system or closed
+  ///   without user action. The mixin WILL call [markDismissed] automatically.
+  /// - [PopupPresentResult.notPresented]: Could not present (e.g., widget
+  ///   not mounted). The mixin will NOT call [markDismissed].
   ///
-  /// This typically wraps [Navigator.showDialog] and returns its result.
-  Future<bool?> present(TItem entry);
+  /// This typically wraps [Navigator.showDialog] and maps its result to the
+  /// appropriate enum value. Check `mounted` before presenting and return
+  /// [PopupPresentResult.notPresented] if not mounted.
+  Future<PopupPresentResult> present(TItem entry);
 }

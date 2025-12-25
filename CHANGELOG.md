@@ -1,6 +1,17 @@
+## 0.3.3
+
+- **BREAKING**: Refactored `PresentumPopupSurfaceStateMixin.present()` to return `PopupPresentResult` enum instead of `bool?`
+  - Added `PopupPresentResult` enum with three states: `userDismissed`, `systemDismissed`, `notPresented`
+  - The `present()` method now has clear, type-safe return values instead of nullable boolean
+  - `notPresented` is returned when widget is not mounted, preventing unnecessary `markDismissed()` calls
+  - Mixin only calls `markDismissed()` for `systemDismissed` results
+- **Feat**: Exported `PresentumPopupSurfaceStateMixin` and related enums in main library
+- **Docs**: Updated popup hosts documentation with new enum-based API examples
+
 ## 0.3.2
+
 - **Docs**: added three comprehensive docs showcasing business-logic-first examples
-for New Year, user preferences and milestones.
+  for New Year, user preferences and milestones.
 - **Feat**: added complete cross-platform example application showcasing various capabilities and best practices with Presentum.
 - **Fix**: fixed critical bugs with `PresentumPopupSurfaceStateMixin`
 - **Feat**: added various useful features and configurations to the `PresentumPopupSurfaceStateMixin` to better resolve duplications and queues.
@@ -8,12 +19,15 @@ for New Year, user preferences and milestones.
 - **Chore**: added `toString` implementation to the `PresentumSlot` for better loggin.
 
 ## 0.3.1+1
+
 - **Chore**: renamed `popup_host.dart` file to `popup_surface_state_mixin.dart`
 
 ## 0.3.1
+
 - **Feat**: Added PresentumPopupSurfaceStateMixin mixin to streamline popup presentum displaying with reactive observing, presenting and dismissing upon declarative removing from the active state slot.
 
 ## 0.3.0
+
 - **Docs**: Added comprehensive docs with Mintlify
 
 ## 0.2.6

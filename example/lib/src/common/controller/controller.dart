@@ -27,7 +27,10 @@ abstract interface class IControllerObserver {
 
   /// Called on any state change in the controller.
   void onStateChanged(
-      IController controller, Object prevState, Object nextState);
+    IController controller,
+    Object prevState,
+    Object nextState,
+  );
 
   /// Called on any error in the controller.
   void onError(IController controller, Object error, StackTrace stackTrace);
@@ -39,10 +42,12 @@ abstract interface class IControllerObserver {
 /// {@endtemplate}
 abstract base class Controller with ChangeNotifier implements IController {
   Controller() {
-    runZonedGuarded<void>(
-      () => Controller.observer?.onCreate(this),
-      (error, stackTrace) {/* ignore */},
-    );
+    runZonedGuarded<void>(() => Controller.observer?.onCreate(this), (
+      error,
+      stackTrace,
+    ) {
+      /* ignore */
+    });
   }
 
   /// Controller observer
@@ -53,9 +58,11 @@ abstract base class Controller with ChangeNotifier implements IController {
 
   @protected
   void onError(Object error, StackTrace stackTrace) => runZonedGuarded<void>(
-        () => Controller.observer?.onError(this, error, stackTrace),
-        (error, stackTrace) {/* ignore */},
-      );
+    () => Controller.observer?.onError(this, error, stackTrace),
+    (error, stackTrace) {
+      /* ignore */
+    },
+  );
 
   @protected
   void handle(FutureOr<void> Function() handler);
@@ -64,10 +71,12 @@ abstract base class Controller with ChangeNotifier implements IController {
   @mustCallSuper
   void dispose() {
     _$isDisposed = true;
-    runZonedGuarded<void>(
-      () => Controller.observer?.onDispose(this),
-      (error, stackTrace) {/* ignore */},
-    );
+    runZonedGuarded<void>(() => Controller.observer?.onDispose(this), (
+      error,
+      stackTrace,
+    ) {
+      /* ignore */
+    });
     super.dispose();
   }
 

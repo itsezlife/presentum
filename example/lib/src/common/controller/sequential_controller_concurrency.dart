@@ -18,32 +18,26 @@ base mixin SequentialControllerConcurrency on Controller {
     FutureOr<void> Function() handler, [
     FutureOr<void> Function(Object error, StackTrace stackTrace)? errorHandler,
     FutureOr<void> Function()? doneHandler,
-  ]) =>
-      _eventQueue.push<void>(
-        () {
-          final completer = Completer<void>();
-          runZonedGuarded<void>(
-            () async {
-              if (isDisposed) return;
-              try {
-                await handler();
-              } on Object catch (error, stackTrace) {
-                onError(error, stackTrace);
-                await Future<void>(() async {
-                  await errorHandler?.call(error, stackTrace);
-                }).catchError(onError);
-              } finally {
-                await Future<void>(() async {
-                  await doneHandler?.call();
-                }).catchError(onError);
-                completer.complete();
-              }
-            },
-            onError,
-          );
-          return completer.future;
-        },
-      );
+  ]) => _eventQueue.push<void>(() {
+    final completer = Completer<void>();
+    runZonedGuarded<void>(() async {
+      if (isDisposed) return;
+      try {
+        await handler();
+      } on Object catch (error, stackTrace) {
+        onError(error, stackTrace);
+        await Future<void>(() async {
+          await errorHandler?.call(error, stackTrace);
+        }).catchError(onError);
+      } finally {
+        await Future<void>(() async {
+          await doneHandler?.call();
+        }).catchError(onError);
+        completer.complete();
+      }
+    }, onError);
+    return completer.future;
+  });
 }
 
 final class _ControllerEventQueue {
@@ -75,33 +69,35 @@ final class _ControllerEventQueue {
 
   /// Execute the queue.
   void _exec() => _processing ??= Future.doWhile(() async {
-        final event = _queue.first;
-        try {
-          if (_isClosed) {
-            event.reject(StateError('Controller\'s event queue are disposed'),
-                StackTrace.current);
-          } else {
-            await event();
-          }
-        } on Object catch (error, stackTrace) {
-          /* warning(
+    final event = _queue.first;
+    try {
+      if (_isClosed) {
+        event.reject(
+          StateError('Controller\'s event queue are disposed'),
+          StackTrace.current,
+        );
+      } else {
+        await event();
+      }
+    } on Object catch (error, stackTrace) {
+      /* warning(
             error,
             stackTrace,
             'Error while processing event "${event.id}"',
           ); */
-          Future<void>.sync(() => event.reject(error, stackTrace)).ignore();
-        }
-        _queue.removeFirst();
-        final isEmpty = _queue.isEmpty;
-        if (isEmpty) _processing = null;
-        return !isEmpty;
-      });
+      Future<void>.sync(() => event.reject(error, stackTrace)).ignore();
+    }
+    _queue.removeFirst();
+    final isEmpty = _queue.isEmpty;
+    if (isEmpty) _processing = null;
+    return !isEmpty;
+  });
 }
 
 class _SequentialTask<T> {
   _SequentialTask(FutureOr<T> Function() fn)
-      : _fn = fn,
-        _completer = Completer<T>();
+    : _fn = fn,
+      _completer = Completer<T>();
 
   final Completer<T> _completer;
 

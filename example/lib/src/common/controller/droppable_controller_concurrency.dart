@@ -16,25 +16,21 @@ base mixin DroppableControllerConcurrency on Controller {
     FutureOr<void> Function() handler, [
     FutureOr<void> Function(Object error, StackTrace stackTrace)? errorHandler,
     FutureOr<void> Function()? doneHandler,
-  ]) =>
-      runZonedGuarded<void>(
-        () async {
-          if (isDisposed || isProcessing) return;
-          _$processingCalls++;
-          try {
-            await handler();
-          } on Object catch (error, stackTrace) {
-            onError(error, stackTrace);
-            await Future<void>(() async {
-              await errorHandler?.call(error, stackTrace);
-            }).catchError(onError);
-          } finally {
-            await Future<void>(() async {
-              await doneHandler?.call();
-            }).catchError(onError);
-            _$processingCalls--;
-          }
-        },
-        onError,
-      );
+  ]) => runZonedGuarded<void>(() async {
+    if (isDisposed || isProcessing) return;
+    _$processingCalls++;
+    try {
+      await handler();
+    } on Object catch (error, stackTrace) {
+      onError(error, stackTrace);
+      await Future<void>(() async {
+        await errorHandler?.call(error, stackTrace);
+      }).catchError(onError);
+    } finally {
+      await Future<void>(() async {
+        await doneHandler?.call();
+      }).catchError(onError);
+      _$processingCalls--;
+    }
+  }, onError);
 }

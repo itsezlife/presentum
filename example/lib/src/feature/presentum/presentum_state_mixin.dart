@@ -47,10 +47,12 @@ mixin FeaturePresentumStateMixin<T extends StatefulWidget> on State<T> {
         TimeRangeExtractor(),
         AnySegmentExtractor(),
         ConstantExtractor(metadataKey: 'is_active'),
-        AnyOfExtractor(nestedExtractors: [
-          TimeRangeExtractor(),
-          ConstantExtractor(metadataKey: 'is_active'),
-        ]),
+        AnyOfExtractor(
+          nestedExtractors: [
+            TimeRangeExtractor(),
+            ConstantExtractor(metadataKey: 'is_active'),
+          ],
+        ),
       ],
     );
 
