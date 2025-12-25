@@ -51,7 +51,6 @@ final class PresentumStateObserver$EngineImpl<
 
   @internal
   bool changeState(PresentumState$Immutable<TItem, S, V> state) {
-    if (state.slots.isEmpty) return false;
     if (state.intention == PresentumStateIntention.cancel) return false;
 
     if (_value == state) return false;

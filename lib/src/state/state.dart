@@ -116,6 +116,10 @@ class PresentumSlot<
 
   @override
   int get hashCode => Object.hash(surface, active, queue);
+
+  @override
+  String toString() =>
+      'PresentumSlot(surface: $surface, active: $active, queue: $queue)';
 }
 
 /// Signature for the callback to [PresentumState.visitSlots].
@@ -476,6 +480,14 @@ final class PresentumState$Mutable<
     final emptySlot = PresentumSlot<TItem, S, V>.empty(surface);
     _slots[surface] = emptySlot;
     return emptySlot;
+  }
+
+  /// Clear the active and queue for a surface.
+  PresentumSlot<TItem, S, V>? removeSurface(S surface) {
+    final slot = _slots[surface];
+    if (slot == null) return null;
+    _slots.remove(surface);
+    return slot;
   }
 
   /// Remove all slots.

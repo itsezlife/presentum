@@ -2,6 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:presentum/presentum.dart';
+import 'package:presentum/src/utils/logs.dart';
+
+/// Strategy for handling popup conflicts when a new popup activates while
+/// another is already showing.
+enum PopupConflictStrategy {
+  /// Ignore the new popup and keep showing the current one.
+  ignore,
+
+  /// Replace the current popup with the new one immediately.
+  replace,
+
+  /// Queue the new popup to show after the current one is dismissed.
+  queue,
+}
 
 /// {@template presentum_popup_surface_state_mixin}
 /// Watches the popup surface and presents dialogs/fullscreen widgets.
@@ -15,11 +29,24 @@ mixin PresentumPopupSurfaceStateMixin<
     on State<T> {
   late final PresentumStateObserver<TItem, S, V> _observer;
   TItem? _lastEntry;
-
-  final bool _showing = false;
+  bool _showing = false;
+  DateTime? _lastShownAt;
+  final List<TItem> _queuedEntries = [];
 
   /// The surface to watch.
   PresentumSurface get surface;
+
+  /// Ignore duplicate entries shown within [duplicateThreshold].
+  /// Set to false to allow duplicates (default).
+  bool get ignoreDuplicates => false;
+
+  /// Time threshold for considering an entry a duplicate.
+  /// Only applies when [ignoreDuplicates] is true.
+  /// If null, duplicates are always ignored when [ignoreDuplicates] is true.
+  Duration? get duplicateThreshold => const Duration(seconds: 3);
+
+  /// Strategy for handling conflicts when a new popup activates while showing.
+  PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.ignore;
 
   @override
   void initState() {
@@ -35,6 +62,7 @@ mixin PresentumPopupSurfaceStateMixin<
   @override
   void dispose() {
     _observer.removeListener(_onStateChange);
+    _queuedEntries.clear();
     super.dispose();
   }
 
@@ -42,25 +70,151 @@ mixin PresentumPopupSurfaceStateMixin<
     final state = _observer.value;
     final slot = state.slots[surface];
 
-    /// There is an active entry, but the slot become inactive, so
+    /// There is an active entry, but the slot became inactive, so
     /// we need to pop the dialog and mark the entry as dismissed.
     if (_lastEntry case final entry? when _showing && slot?.active == null) {
-      markDismissed(entry: entry, pop: true);
+      fine('Entry became inactive while showing: ${entry.id}');
+      _dismissAndPop(entry);
       return;
     }
 
-    /// Present the new entry if it is not the same as the last one and the
-    /// previous one is not showing.
-    if (slot?.active case final entry?
-        when entry.id != _lastEntry?.id && !_showing) {
-      _lastEntry = entry;
-      scheduleMicrotask(() => present(entry));
+    /// Present the new entry if it differs from the last one.
+    if (slot?.active case final entry? when entry.id != _lastEntry?.id) {
+      /// Check for duplicates if enabled.
+      if (ignoreDuplicates && _isDuplicate(entry)) {
+        fine(
+          'Ignoring duplicate entry: ${entry.id} '
+          '(last shown ${DateTime.now().difference(_lastShownAt!).inSeconds}s '
+          'ago)',
+        );
+        return;
+      }
+
+      /// Handle conflict if already showing.
+      if (_showing) {
+        _handleConflict(entry);
+        return;
+      }
+
+      _presentEntry(entry);
+    }
+  }
+
+  bool _isDuplicate(TItem entry) {
+    if (_lastEntry?.id != entry.id) return false;
+
+    final lastShown = _lastShownAt;
+    if (lastShown == null) return false;
+
+    final threshold = duplicateThreshold;
+    if (threshold == null) return true; // Always duplicate if no threshold
+
+    final elapsed = DateTime.now().difference(lastShown);
+    return elapsed < threshold;
+  }
+
+  void _handleConflict(TItem entry) {
+    fine(
+      'Conflict: new entry ${entry.id} while showing ${_lastEntry?.id} '
+      '(strategy: $conflictStrategy)',
+    );
+
+    switch (conflictStrategy) {
+      case PopupConflictStrategy.ignore:
+        // Do nothing, keep current popup
+        break;
+
+      case PopupConflictStrategy.replace:
+        // Dismiss current and show new immediately
+        if (_lastEntry case final lastEntry?) {
+          _dismissAndPop(lastEntry);
+        }
+        _presentEntry(entry);
+
+      case PopupConflictStrategy.queue:
+        // Add to queue if not already queued
+        if (!_queuedEntries.any((e) => e.id == entry.id)) {
+          _queuedEntries.add(entry);
+          fine(
+            'Queued entry: ${entry.id} (queue size: ${_queuedEntries.length})',
+          );
+        }
+    }
+  }
+
+  void _presentEntry(TItem entry) {
+    _lastEntry = entry;
+    scheduleMicrotask(() async {
+      try {
+        if (!mounted) return;
+
+        _showing = true;
+        _lastShownAt = DateTime.now();
+        fine('Presenting entry: ${entry.id}');
+
+        // Result is true if dismissed by user (already marked as dismissed),
+        // null/false if dismissed by system or otherwise, without marking.
+        final result = await present(entry);
+
+        fine('Entry ${entry.id} result: $result');
+
+        // If result is null or false, mark as dismissed
+        if (result == null || result == false) {
+          await markDismissed(entry: entry);
+        }
+
+        _showing = false;
+
+        // Process queue after completion
+        _processQueue();
+      } catch (error, stackTrace) {
+        severe(error, stackTrace, 'Error presenting entry ${entry.id}');
+        _showing = false;
+        _processQueue(); // Try queue if presentation failed
+        rethrow;
+      }
+    });
+  }
+
+  void _dismissAndPop(TItem entry) {
+    markDismissed(entry: entry);
+    pop();
+    _showing = false;
+
+    // Process queue after dismissing
+    _processQueue();
+  }
+
+  void _processQueue() {
+    if (_queuedEntries.isEmpty || _showing) return;
+
+    final nextEntry = _queuedEntries.removeAt(0);
+    fine(
+      'Processing queued entry: ${nextEntry.id} (${_queuedEntries.length} '
+      'remaining)',
+    );
+    _presentEntry(nextEntry);
+  }
+
+  /// Pop the current dialog/route.
+  /// Override to customize pop behavior (e.g., custom navigator).
+  void pop() {
+    if (mounted) {
+      Navigator.maybePop(context);
     }
   }
 
   /// Mark the entry as dismissed.
-  Future<void> markDismissed({required TItem entry, bool pop = false});
+  /// Called when the entry is no longer active or manually dismissed.
+  Future<void> markDismissed({required TItem entry});
 
   /// Present the entry.
-  Future<void> present(TItem entry);
+  ///
+  /// Returns the dialog result:
+  /// - `true` if dismissed by user (user already marked it as dismissed)
+  /// - `null` or `false` if dismissed by system (mixin will call
+  /// [markDismissed])
+  ///
+  /// This typically wraps [Navigator.showDialog] and returns its result.
+  Future<bool?> present(TItem entry);
 }
