@@ -38,32 +38,25 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
   AppSurface get surface => AppSurface.popup;
 
   @override
-  Future<void> markDismissed({
-    required CampaignItem entry,
-    bool pop = false,
-  }) async {
+  Future<void> markDismissed({required CampaignItem entry}) async {
     await context.presentum<CampaignItem, AppSurface, CampaignVariant>()
         .markDismissed(entry);
-
-    if (pop && mounted) {
-      await Navigator.maybePop(context, true);
-    }
   }
 
   @override
-  Future<void> present(CampaignItem entry) async {
-    if (!mounted) return;
+  Future<bool?> present(CampaignItem entry) async {
+    if (!mounted) return null;
 
     // Record impression
     await context.presentum<CampaignItem, AppSurface, CampaignVariant>()
         .markShown(entry);
 
-    if (!mounted) return;
+    if (!mounted) return null;
 
     final presentum = context.presentum<CampaignItem, AppSurface, CampaignVariant>();
 
-    // Show dialog
-    final result = await showDialog<bool?>(
+    // Show dialog and return result
+    return showDialog<bool?>(
       context: context,
       builder: (context) => InheritedPresentum.value(
         value: presentum,
@@ -74,11 +67,6 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
       ),
       barrierDismissible: false,
     );
-
-    // Handle result
-    if (result == null || result == false) {
-      await markDismissed(entry: entry);
-    }
   }
 
   @override
@@ -93,8 +81,9 @@ The `PresentumPopupSurfaceStateMixin` automatically:
 1. **Watches the popup surface** for state changes
 2. **Shows dialogs** when active item changes
 3. **Dismisses dialogs** when active becomes null
-4. **Queues popups** - shows them one at a time
-5. **Prevents duplicates** - won't show same item twice
+4. **Handles conflicts** - configurable behavior when popups overlap
+5. **Prevents duplicates** - optional duplicate detection with threshold
+6. **Manages queue** - optional queueing based on conflict strategy
 
 ### Required implementations
 
@@ -105,11 +94,86 @@ You must implement:
 PresentumSurface get surface; // Which surface to watch
 
 @override
-Future<void> markDismissed({required TItem entry, bool pop = false});
+Future<void> markDismissed({required TItem entry});
 
 @override
-Future<void> present(TItem entry);
+Future<bool?> present(TItem entry); // Returns dialog result
 ```
+
+### Optional overrides
+
+Configure popup behavior:
+
+```dart
+@override
+PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.ignore;
+
+@override
+bool get ignoreDuplicates => false;
+
+@override
+Duration? get duplicateThreshold => const Duration(seconds: 3);
+```
+
+## Conflict strategies
+
+Control what happens when a new popup activates while another is showing:
+
+### Ignore (default)
+
+Keep showing the current popup, ignore new ones:
+
+```dart
+@override
+PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.ignore;
+```
+
+**Use when:** You want to finish showing one popup before considering others.
+
+### Replace
+
+Immediately dismiss current popup and show the new one:
+
+```dart
+@override
+PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.replace;
+```
+
+**Use when:** Newer popups have higher priority than older ones.
+
+### Queue
+
+Queue new popups to show after current one is dismissed:
+
+```dart
+@override
+PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.queue;
+```
+
+**Use when:** You want to show all popups sequentially without skipping any.
+
+## Duplicate detection
+
+Prevent showing the same popup multiple times in quick succession:
+
+```dart
+class _CampaignPopupHostState extends State<CampaignPopupHost>
+    with PresentumPopupSurfaceStateMixin<...> {
+
+  @override
+  bool get ignoreDuplicates => true;
+
+  @override
+  Duration? get duplicateThreshold => const Duration(seconds: 5);
+
+  // ... rest of implementation
+}
+```
+
+- **`ignoreDuplicates`**: Enable/disable duplicate detection
+- **`duplicateThreshold`**: Time window for considering something a duplicate
+  - If `null`, always ignore duplicates of the same ID
+  - If set, only ignore if shown within the threshold
 
 ## Production example
 
@@ -137,33 +201,26 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
   CampaignSurface get surface => CampaignSurface.popup;
 
   @override
-  Future<void> markDismissed({
-    required CampaignPresentumItem entry,
-    bool pop = false,
-  }) async {
+  Future<void> markDismissed({required CampaignPresentumItem entry}) async {
     final campaigns = context.campaigns;
     await campaigns.markDismissed(entry);
-
-    if (pop && mounted) {
-      await Navigator.maybePop(context, true);
-    }
   }
 
   @override
-  Future<void> present(CampaignPresentumItem entry) async {
+  Future<bool?> present(CampaignPresentumItem entry) async {
     try {
-      if (!mounted) return;
+      if (!mounted) return null;
 
       final campaigns = context.campaigns;
       await campaigns.markShown(entry);
 
-      if (!mounted) return;
+      if (!mounted) return null;
 
       final factory = campaignsPresentationWidgetFactory;
       final isFullscreen = entry.option.variant == CampaignVariant.fullscreenDialog;
 
-      // Show appropriate dialog type
-      final result = await showDialog<bool?>(
+      // Show appropriate dialog type and return result
+      return await showDialog<bool?>(
         context: context,
         builder: (context) => InheritedPresentum.value(
           value: campaigns,
@@ -175,10 +232,6 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
         barrierDismissible: false,
         useSafeArea: !isFullscreen,
       );
-
-      if (result == null || result == false) {
-        await markDismissed(entry: entry);
-      }
     } catch (error, stackTrace) {
       FlutterError.reportError(
         FlutterErrorDetails(
@@ -187,6 +240,7 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
           library: 'CampaignPopupHost',
         ),
       );
+      return null;
     }
   }
 
@@ -282,16 +336,16 @@ Override `present` for custom dialog behavior:
 
 ```dart
 @override
-Future<void> present(CampaignItem entry) async {
-  if (!mounted) return;
+Future<bool?> present(CampaignItem entry) async {
+  if (!mounted) return null;
 
   final presentum = context.presentum<CampaignItem, AppSurface, CampaignVariant>();
   await presentum.markShown(entry);
 
-  if (!mounted) return;
+  if (!mounted) return null;
 
   // Custom routing or modal presentation
-  final result = await Navigator.of(context).push<bool>(
+  return Navigator.of(context).push<bool>(
     MaterialPageRoute(
       builder: (context) => InheritedPresentum.value(
         value: presentum,
@@ -303,31 +357,37 @@ Future<void> present(CampaignItem entry) async {
       fullscreenDialog: true,
     ),
   );
-
-  if (result == null || result == false) {
-    await markDismissed(entry: entry);
-  }
 }
 ```
 
+The mixin automatically handles the result:
+
+- If `true`: user dismissed it (typically after conversion)
+- If `null` or `false`: mixin calls `markDismissed()` automatically
+
 ## Queuing behavior
 
-Popup hosts automatically queue multiple popups:
+When using `PopupConflictStrategy.queue`, the mixin automatically queues popups:
 
 ```
-State: popup surface has 3 items
-├─ active: Campaign A
+State: popup surface has item A showing, items B and C activate
+
+With conflictStrategy = queue:
+├─ active: Campaign A (showing)
 └─ queue: [Campaign B, Campaign C]
 
 User flow:
 1. Campaign A dialog shows
 2. User dismisses A
-3. Campaign B dialog shows automatically
+3. Campaign B dialog shows automatically (from queue)
 4. User dismisses B
-5. Campaign C dialog shows automatically
+5. Campaign C dialog shows automatically (from queue)
 ```
 
-The mixin handles this automatically.
+With other strategies:
+
+- **`ignore`**: Items B and C are ignored while A shows
+- **`replace`**: A is dismissed, B shows immediately (then C replaces B)
 
 ## Best practices
 
@@ -357,17 +417,21 @@ The mixin handles this automatically.
     ```
   </Accordion>
   
-  <Accordion title="Handle dismissal properly">
-    Mark as dismissed only if user closed it (not if programmatically popped):
+  <Accordion title="Return dialog result correctly">
+    Return the dialog result from `present()` - the mixin handles dismissal:
     
     ```dart
-    final result = await showDialog<bool?>(...);
-    
-    if (result == null || result == false) {
-      await markDismissed(entry: entry); // User dismissed
+    @override
+    Future<bool?> present(CampaignItem entry) async {
+      // ... mark shown, setup ...
+      
+      // Return the dialog result directly
+      return showDialog<bool?>(...);
     }
-    // result == true means user converted, no dismissal
     ```
+    
+    The mixin automatically calls `markDismissed()` if result is `null` or `false`.
+    Return `true` when user took action (e.g., converted) to skip auto-dismissal.
   </Accordion>
 </AccordionGroup>
 
@@ -378,12 +442,14 @@ The mixin handles this automatically.
     Learn about outlet widgets
   </Card>
 
-  <Card
-    title="Inherited widgets"
-    icon="sitemap"
-    href="/features/inherited-widgets">
-    Using InheritedPresentumItem
-  </Card>
+{" "}
+
+<Card
+  title="Inherited widgets"
+  icon="sitemap"
+  href="/features/inherited-widgets">
+  Using InheritedPresentumItem
+</Card>
 
   <Card
     title="Production example"
