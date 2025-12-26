@@ -108,7 +108,7 @@ coverage: test ## generate coverage report
 .PHONY: build
 build: get ## build the application
 	$(call print-target)
-	@fvm flutter build web --release --source-maps --base-href / --dart-define VERSION=0.0.0 --dart-define-from-file=.env.dev
+	@fvm flutter build web --release --source-maps --pwa-strategy none --base-href / --dart-define VERSION=0.0.0 --dart-define-from-file=.env.dev
 	
 .PHONY: l10n
 l10n: ## generate localization files

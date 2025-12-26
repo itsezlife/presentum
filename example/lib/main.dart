@@ -35,7 +35,7 @@ void main() => runZonedGuarded<void>(
           ),
           onError: (error, stackTrace) async {
             await app_error.loadLibrary();
-            runApp(app_error.AppError(error: error));
+            runApp(app_error.AppError(error: error, stackTrace: stackTrace));
             ErrorUtil.logError(error, stackTrace).ignore();
           },
         )
