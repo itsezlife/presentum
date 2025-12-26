@@ -47,25 +47,20 @@ class _AppViewState extends State<AppView> with RouterStateMixin {
       darkTheme: _darkTheme,
 
       // Builder
-      builder: (context, child) {
-        return MediaQuery(
-          key: builderKey,
-          data: context.mediaQuery.copyWith(
-            platformBrightness: themeMode == ThemeMode.system
-                ? SchedulerBinding
-                      .instance
-                      .platformDispatcher
-                      .platformBrightness
-                : themeMode == ThemeMode.light
-                ? Brightness.light
-                : Brightness.dark,
-            textScaler: TextScaler.linear(
-              context.textScaleFactor(maxTextScaleFactor: 1.2),
-            ),
+      builder: (context, child) => MediaQuery(
+        key: builderKey,
+        data: context.mediaQuery.copyWith(
+          platformBrightness: themeMode == ThemeMode.system
+              ? SchedulerBinding.instance.platformDispatcher.platformBrightness
+              : themeMode == ThemeMode.light
+              ? Brightness.light
+              : Brightness.dark,
+          textScaler: TextScaler.linear(
+            context.textScaleFactor(maxTextScaleFactor: 1.2),
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
   }
 }

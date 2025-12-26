@@ -18,7 +18,6 @@ class _HomeViewState extends State<HomeView> with HomeTabsMixin {
   AppTab get tab => const HomeAppTab();
 
   @override
-  Widget build(BuildContext context) {
-    return FeaturePresentum(child: buildTabs(context));
-  }
+  Widget build(BuildContext context) =>
+      FeaturePresentum(child: buildTabs(context));
 }

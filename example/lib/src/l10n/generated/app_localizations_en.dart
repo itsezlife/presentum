@@ -29,14 +29,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String featureName(String featureKey) {
     String _temp0 = intl.Intl.selectLogic(featureKey, {
-      'newYear': 'New Year',
+      'newYearTheme': 'New Year Theme',
+      'newYearBanner': 'New Year Banner',
       'other': 'Unknown Feature',
     });
     return '$_temp0';
   }
 
   @override
-  String get settingsNewYearDescription => 'Enable the New Year for the app.';
+  String settingsFeatureEnabledDescription(String featureName) {
+    return 'Enable the $featureName feature for the app.';
+  }
 
   @override
   String get settingsCatalogFeaturesTitle => 'Catalog Features';
@@ -85,5 +88,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get newYearBannerSubtitle => 'Wishing you a year full of wins ✨';
+  String get newYearBannerSubtitleSmallVersion => 'Wishing you wins ✨';
+
+  @override
+  String get newYearBannerSubtitleLargeVersion =>
+      'Wishing you a year full of wins ✨';
 }

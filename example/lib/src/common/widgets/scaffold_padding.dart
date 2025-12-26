@@ -12,18 +12,33 @@ class ScaffoldPadding extends EdgeInsets {
     : super.symmetric(horizontal: value);
 
   /// {@macro scaffold_padding}
-  factory ScaffoldPadding.of(BuildContext context) => ScaffoldPadding._(
+  factory ScaffoldPadding.of(
+    BuildContext context, {
+    double padding = AppSpacing.lg,
+  }) => ScaffoldPadding._(
     math.max(
       (MediaQuery.widthOf(context) - Config.maxScreenLayoutWidth) / 2,
-      AppSpacing.lg,
+      padding,
     ),
   );
 
   /// {@macro scaffold_padding}
-  static Widget widget(BuildContext context, [Widget? child]) =>
-      Padding(padding: ScaffoldPadding.of(context), child: child);
+  static Widget widget(
+    BuildContext context, {
+    double padding = AppSpacing.lg,
+    Widget? child,
+  }) => Padding(
+    padding: ScaffoldPadding.of(context, padding: padding),
+    child: child,
+  );
 
   /// {@macro scaffold_padding}
-  static Widget sliver(BuildContext context, [Widget? child]) =>
-      SliverPadding(padding: ScaffoldPadding.of(context), sliver: child);
+  static Widget sliver(
+    BuildContext context, {
+    double padding = AppSpacing.lg,
+    Widget? child,
+  }) => SliverPadding(
+    padding: ScaffoldPadding.of(context, padding: padding),
+    sliver: child,
+  );
 }

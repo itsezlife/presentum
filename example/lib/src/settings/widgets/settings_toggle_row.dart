@@ -15,12 +15,10 @@ class SettingToggleRow extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      title: title != null ? Text(title!) : null,
-      subtitle: description != null ? Text(description!) : null,
-      value: value,
-      onChanged: onChanged,
-    );
-  }
+  Widget build(BuildContext context) => SwitchListTile(
+    title: title != null ? Text(title!) : null,
+    subtitle: description != null ? Text(description!) : null,
+    value: value,
+    onChanged: onChanged,
+  );
 }

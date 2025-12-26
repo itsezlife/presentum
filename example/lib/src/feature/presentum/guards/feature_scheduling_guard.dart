@@ -18,16 +18,15 @@ final class FeatureSchedulingGuard
   final EligibilityResolver<FeatureItem> eligibilityResolver;
 
   bool _enabled(String key) =>
-      (prefs.overrideFor(key) ??
-      (catalog.features[key]?.defaultEnabled ?? true));
+      prefs.overrideFor(key) ?? (catalog.features[key]?.defaultEnabled ?? true);
 
   @override
   Future<PresentumState<FeatureItem, AppSurface, AppVariant>> call(
-    storage,
-    history,
+    PresentumStorage<AppSurface, AppVariant> storage,
+    List<PresentumHistoryEntry<FeatureItem, AppSurface, AppVariant>> history,
     PresentumState$Mutable<FeatureItem, AppSurface, AppVariant> state,
     List<FeatureItem> candidates,
-    context,
+    Map<String, Object?> context,
   ) async {
     // 1) Filter: if feature is gone, disabled, ineligible, or dismissed,
     // exclude it from UI.
@@ -107,12 +106,10 @@ final class FeatureSchedulingGuard
   /// like time ranges, user segments, etc.
   Map<String, dynamic> _buildEligibilityContext(
     Map<String, dynamic> guardContext,
-  ) {
-    return {
-      'now': DateTime.now(),
-      'catalog': catalog,
-      'prefs': prefs,
-      ...guardContext,
-    };
-  }
+  ) => {
+    'now': DateTime.now(),
+    'catalog': catalog,
+    'prefs': prefs,
+    ...guardContext,
+  };
 }

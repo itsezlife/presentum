@@ -1,7 +1,9 @@
 import 'package:example/src/app/initialization/widget/inherited_dependencies.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
+import 'package:firebase_remote_config_client/firebase_remote_config_client.dart';
 import 'package:flutter/widgets.dart' show BuildContext;
+import 'package:remote_config_repository/remote_config_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Dependencies
@@ -14,6 +16,12 @@ class Dependencies {
 
   /// Shared preferences
   late final SharedPreferencesWithCache sharedPreferences;
+
+  /// Firebase remote config
+  late final FirebaseRemoteConfig firebaseRemoteConfig;
+
+  /// Remote config repository
+  late final RemoteConfigRepository remoteConfigRepository;
 
   /// Feature catalog
   late final FeatureCatalogStore featureCatalog;

@@ -17,8 +17,8 @@ class AppError extends StatelessWidget {
     theme:
         View.of(context).platformDispatcher.platformBrightness ==
             Brightness.dark
-        ? AppTheme().theme
-        : AppDarkTheme().theme,
+        ? const AppTheme().theme
+        : const AppDarkTheme().theme,
     home: Scaffold(
       body: SafeArea(
         child: Center(

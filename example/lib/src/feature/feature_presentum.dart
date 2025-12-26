@@ -13,7 +13,6 @@ class FeaturePresentum extends StatefulWidget {
 class _FeaturePresentumState extends State<FeaturePresentum>
     with FeaturePresentumStateMixin {
   @override
-  Widget build(BuildContext context) {
-    return featurePresentum.config.engine.build(context, widget.child);
-  }
+  Widget build(BuildContext context) =>
+      featurePresentum.config.engine.build(context, widget.child);
 }

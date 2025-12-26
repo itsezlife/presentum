@@ -38,6 +38,7 @@ class _ResetFeaturePresentumItemsStorageState
   void _onStateChange() {
     final candidates = _presentum.config.engine.currentCandidates;
     _items = candidates;
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -55,29 +56,27 @@ class _ResetFeaturePresentumItemsStorageState
         for (final item in _items)
           ListenableBuilder(
             listenable: catalog,
-            builder: (context, child) {
-              return ListTile(
-                title: Text(
-                  l10n.resetFeaturePresentumItemSurfaceVariant(
-                    item.surface.name,
-                    item.variant.name,
-                  ),
+            builder: (context, child) => ListTile(
+              title: Text(
+                l10n.resetFeaturePresentumItemSurfaceVariant(
+                  item.surface.name,
+                  item.variant.name,
                 ),
-                subtitle: Text(l10n.resetFeaturePresentumItemId(item.id)),
-                onTap: () {
-                  _presentum.config.storage.clearItem(
-                    item.id,
-                    surface: item.surface,
-                    variant: item.variant,
-                  );
+              ),
+              subtitle: Text(l10n.resetFeaturePresentumItemId(item.id)),
+              onTap: () {
+                _presentum.config.storage.clearItem(
+                  item.id,
+                  surface: item.surface,
+                  variant: item.variant,
+                );
 
-                  // Force state update and all guards to re-evaluate.
-                  _presentum.config.engine.setCandidates(
-                    (_, candidates) => candidates,
-                  );
-                },
-              );
-            },
+                // Force state update and all guards to re-evaluate.
+                _presentum.config.engine.setCandidates(
+                  (_, candidates) => candidates,
+                );
+              },
+            ),
           ),
       ],
     );

@@ -11,20 +11,19 @@ class NewYearBanner extends StatelessWidget {
   const NewYearBanner({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
-      surface: AppSurface.homeHeader,
-      builder: (context, item) {
-        return _NewYearBannerContent(item: item);
-      },
-    );
-  }
+  Widget build(BuildContext context) =>
+      PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
+        surface: AppSurface.homeHeader,
+        builder: (context, item) =>
+            const RepaintBoundary(child: _NewYearBannerContent()),
+      );
 }
 
 class _NewYearBannerContent extends StatefulWidget {
-  const _NewYearBannerContent({required this.item});
+  // ignore: unused_element_parameter
+  const _NewYearBannerContent({this.onTap});
 
-  final FeatureItem item;
+  final VoidCallback? onTap;
 
   @override
   State<_NewYearBannerContent> createState() => _NewYearBannerContentState();
@@ -74,40 +73,33 @@ class _NewYearBannerContentState extends State<_NewYearBannerContent>
 
   @override
   Widget build(BuildContext context) {
+    final item = context.presentumItem<FeatureItem, AppSurface, AppVariant>();
+    final isDismissible = item.option.isDismissible;
+
     return SizeTransition(
       sizeFactor: _sizeAnimation,
       axisAlignment: -1,
       child: SlideTransition(
         position: _slideAnimation,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: SizedBox(
-            height: 100,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: CustomBoxy(
-                delegate: _NewYearBannerDelegate(
-                  showYearBadgeNotifier: _showYearBadgeNotifier,
-                ),
-                children: [
-                  const BoxyId(id: #background, child: _BannerBackground()),
-                  BoxyId(
-                    id: #content,
-                    child: _BannerContent(
-                      item: widget.item,
-                      showYearBadge: _showYearBadgeNotifier,
-                    ),
-                  ),
-                  BoxyId(
-                    id: #yearBadge,
-                    child: _YearBadge(item: widget.item),
-                  ),
-                  BoxyId(
-                    id: #closeButton,
-                    child: _CloseButton(item: widget.item),
-                  ),
-                ],
+        child: SizedBox(
+          height: 100,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CustomBoxy(
+              delegate: _NewYearBannerDelegate(
+                showYearBadgeNotifier: _showYearBadgeNotifier,
+                isDismissible: isDismissible,
               ),
+              children: [
+                const BoxyId(id: #background, child: _BannerBackground()),
+                BoxyId(
+                  id: #content,
+                  child: _BannerContent(showYearBadge: _showYearBadgeNotifier),
+                ),
+                const BoxyId(id: #yearBadge, child: _YearBadge()),
+                if (isDismissible)
+                  const BoxyId(id: #closeButton, child: _CloseButton()),
+              ],
             ),
           ),
         ),
@@ -117,16 +109,20 @@ class _NewYearBannerContentState extends State<_NewYearBannerContent>
 }
 
 class _NewYearBannerDelegate extends BoxyDelegate {
-  _NewYearBannerDelegate({required this.showYearBadgeNotifier});
+  _NewYearBannerDelegate({
+    required this.showYearBadgeNotifier,
+    required this.isDismissible,
+  });
 
   final ValueNotifier<bool> showYearBadgeNotifier;
+  final bool isDismissible;
 
   @override
   Size layout() {
     final background = getChild(#background);
     final content = getChild(#content);
     final yearBadge = getChild(#yearBadge);
-    final closeButton = getChild(#closeButton);
+    final closeButton = isDismissible ? getChild(#closeButton) : null;
 
     final full = constraints.biggest;
 
@@ -177,13 +173,15 @@ class _NewYearBannerDelegate extends BoxyDelegate {
     }
 
     // Close button in top-right corner
-    final closeButtonSize = closeButton.layout(constraints.loosen());
-    closeButton.position(
-      Offset(
-        full.width - (horizontalPadding * 0.3) - closeButtonSize.width,
-        verticalPadding * 0.3,
-      ),
-    );
+    if (closeButton case final closeButton?) {
+      final closeButtonSize = closeButton.layout(constraints.loosen());
+      closeButton.position(
+        Offset(
+          full.width - (horizontalPadding * 0.3) - closeButtonSize.width,
+          verticalPadding * 0.3,
+        ),
+      );
+    }
 
     return full;
   }
@@ -196,111 +194,114 @@ class _BannerBackground extends StatelessWidget {
   const _BannerBackground();
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox.expand(
+  Widget build(BuildContext context) => SizedBox.expand(
+    child: Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFE0F2FE), // Light sky blue
+            Color(0xFFBAE6FD), // Cool blue
+            Color(0xFF7DD3FC), // Bright icy blue
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFFE0F2FE), // Light sky blue
-              Color(0xFFBAE6FD), // Cool blue
-              Color(0xFF7DD3FC), // Bright icy blue
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Colors.white.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(16),
-          ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _BannerContent extends StatelessWidget {
-  const _BannerContent({required this.item, required this.showYearBadge});
+  const _BannerContent({required this.showYearBadge});
 
-  final FeatureItem item;
   final ValueNotifier<bool> showYearBadge;
 
-  static const double _minWidthForIcon = 500.0;
+  static final double _minWidthForIcon = ScreenSize.tablet.min;
+  static final double _minWidthForLargeSubtitle = ScreenSize.tablet.min;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final l10n = context.l10n;
-    final year = item.metadata['year'] as String? ?? '2025';
+
+    final item = context.presentumItem<FeatureItem, AppSurface, AppVariant>();
+    final year = item.metadata['year'] as String?;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final showIcon = constraints.maxWidth > _minWidthForIcon;
+        final showLargeSubtitle =
+            constraints.maxWidth > _minWidthForLargeSubtitle;
 
         return ValueListenableBuilder<bool>(
           valueListenable: showYearBadge,
-          builder: (context, isYearBadgeVisible, _) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (showIcon) ...[
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF7DD3FC).withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.celebration,
-                      size: 32,
-                      color: Color(0xFF0284C7),
-                    ),
+          builder: (context, isYearBadgeVisible, _) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showIcon) ...[
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7DD3FC).withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: AppSpacing.lg),
-                ],
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isYearBadgeVisible
-                            ? l10n.newYearBannerTitle
-                            : l10n.newYearBannerTitleWithYear(year),
-                        style: textTheme.titleLarge?.copyWith(
-                          fontWeight: AppFontWeight.bold,
-                          color: const Color(0xFF2D3748),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        l10n.newYearBannerSubtitle,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                          height: 1.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: const Icon(
+                    Icons.celebration,
+                    size: 32,
+                    color: Color(0xFF0284C7),
                   ),
                 ),
+                const SizedBox(width: AppSpacing.lg),
               ],
-            );
-          },
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isYearBadgeVisible || year == null
+                          ? l10n.newYearBannerTitle
+                          : l10n.newYearBannerTitleWithYear(year),
+                      style: textTheme.titleLarge?.copyWith(
+                        fontSize: 19,
+                        fontWeight: AppFontWeight.bold,
+                        color: const Color(0xFF2D3748),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      showLargeSubtitle
+                          ? l10n.newYearBannerSubtitleLargeVersion
+                          : l10n.newYearBannerSubtitleSmallVersion,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                        height: 1.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -308,15 +309,16 @@ class _BannerContent extends StatelessWidget {
 }
 
 class _YearBadge extends StatelessWidget {
-  const _YearBadge({required this.item});
-
-  final FeatureItem item;
+  const _YearBadge();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    final year = item.metadata['year'] as String? ?? '2025';
+
+    final item = context.presentumItem<FeatureItem, AppSurface, AppVariant>();
+    final year = item.metadata['year'] as String?;
+    if (year == null) return const SizedBox.shrink();
 
     return Text(
       year,
@@ -329,19 +331,16 @@ class _YearBadge extends StatelessWidget {
 }
 
 class _CloseButton extends StatelessWidget {
-  const _CloseButton({required this.item});
-
-  final FeatureItem item;
+  const _CloseButton();
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        context.presentum<FeatureItem, AppSurface, AppVariant>().markDismissed(
-          item,
-        );
-      },
-      child: const Icon(Icons.close, size: 20, color: Color(0xFF2D3748)),
-    );
-  }
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () {
+      final item = context.presentumItem<FeatureItem, AppSurface, AppVariant>();
+      context.presentum<FeatureItem, AppSurface, AppVariant>().markDismissed(
+        item,
+      );
+    },
+    child: const Icon(Icons.close, size: 20, color: Color(0xFF2D3748)),
+  );
 }

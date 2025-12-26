@@ -4,8 +4,8 @@ import 'package:example/src/app/initialization/data/initialization.dart'
     deferred as initialization;
 import 'package:example/src/app/initialization/widget/inherited_dependencies.dart'
     deferred as inherited_dependencies;
-import 'package:example/src/app/view/app_view.dart' deferred as app;
 import 'package:example/src/app/view/app_error.dart' deferred as app_error;
+import 'package:example/src/app/view/app_view.dart' deferred as app;
 import 'package:flutter/widgets.dart';
 import 'package:shared/shared.dart';
 

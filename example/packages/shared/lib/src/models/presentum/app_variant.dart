@@ -10,4 +10,7 @@ enum AppVariant with PresentumVisualVariant {
 
   /// A fullscreen greeting.
   fullscreenDialog,
+
+  /// A snow
+  snow,
 }

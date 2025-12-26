@@ -25,9 +25,13 @@ final class FeatureCatalogRepositoryImpl implements IFeatureCatalogRepository {
     try {
       final decoded = jsonDecode(featuresJson) as Map<String, dynamic>;
       return decoded.map(
-        (key, value) => MapEntry(key, FeatureDefinition.fromJson(value)),
+        (key, value) => MapEntry(
+          key,
+          FeatureDefinition.fromJson(value as Map<String, dynamic>),
+        ),
       );
-    } catch (e) {
+    } on Object catch (error, stackTrace) {
+      await ErrorUtil.logError(error, stackTrace);
       return null;
     }
   }

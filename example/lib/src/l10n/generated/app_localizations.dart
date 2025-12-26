@@ -116,14 +116,14 @@ abstract class AppLocalizations {
   /// The name of the feature.
   ///
   /// In en, this message translates to:
-  /// **'{featureKey, select, newYear{New Year} other{Unknown Feature}}'**
+  /// **'{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} other{Unknown Feature}}'**
   String featureName(String featureKey);
 
-  /// No description provided for @settingsNewYearDescription.
+  /// The description for the feature enabled button.
   ///
   /// In en, this message translates to:
-  /// **'Enable the New Year for the app.'**
-  String get settingsNewYearDescription;
+  /// **'Enable the {featureName} feature for the app.'**
+  String settingsFeatureEnabledDescription(String featureName);
 
   /// No description provided for @settingsCatalogFeaturesTitle.
   ///
@@ -188,11 +188,17 @@ abstract class AppLocalizations {
   /// **'Happy New {year} Year!'**
   String newYearBannerTitleWithYear(String year);
 
-  /// No description provided for @newYearBannerSubtitle.
+  /// No description provided for @newYearBannerSubtitleSmallVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Wishing you wins ✨'**
+  String get newYearBannerSubtitleSmallVersion;
+
+  /// No description provided for @newYearBannerSubtitleLargeVersion.
   ///
   /// In en, this message translates to:
   /// **'Wishing you a year full of wins ✨'**
-  String get newYearBannerSubtitle;
+  String get newYearBannerSubtitleLargeVersion;
 }
 
 class _AppLocalizationsDelegate

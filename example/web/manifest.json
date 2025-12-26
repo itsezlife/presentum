@@ -1,11 +1,11 @@
 {
-    "name": "example",
-    "short_name": "example",
+    "name": "presentum",
+    "short_name": "presentum",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Presentations example.",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff",
+    "description": "Dynamic, conditional UI example",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

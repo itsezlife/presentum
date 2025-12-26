@@ -1,6 +1,6 @@
-# example
+# presentum
 
-Presentations example.
+Dynamic, conditional UI example
 
 ## Getting Started
 

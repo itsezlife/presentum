@@ -70,7 +70,7 @@ abstract final class ScreenUtil {
 
   /// {@macro screen_util}
   static ScreenSize screenSizeOf(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final size = MediaQuery.sizeOf(context);
     return _screenSizeFromSize(size);
   }
 
@@ -92,7 +92,7 @@ abstract final class ScreenUtil {
 
   /// Portrait or Landscape
   static Orientation orientationOf(BuildContext context) =>
-      MediaQuery.of(context).orientation;
+      MediaQuery.orientationOf(context);
 }
 
 /// {@macro screen_util}

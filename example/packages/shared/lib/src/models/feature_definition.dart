@@ -1,5 +1,3 @@
-// ignore_for_file: lines_longer_than_80_chars
-
 import 'package:flutter/foundation.dart';
 
 /// {@template feature_id}
@@ -7,10 +5,13 @@ import 'package:flutter/foundation.dart';
 /// {@endtemplate}
 extension type FeatureId(String value) {
   /// New Year theme feature id.
-  static const String newYear = 'newYear';
+  static const String newYearTheme = 'newYearTheme';
+
+  /// New Year banner feature id.
+  static const String newYearBanner = 'newYearBanner';
 
   /// All feature ids.
-  static const List<String> all = [newYear];
+  static const List<String> all = [newYearTheme, newYearBanner];
 }
 
 /// {@template feature_definition}
@@ -24,6 +25,7 @@ final class FeatureDefinition {
     required this.key,
     this.defaultEnabled = true,
     this.order = 0,
+    this.metadata = const {},
   });
 
   /// Create a feature definition from a JSON map.
@@ -31,12 +33,12 @@ final class FeatureDefinition {
     if (json case <String, dynamic>{
       'key': final String key,
       'defaultEnabled': final bool? defaultEnabled,
-      'order': final int? order,
     }) {
       return FeatureDefinition(
         key: key,
         defaultEnabled: defaultEnabled ?? true,
-        order: order ?? 0,
+        order: (json['order'] as num?)?.toInt() ?? 0,
+        metadata: json['metadata'] as Map<String, dynamic>? ?? const {},
       );
     } else {
       throw FormatException('Invalid feature definition JSON: $json');
@@ -53,11 +55,15 @@ final class FeatureDefinition {
   /// Lower comes first. Avoid ordering by localized titles.
   final int order;
 
+  /// Optional metadata for the feature.
+  final Map<String, dynamic> metadata;
+
   /// Convert the feature definition to a JSON map.
   Map<String, dynamic> toJson() => {
     'key': key,
     'defaultEnabled': defaultEnabled,
     'order': order,
+    'metadata': metadata,
   };
 
   @override
@@ -66,12 +72,14 @@ final class FeatureDefinition {
       other is FeatureDefinition &&
           key == other.key &&
           defaultEnabled == other.defaultEnabled &&
-          order == other.order;
+          order == other.order &&
+          metadata == other.metadata;
 
   @override
-  int get hashCode => Object.hash(key, defaultEnabled, order);
+  int get hashCode => Object.hash(key, defaultEnabled, order, metadata);
 
   @override
   String toString() =>
-      'FeatureDefinition(key: $key, defaultEnabled: $defaultEnabled, order: $order)';
+      'FeatureDefinition(key: $key, defaultEnabled: $defaultEnabled, '
+      'order: $order, metadata: $metadata)';
 }

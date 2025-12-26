@@ -9,7 +9,8 @@
       "args": [
         "--dart-define-from-file=config/development.json",
         "--dart-define=octopus.logs=true",
-        "--dart-define=octopus.measure=false"
+        "--dart-define=octopus.measure=false",
+        "--dart-define=presentum.logs=true"
       ],
       "env": {}
     },
@@ -22,7 +23,8 @@
         "--dart-define-from-file=config/development.json",
         "--device-id=web-server",
         "--dart-define=octopus.logs=true",
-        "--dart-define=octopus.measure=false"
+        "--dart-define=octopus.measure=false",
+        "--dart-define=presentum.logs=true"
       ],
       "env": {}
     },
@@ -32,9 +34,7 @@
       "program": "${workspaceFolder}/example/integration_test/app_test.dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/example",
-      "args": [
-        "--dart-define-from-file=config/development.json",
-      ],
+      "args": ["--dart-define-from-file=config/development.json"],
       "env": {}
     }
   ]

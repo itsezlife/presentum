@@ -13,19 +13,29 @@
       }
     }
   },
-  "featureName": "{featureKey, select, newYear{New Year} other{Unknown Feature}}",
+  "featureName": "{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} other{Unknown Feature}}",
   "@featureName": {
     "description": "The name of the feature.",
     "placeholders": {
       "featureKey": {
         "type": "String",
-        "example": "newYear", 
+        "example": "newYearTheme",
         "description": "The key of the feature."
       }
     }
   },
-  "settingsNewYearDescription": "Enable the New Year for the app.",
-  "settingsCatalogFeaturesTitle": "Catalog Features", 
+  "settingsFeatureEnabledDescription": "Enable the {featureName} feature for the app.",
+  "@settingsFeatureEnabledDescription": {
+    "description": "The description for the feature enabled button.",
+    "placeholders": {
+      "featureName": {
+        "type": "String",
+        "example": "New Year Theme",
+        "description": "The name of the feature."
+      }
+    }
+  },
+  "settingsCatalogFeaturesTitle": "Catalog Features",
   "settingsCatalogFeaturesDescription": "Enable or disable catalog feature from both settings and the app.",
   "toggleFeatureTitle": "{featureName} feature",
   "@toggleFeatureTitle": {
@@ -90,5 +100,6 @@
       }
     }
   },
-  "newYearBannerSubtitle": "Wishing you a year full of wins ✨"
+  "newYearBannerSubtitleSmallVersion": "Wishing you wins ✨",
+  "newYearBannerSubtitleLargeVersion": "Wishing you a year full of wins ✨"
 }

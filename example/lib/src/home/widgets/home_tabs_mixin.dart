@@ -22,13 +22,12 @@ mixin HomeTabsMixin<T extends StatefulWidget> on State<T> {
   };
 
   OctopusTabBuilder get tabBuilder =>
-      (context, route, tabIdentifier, onBackButtonPressed) {
-        return TabBucketNavigator(
-          route: route,
-          tabIdentifier: tabIdentifier,
-          onBackButtonPressed: onBackButtonPressed,
-        );
-      };
+      (context, route, tabIdentifier, onBackButtonPressed) =>
+          TabBucketNavigator(
+            route: route,
+            tabIdentifier: tabIdentifier,
+            onBackButtonPressed: onBackButtonPressed,
+          );
   OctopusOnTabChanged get onTabChanged => (index, tab) {
     currentIndex = index;
   };
@@ -39,24 +38,19 @@ mixin HomeTabsMixin<T extends StatefulWidget> on State<T> {
 
   int currentIndex = 0;
 
-  Widget buildTabs(BuildContext context) {
-    return OctopusTabs.lazy(
-      root: tab.root,
-      tabs: tab.tabs,
-      onBackButtonPressed: onBackButtonPressed,
-      tabBuilder: tabBuilder,
-      onTabChanged: onTabChanged,
-      builder: (context, child, currentIndex, innerOnTabPressed) {
-        return Scaffold(
-          body: child,
-          bottomNavigationBar: BottomNavBar(
-            tabs: tab.bottomTabs,
-            currentIndex: currentIndex,
-            onTap: (index) =>
-                onTabPressed(index, () => innerOnTabPressed(index)),
-          ),
-        );
-      },
-    );
-  }
+  Widget buildTabs(BuildContext context) => OctopusTabs.lazy(
+    root: tab.root,
+    tabs: tab.tabs,
+    onBackButtonPressed: onBackButtonPressed,
+    tabBuilder: tabBuilder,
+    onTabChanged: onTabChanged,
+    builder: (context, child, currentIndex, innerOnTabPressed) => Scaffold(
+      body: child,
+      bottomNavigationBar: BottomNavBar(
+        tabs: tab.bottomTabs,
+        currentIndex: currentIndex,
+        onTap: (index) => onTabPressed(index, () => innerOnTabPressed(index)),
+      ),
+    ),
+  );
 }

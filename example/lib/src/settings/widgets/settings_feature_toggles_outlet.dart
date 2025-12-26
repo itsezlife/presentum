@@ -17,21 +17,17 @@ class SettingsFeatureTogglesOutlet extends StatelessWidget {
   final FeatureCatalogStore catalog;
   final FeaturePreferencesStore prefs;
 
-  String? _titleFor(String featureId, AppLocalizations l10n) {
-    return l10n.featureName(featureId);
-  }
+  String? _titleFor(String featureId, AppLocalizations l10n) =>
+      l10n.featureName(featureId);
 
   String? _descriptionFor(String featureId, AppLocalizations l10n) {
-    return switch (featureId) {
-      FeatureId.newYear => l10n.settingsNewYearDescription,
-      _ => null,
-    };
+    final featureName = l10n.featureName(featureId);
+    return l10n.settingsFeatureEnabledDescription(featureName);
   }
 
-  bool _valueFor(String featureId) {
-    return prefs.overrideFor(featureId) ??
-        (catalog.features[featureId]?.defaultEnabled ?? true);
-  }
+  bool _valueFor(String featureId) =>
+      prefs.overrideFor(featureId) ??
+      (catalog.features[featureId]?.defaultEnabled ?? true);
 
   @override
   Widget build(BuildContext context) {
@@ -41,25 +37,21 @@ class SettingsFeatureTogglesOutlet extends StatelessWidget {
       surface: AppSurface.settingsToggles,
       surfaceMode: OutletGroupMode.custom,
       resolver: (items) => items,
-      builder: (context, items) {
-        return Column(
-          children: [
-            for (final item in items)
-              ListenableBuilder(
-                listenable: prefs,
-                builder: (context, child) {
-                  return SettingToggleRow(
-                    title: _titleFor(item.payload.featureKey, l10n),
-                    description: _descriptionFor(item.payload.featureKey, l10n),
-                    value: _valueFor(item.payload.featureKey),
-                    onChanged: (enabled) =>
-                        prefs.setEnabled(item.payload.featureKey, enabled),
-                  );
-                },
+      builder: (context, items) => Column(
+        children: [
+          for (final item in items)
+            ListenableBuilder(
+              listenable: prefs,
+              builder: (context, child) => SettingToggleRow(
+                title: _titleFor(item.payload.featureKey, l10n),
+                description: _descriptionFor(item.payload.featureKey, l10n),
+                value: _valueFor(item.payload.featureKey),
+                onChanged: (enabled) =>
+                    prefs.setEnabled(item.payload.featureKey, enabled: enabled),
               ),
-          ],
-        );
-      },
+            ),
+        ],
+      ),
     );
   }
 }

@@ -20,6 +20,9 @@ abstract interface class Presentum<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
+  /// Creates a new [Presentum] instance.
+  /// 
+  /// If [storage] is not provided, the [NoOpPresentumStorage] will be used.
   /// {@macro presentum}
   factory Presentum({
     PresentumStorage<S, V>? storage,

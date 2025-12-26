@@ -1,0 +1,21 @@
+name: firebase_remote_config_client
+description: A Very Good Project created by Very Good CLI.
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0"
+  flutter: ">=3.27.2"
+
+dependencies:
+  firebase_remote_config: ^6.1.2
+  flutter:
+    sdk: flutter
+  remote_config_client:
+    path: ../remote_config_client
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.4
+  very_good_analysis: ^10.0.0

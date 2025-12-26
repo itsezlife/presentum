@@ -1,5 +1,6 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:example/src/common/widgets/scaffold_padding.dart';
+import 'package:example/src/feature/widgets/snow_outlet.dart';
 import 'package:example/src/main/widgets/new_year_banner.dart';
 import 'package:flutter/material.dart';
 
@@ -7,11 +8,18 @@ class MainView extends StatelessWidget {
   const MainView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomScrollView(
+  Widget build(BuildContext context) => Scaffold(
+    body: SnowOutlet(
+      flakeCount: 500,
+      minSpeed: 10,
+      maxSpeed: 40,
+      minRadius: .25,
+      maxRadius: 2.5,
+      windStrength: 25,
+      swayStrength: 30,
+      child: CustomScrollView(
         slivers: [
-          SliverAppBar(
+          const SliverAppBar(
             title: Text('Main View'),
             pinned: true,
             floating: true,
@@ -21,10 +29,10 @@ class MainView extends StatelessWidget {
             padding: ScaffoldPadding.of(
               context,
             ).copyWith(top: AppSpacing.lg, bottom: AppSpacing.lg),
-            sliver: SliverList.list(children: [const NewYearBanner()]),
+            sliver: SliverList.list(children: const [NewYearBanner()]),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }

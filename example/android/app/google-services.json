@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "342835125572",
+    "project_id": "flutter-presentum-example",
+    "storage_bucket": "flutter-presentum-example.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:342835125572:android:2af41c5435c195c8320b11",
+        "android_client_info": {
+          "package_name": "dev.itsezlife.presentum"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "342835125572-muo40n7l0chn161msvk5i1q9n5crdb4m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNMCGeaLfyXl6xxwYv-95nw5kDWKnD_rM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "342835125572-muo40n7l0chn161msvk5i1q9n5crdb4m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

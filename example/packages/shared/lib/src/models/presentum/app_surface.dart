@@ -8,6 +8,9 @@ enum AppSurface with PresentumSurface {
   /// The popup surface.
   popup,
 
+  /// The snow background surface.
+  background,
+
   /// The list of settings toggles.
   settingsToggles, // "settings list" is a Presentum surface too
 }

@@ -15,7 +15,7 @@ final class FeaturePreferencesStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setEnabled(String featureKey, bool enabled) async {
+  Future<void> setEnabled(String featureKey, {required bool enabled}) async {
     _overrides[featureKey] = enabled;
     await repo.saveOverrides(_overrides);
     notifyListeners();

@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
 import 'package:example/src/feature/presentum/payload.dart';
@@ -61,24 +63,50 @@ final class FeatureDrivenProvider extends ChangeNotifier {
       },
     );
 
+    dev.log('diffOps: $diffOps');
+
     // Process diff operations
     for (final insertion in diffOps.insertions) {
-      final feature = newFeatureList[insertion.position];
-      _currentFeatures[feature.key] = feature;
-      await _addFeature(feature);
+      final features = newFeatureList.sublist(
+        insertion.position,
+        insertion.position + insertion.count,
+      );
+      final candidates = <FeatureItem>[...engine.currentCandidates];
+      for (final feature in features) {
+        _currentFeatures[feature.key] = feature;
+        candidates.addAll(_addFeature(feature));
+      }
+      engine.setCandidatesWithDiff((state) => candidates);
     }
 
     for (final removal in diffOps.removals) {
-      final feature = oldFeatureList[removal.position];
-      _currentFeatures.remove(feature.key);
-      await _removeFeature(feature);
+      final candidates = <FeatureItem>[];
+      for (var i = 0; i < removal.count; i++) {
+        final feature = oldFeatureList[removal.position + i];
+        _currentFeatures.remove(feature.key);
+        candidates.addAll(_removeFeature(feature));
+      }
+      engine.setCandidatesWithDiff((state) => candidates);
     }
 
     for (final change in diffOps.changes) {
-      final newFeature = change.payload as FeatureDefinition?;
-      if (newFeature != null) {
-        _currentFeatures[newFeature.key] = newFeature;
-        await _updateFeature(newFeature);
+      final updatedFeature = change.payload as FeatureDefinition?;
+      if (updatedFeature case final feature?) {
+        _currentFeatures[feature.key] = feature;
+        final currentCandidates = [...engine.currentCandidates];
+        final newCandidates = <FeatureItem>[];
+        
+        // Remove old candidates for this feature
+        for (final candidate in currentCandidates) {
+          if (candidate.payload.featureKey != feature.key) {
+            newCandidates.add(candidate);
+          }
+        }
+        
+        // Add updated candidates for this feature
+        newCandidates.addAll(_addFeature(feature));
+        
+        engine.setCandidatesWithDiff((state) => newCandidates);
       }
     }
 
@@ -86,7 +114,7 @@ final class FeatureDrivenProvider extends ChangeNotifier {
   }
 
   /// Add a new feature to the engine.
-  Future<void> _addFeature(FeatureDefinition feature) async {
+  List<FeatureItem> _addFeature(FeatureDefinition feature) {
     final candidates = <FeatureItem>[];
 
     // 1) Settings toggle for this feature
@@ -121,16 +149,52 @@ final class FeatureDrivenProvider extends ChangeNotifier {
     }
 
     // 2) Special case: New Year Theme banner
-    if (feature.key == FeatureId.newYear) {
+    if (feature.key == FeatureId.newYearTheme) {
       final bannerPayload = FeaturePayload(
-        id: FeatureId.newYear,
+        id: FeatureId.newYearTheme,
         featureKey: feature.key,
         priority: 50,
-        metadata: {
+        metadata: const {
+          // Any of the following conditions must be met to active this payload
+          'any_of': [
+            // Scheduling window (UTC ISO)
+            {
+              'time_range': {
+                'start': '2025-12-01T18:00:00Z',
+                'end': '2026-01-03T23:59:59Z',
+              },
+            },
+            // Explicitly enable the feature
+            {'is_active': true},
+          ],
+        },
+        options: const [
+          FeatureOption(
+            surface: AppSurface.background,
+            variant: AppVariant.snow,
+            stage: 0,
+            isDismissible: false,
+            alwaysOnIfEligible: true,
+          ),
+        ],
+      );
+
+      for (final opt in bannerPayload.options) {
+        candidates.add(FeatureItem(payload: bannerPayload, option: opt));
+      }
+    }
+
+    // 3) Special case: New Year Theme banner
+    if (feature.key == FeatureId.newYearBanner) {
+      final bannerPayload = FeaturePayload(
+        id: FeatureId.newYearBanner,
+        featureKey: feature.key,
+        priority: 50,
+        metadata: const {
           'year': '2026',
           // Any of the following conditions must be met to show the banner
           'any_of': [
-            // Scheduling window (UTC ISO)
+            // Scheduling window (UTC ISO) from 31st December 2025 to 3rd January 2026
             {
               'time_range': {
                 'start': '2025-12-31T18:00:00Z',
@@ -143,19 +207,18 @@ final class FeatureDrivenProvider extends ChangeNotifier {
         },
         options: const [
           FeatureOption(
-            surface: AppSurface.homeHeader,
-            variant: AppVariant.banner,
-            isDismissible: true,
-            alwaysOnIfEligible: true,
-          ),
-          FeatureOption(
             surface: AppSurface.popup,
             variant: AppVariant.fullscreenDialog,
             isDismissible: true,
             stage: 0,
             maxImpressions: 1,
-            cooldownMinutes: 24 * 60,
             alwaysOnIfEligible: false,
+          ),
+          FeatureOption(
+            surface: AppSurface.homeHeader,
+            variant: AppVariant.banner,
+            isDismissible: true,
+            alwaysOnIfEligible: true,
           ),
         ],
       );
@@ -165,24 +228,15 @@ final class FeatureDrivenProvider extends ChangeNotifier {
       }
     }
 
-    await engine.setCandidatesWithDiff((state) => candidates);
+    return candidates;
   }
 
   /// Remove a feature from the engine.
-  Future<void> _removeFeature(FeatureDefinition feature) async {
-    // Remove all candidates related to this feature
-    engine.setCandidates((state, currentCandidates) {
-      return currentCandidates
-          .where((item) => item.payload.featureKey != feature.key)
-          .toList();
-    });
-  }
-
-  /// Update an existing feature in the engine.
-  Future<void> _updateFeature(FeatureDefinition feature) async {
-    // For updates, we remove and re-add to ensure all properties are updated
-    await _removeFeature(feature);
-    await _addFeature(feature);
+  List<FeatureItem> _removeFeature(FeatureDefinition feature) {
+    final currentCandidates = engine.currentCandidates;
+    return currentCandidates
+        .where((item) => item.payload.featureKey != feature.key)
+        .toList();
   }
 
   @override

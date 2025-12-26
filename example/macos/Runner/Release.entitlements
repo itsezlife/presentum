@@ -4,5 +4,8 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<array>
+		<string>$(AppIdentifierPrefix)dev.itsezlife.presentum</string>
+	</array>
 </dict>
 </plist>

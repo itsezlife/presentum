@@ -33,21 +33,10 @@ extension type FeatureStorageKeys(FeatureStorageKey key) {
 
 class FeaturePresentumStorage
     implements PresentumStorage<AppSurface, AppVariant> {
-  late final Completer<void> _prefsCompleter;
+  FeaturePresentumStorage({required SharedPreferencesWithCache prefs})
+    : _prefs = prefs;
 
-  late final SharedPreferencesWithCache _prefs;
-
-  @override
-  Future<void> init() async {
-    _prefsCompleter = Completer<void>();
-    _prefs = await SharedPreferencesWithCache.create(
-      cacheOptions: const SharedPreferencesWithCacheOptions(),
-    );
-    _prefsCompleter.complete();
-  }
-
-  @override
-  Future<void> clear() => _prefs.clear();
+  final SharedPreferencesWithCache _prefs;
 
   @override
   Future<void> clearItem(
@@ -55,11 +44,7 @@ class FeaturePresentumStorage
     required AppSurface surface,
     required AppVariant variant,
   }) => Future.wait(
-    FeatureStorageKeys((
-      itemId,
-      surface,
-      variant,
-    )).allKeys.map((key) => _prefs.remove(key)),
+    FeatureStorageKeys((itemId, surface, variant)).allKeys.map(_prefs.remove),
   );
 
   @override
@@ -68,7 +53,6 @@ class FeaturePresentumStorage
     required AppSurface surface,
     required AppVariant variant,
   }) async {
-    await _prefsCompleter.future;
     final key = FeatureStorageKeys((itemId, surface, variant)).lastShown;
     final timestampStr = _prefs.getString(key);
     return timestampStr != null ? DateTime.parse(timestampStr) : null;
@@ -81,7 +65,6 @@ class FeaturePresentumStorage
     required AppVariant variant,
     required DateTime at,
   }) async {
-    await _prefsCompleter.future;
     final keys = FeatureStorageKeys((itemId, surface, variant));
     final countKey = keys.shownCount;
     final lastShownKey = keys.lastShown;
@@ -107,7 +90,6 @@ class FeaturePresentumStorage
   }) async {
     final keys = FeatureStorageKeys((itemId, surface, variant));
     final timestampsKey = keys.timestamps;
-    await _prefsCompleter.future;
     final timestampStrings = _prefs.getStringList(timestampsKey) ?? [];
     final timestamps = timestampStrings.map(DateTime.parse).toList();
     final cutoff = DateTime.now().subtract(period);
@@ -122,7 +104,6 @@ class FeaturePresentumStorage
     required AppSurface surface,
     required AppVariant variant,
   }) async {
-    await _prefsCompleter.future;
     final keys = FeatureStorageKeys((itemId, surface, variant));
     final timestampStr = _prefs.getString(keys.dismissedAt);
     return timestampStr != null ? DateTime.parse(timestampStr) : null;
@@ -135,7 +116,6 @@ class FeaturePresentumStorage
     required AppVariant variant,
     required DateTime at,
   }) async {
-    await _prefsCompleter.future;
     final keys = FeatureStorageKeys((itemId, surface, variant));
     await _prefs.setString(keys.dismissedAt, at.toIso8601String());
   }
@@ -147,7 +127,6 @@ class FeaturePresentumStorage
     required AppVariant variant,
     required DateTime at,
   }) async {
-    await _prefsCompleter.future;
     final keys = FeatureStorageKeys((itemId, surface, variant));
     await _prefs.setString(keys.convertedAt, at.toIso8601String());
   }
