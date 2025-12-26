@@ -28,15 +28,22 @@ class EnabledCatalogFeatures extends StatelessWidget {
         subtitle: Text(l10n.settingsCatalogFeaturesDescription),
         initiallyExpanded: true,
         children: [
-          for (final featureId in catalog.allFeatures.keys)
+          for (final feature
+              in catalog.allFeatures.values.toList()
+                ..sort((a, b) => a.order.compareTo(b.order)))
             ListenableBuilder(
               listenable: catalog,
               builder: (context, child) => SettingToggleRow(
-                key: ValueKey(featureId),
-                title: _titleFor(featureId, l10n),
-                value: _valueFor(featureId, catalog),
-                onChanged: (enable) =>
-                    enable ? catalog.add(featureId) : catalog.remove(featureId),
+                key: ValueKey(feature.key),
+                title: _titleFor(feature.key, l10n),
+                value: _valueFor(feature.key, catalog),
+                onChanged: (enable) async {
+                  if (enable) {
+                    await catalog.add(feature.key);
+                  } else {
+                    await catalog.remove(feature.key);
+                  }
+                },
               ),
             ),
         ],
