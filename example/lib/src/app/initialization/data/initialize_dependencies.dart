@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as dev;
 
+import 'package:example/firebase_options.dart';
 import 'package:example/src/app/initialization/data/platform/platform_initialization.dart';
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/feature/data/feature_catalog_repository.dart';
@@ -61,7 +62,7 @@ final Map<String, _InitializationStep> _initializationSteps =
               ),
       'Initialize Firebase core': (dependencies) async {
         await Firebase.initializeApp(
-          // options: DefaultFirebaseOptions.currentPlatform,
+          options: DefaultFirebaseOptions.currentPlatform,
         );
       },
       'Initialize Firebase remote config': (dependencies) async {
