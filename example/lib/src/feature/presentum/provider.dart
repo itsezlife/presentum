@@ -95,17 +95,17 @@ final class FeatureDrivenProvider extends ChangeNotifier {
         _currentFeatures[feature.key] = feature;
         final currentCandidates = [...engine.currentCandidates];
         final newCandidates = <FeatureItem>[];
-        
+
         // Remove old candidates for this feature
         for (final candidate in currentCandidates) {
           if (candidate.payload.featureKey != feature.key) {
             newCandidates.add(candidate);
           }
         }
-        
+
         // Add updated candidates for this feature
         newCandidates.addAll(_addFeature(feature));
-        
+
         engine.setCandidatesWithDiff((state) => newCandidates);
       }
     }

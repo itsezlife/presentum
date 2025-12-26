@@ -14,14 +14,15 @@ class NewYearBanner extends StatelessWidget {
   Widget build(BuildContext context) =>
       PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
         surface: AppSurface.homeHeader,
-        builder: (context, item) =>
-            const RepaintBoundary(child: _NewYearBannerContent()),
+        builder: (context, item) => const RepaintBoundary(
+          child: _NewYearBannerContent(key: PageStorageKey('new_year_banner')),
+        ),
       );
 }
 
 class _NewYearBannerContent extends StatefulWidget {
   // ignore: unused_element_parameter
-  const _NewYearBannerContent({this.onTap});
+  const _NewYearBannerContent({this.onTap, super.key});
 
   final VoidCallback? onTap;
 
@@ -39,7 +40,6 @@ class _NewYearBannerContentState extends State<_NewYearBannerContent>
   @override
   void initState() {
     super.initState();
-
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1750),
       vsync: this,
@@ -49,17 +49,26 @@ class _NewYearBannerContentState extends State<_NewYearBannerContent>
       parent: _animationController,
       curve: Curves.decelerate,
     );
-
     _sizeAnimation = curvedAnimation;
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(curvedAnimation);
 
-    // Start animation after a short delay
-    Future.delayed(const Duration(milliseconds: 250), () {
-      if (mounted) {
-        _animationController.forward();
+    // Check PageStorage for previous state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final storage = PageStorage.of(context);
+      final wasVisible = storage.readState(context) as bool? ?? false;
+
+      if (wasVisible) {
+        _animationController.value = 1.0;
+      } else {
+        Future.delayed(const Duration(milliseconds: 250), () {
+          if (!mounted) return;
+          _animationController.forward();
+          if (!mounted) return;
+          storage.writeState(context, true);
+        });
       }
     });
   }
