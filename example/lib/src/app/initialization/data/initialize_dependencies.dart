@@ -8,10 +8,12 @@ import 'package:example/src/feature/data/feature_catalog_repository.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_repository.dart';
 import 'package:example/src/feature/data/feature_store.dart';
+import 'package:example/src/updates/data/updated_store.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_remote_config_client/firebase_remote_config_client.dart';
 import 'package:remote_config_repository/remote_config_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 /// Initializes the app and returns a [Dependencies] object
 Future<Dependencies> $initializeDependencies({
@@ -53,8 +55,14 @@ final Map<String, _InitializationStep> _initializationSteps =
       'Observer state managment': (_) {},
       'Initializing analytics': (_) {},
       'Log app open': (_) {},
-      'Get remote config': (_) {},
       'Restore settings': (_) {},
+      'Get Shorebird updater': (dependencies) async {
+        final updater = ShorebirdUpdater();
+        final store = ShorebirdUpdatesStore(updater: updater);
+        dependencies.shorebirdUpdatesStore = store;
+
+        await store.checkForUpdate();
+      },
       'Initialize shared preferences': (dependencies) async =>
           dependencies.sharedPreferences =
               await SharedPreferencesWithCache.create(

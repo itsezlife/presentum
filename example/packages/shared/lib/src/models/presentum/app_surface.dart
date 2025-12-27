@@ -13,4 +13,9 @@ enum AppSurface with PresentumSurface {
 
   /// The list of settings toggles.
   settingsToggles, // "settings list" is a Presentum surface too
+  /// The update snackbar surface.
+  updateSnackbar,
+
+  /// The maintenance view surface.
+  maintenanceView,
 }

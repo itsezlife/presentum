@@ -1,6 +1,7 @@
 import 'package:example/src/app/router/tabs.dart';
 import 'package:example/src/feature/feature_presentum.dart';
 import 'package:example/src/home/widgets/home_tabs_mixin.dart';
+import 'package:example/src/updates/presentum/app_updates_presentum.dart';
 import 'package:flutter/material.dart';
 
 /// {@template home_view}
@@ -19,5 +20,5 @@ class _HomeViewState extends State<HomeView> with HomeTabsMixin {
 
   @override
   Widget build(BuildContext context) =>
-      FeaturePresentum(child: buildTabs(context));
+      AppUpdatesPresentum(child: FeaturePresentum(child: buildTabs(context)));
 }

@@ -109,7 +109,47 @@ coverage: test ## generate coverage report
 build: get ## build the application
 	$(call print-target)
 	@fvm flutter build web --release --source-maps --pwa-strategy none --base-href / --dart-define VERSION=0.0.0 --dart-define-from-file=.env.dev
-	
+
+.PHONY: build-apk
+build-apk: get ## build the application
+	$(call print-target)
+	@FLAVOR=$${FLAVOR:-development}; \
+	fvm flutter build apk --release --dart-define-from-file=config/$$FLAVOR.json -t lib/main.dart --obfuscate --target-platform android-arm64 --obfuscate --split-debug-info=build/debug-info
+	@echo "Opening APK location..."
+	@APK_DIR="build/app/outputs/flutter-apk"; \
+	open "$$APK_DIR" || xdg-open "$$APK_DIR" || explorer "$${APK_DIR//\//\\}" || echo "Please manually navigate to $$APK_DIR"
+
+.PHONY: release
+release: ## create shorebird release for platform
+	$(call print-target)
+	@FLAVOR=$${FLAVOR:-development}; \
+	PLATFORM=$${PLATFORM:-android}; \
+	shorebird release $$PLATFORM --target ./lib/main.dart --dart-define-from-file=config/$$FLAVOR.json
+
+.PHONY: release-android-apk
+release-android-apk: ## create shorebird release for android (apk artifact)
+	$(call print-target)
+	@FLAVOR=$${FLAVOR:-development}; \
+	shorebird release android --target ./lib/main.dart --dart-define-from-file=config/$$FLAVOR.json --artifact apk --target-platform android-arm64 --split-debug-info=build/debug-info
+
+.PHONY: patch
+patch: ## create shorebird patch for platform
+	$(call print-target)
+	FLAVOR=$${FLAVOR:-development}; \
+	PLATFORM=$${PLATFORM:-android}; \
+	shorebird patch $$PLATFORM --release-version latest --target ./lib/main.dart --dart-define-from-file=config/$$FLAVOR.json
+
+.PHONY: patch-android
+patch-android: ## create shorebird patch for android
+	$(call print-target)
+	FLAVOR=$${FLAVOR:-development}; \
+	shorebird patch android --release-version latest --target ./lib/main.dart --dart-define-from-file=config/$$FLAVOR.json --split-debug-info=build/debug-info
+
+.PHONY: preview-android
+preview-android: ## preview shorebird patch for android
+	$(call print-target)
+	@shorebird preview --platform android
+
 .PHONY: l10n
 l10n: ## generate localization files
 	$(call print-target)

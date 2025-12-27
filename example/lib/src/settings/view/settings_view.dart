@@ -17,28 +17,33 @@ class SettingsView extends StatelessWidget {
     final prefs = deps.featurePreferences;
 
     return Scaffold(
-      body: SnowOutlet(
-        child: CustomScrollView(
-          slivers: [
-            const SliverAppBar(
-              title: Text('Settings'),
-              pinned: true,
-              floating: true,
-              snap: true,
-            ),
-            SliverPadding(
-              padding: ScaffoldPadding.of(context, padding: 0),
-              sliver: SliverList.list(
-                children: [
-                  SettingsFeatureTogglesOutlet(catalog: catalog, prefs: prefs),
-                  const SizedBox(height: AppSpacing.lg),
-                  const EnabledCatalogFeatures(),
-                  const SizedBox(height: AppSpacing.lg),
-                  const ResetFeaturePresentumItemsStorage(),
-                ],
+      body: SafeArea(
+        child: SnowOutlet(
+          child: CustomScrollView(
+            slivers: [
+              const SliverAppBar(
+                title: Text('Settings'),
+                pinned: true,
+                floating: true,
+                snap: true,
               ),
-            ),
-          ],
+              SliverPadding(
+                padding: ScaffoldPadding.of(context, padding: 0),
+                sliver: SliverList.list(
+                  children: [
+                    SettingsFeatureTogglesOutlet(
+                      catalog: catalog,
+                      prefs: prefs,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const EnabledCatalogFeatures(),
+                    const SizedBox(height: AppSpacing.lg),
+                    const ResetFeaturePresentumItemsStorage(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

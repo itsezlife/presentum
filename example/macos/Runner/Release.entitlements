@@ -4,6 +4,11 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>keychain-access-groups</key>
 	<array>
 		<string>$(AppIdentifierPrefix)dev.itsezlife.presentum</string>
 	</array>

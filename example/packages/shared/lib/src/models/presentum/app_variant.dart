@@ -13,4 +13,10 @@ enum AppVariant with PresentumVisualVariant {
 
   /// A snow
   snow,
+
+  /// A snackbar presentation.
+  snackbar,
+
+  /// A maintenance screen presentation.
+  maintenanceScreen,
 }

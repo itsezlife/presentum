@@ -213,7 +213,7 @@ mixin PresentumPopupSurfaceStateMixin<
   /// Override to customize pop behavior (e.g., custom navigator).
   void pop() {
     if (mounted) {
-      Navigator.maybePop(context, PopupPresentResult.userDismissed);
+      Navigator.maybePop(context, true);
     }
   }
 

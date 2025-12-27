@@ -1,12 +1,14 @@
 import 'package:example/src/home/view/home_view.dart';
 import 'package:example/src/main/view/main_view.dart';
 import 'package:example/src/settings/view/settings_view.dart';
+import 'package:example/src/updates/widgets/maintenance_view.dart';
 import 'package:flutter/material.dart';
 import 'package:octopus/octopus.dart';
 
 enum Routes with OctopusRoute {
   home('home'),
   main('main'),
+  maintenance('maintenance'),
   settings('settings');
 
   const Routes(this.name);
@@ -21,6 +23,8 @@ enum Routes with OctopusRoute {
         return const HomeView();
       case Routes.main:
         return const MainView();
+      case Routes.maintenance:
+        return const MaintenanceView();
       case Routes.settings:
         return const SettingsView();
     }

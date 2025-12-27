@@ -19,6 +19,11 @@ abstract final class Config {
     defaultValue: 'https://api.domain.tld',
   );
 
+  static const String websiteUrl = String.fromEnvironment(
+    'WEBSITE_URL',
+    defaultValue: 'https://example.presentum.dev',
+  );
+
   // --- AUTHENTICATION --- //
 
   /// Minimum length of password.
