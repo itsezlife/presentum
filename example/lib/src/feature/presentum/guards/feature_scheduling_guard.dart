@@ -31,13 +31,21 @@ final class FeatureSchedulingGuard
     // 1) Filter: if feature is gone, disabled, ineligible, or dismissed,
     // exclude it from UI.
     final filtered = <FeatureItem>[];
-    final eligibilityContext = _buildEligibilityContext(context);
 
     for (final item in candidates) {
       final key = item.payload.featureKey;
 
-      // Check if feature exists in catalog
-      if (!catalog.exists(key)) continue;
+      final isDependentFeature = item.payload.dependsOnFeatureKey != null;
+
+      /// Only check against catalog if the feature is dependent
+      ///
+      /// Meaning if the dependsOnFeatureKey is null and payload in the
+      /// provider exists, even when the feature does not in the exists,
+      /// the payload will be shown only if eligible AND enabled.
+      if (isDependentFeature) {
+        // Check if feature exists in catalog
+        if (!catalog.exists(key)) continue;
+      }
 
       // Check if feature is enabled (except settings toggles)
       if (!_enabled(key) && !item.id.startsWith('settings_toggle:')) {
@@ -45,10 +53,7 @@ final class FeatureSchedulingGuard
       }
 
       // Check eligibility (time ranges, segments, etc.)
-      final isEligible = await eligibilityResolver.isEligible(
-        item,
-        eligibilityContext,
-      );
+      final isEligible = await eligibilityResolver.isEligible(item, context);
       if (!isEligible) continue;
 
       // Check if feature is dismissed
@@ -99,17 +104,4 @@ final class FeatureSchedulingGuard
 
     return state;
   }
-
-  /// Builds the eligibility evaluation context.
-  ///
-  /// This context is passed to the eligibility resolver to evaluate conditions
-  /// like time ranges, user segments, etc.
-  Map<String, dynamic> _buildEligibilityContext(
-    Map<String, dynamic> guardContext,
-  ) => {
-    'now': DateTime.now(),
-    'catalog': catalog,
-    'prefs': prefs,
-    ...guardContext,
-  };
 }

@@ -43,6 +43,7 @@ final class FeaturePayload extends PresentumPayload<AppSurface, AppVariant> {
     required this.priority,
     required this.options,
     required this.featureKey,
+    this.dependsOnFeatureKey,
     this.metadata = const {},
   });
 
@@ -60,6 +61,24 @@ final class FeaturePayload extends PresentumPayload<AppSurface, AppVariant> {
 
   /// The feature this presentation belongs to (used by the preference guard).
   final String featureKey;
+
+  /// The feature key this payload depends on. For feature settings
+  /// payloads it is null, otherwise it'll create circular dependencies.
+  ///
+  /// You can use this key to make this payload dependent on the feature key.
+  ///
+  /// If the key is not null and feature key exists in the catalog, this
+  /// payload will only be shown if the feature is enabled and payload is
+  /// eligible.
+  ///
+  /// Otherwise, if the this key is null, this payload doesn't care about
+  /// the feature being existed or not. But, if the feature exists and it is
+  /// not enabled by [featureKey], this payload will not be shown.
+  ///
+  /// So, this is primarily useful if you want to remove the feature and not
+  /// being available in the settings, but want to enable the payload even
+  /// when the feature is not available.
+  final String? dependsOnFeatureKey;
 }
 
 @immutable

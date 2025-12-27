@@ -1,3 +1,5 @@
+// ignore_for_file: lines_longer_than_80_chars
+
 import 'package:presentum/src/eligibility/conditions.dart';
 import 'package:presentum/src/eligibility/resolver.dart';
 
@@ -614,6 +616,151 @@ final class AnyOfExtractor<S extends HasMetadata> extends MetadataExtractor<S> {
     }
 
     return [AnyOfEligibility(conditions: conditions)];
+  }
+}
+
+/// {@template recurring_time_pattern_extractor}
+/// Extracts [RecurringTimePatternEligibility] from metadata.
+/// {@endtemplate}
+///
+/// Expected metadata:
+/// ```json
+/// {
+///   "recurring_time_pattern": {
+///     "days_of_week": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+///     "time_start": "13:00",
+///     "time_end": "17:00"
+///   }
+/// }
+/// ```
+///
+/// Or for all days:
+/// ```json
+/// {
+///   "recurring_time_pattern": {
+///     "time_start": "17:00",
+///     "time_end": "22:00"
+///   }
+/// }
+/// ```
+final class RecurringTimePatternExtractor<S extends HasMetadata>
+    extends MetadataExtractor<S> {
+  /// {@macro recurring_time_pattern_extractor}
+  const RecurringTimePatternExtractor({
+    this.metadataKey = 'recurring_time_pattern',
+  });
+
+  /// Key in metadata to read the pattern from.
+  final String metadataKey;
+
+  @override
+  bool supports(S subject) => subject.metadata.containsKey(metadataKey);
+
+  @override
+  Iterable<Eligibility> extract(S subject) {
+    final data = subject.metadata[metadataKey];
+    if (data is! Map) {
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey" must be a map with "time_start" and "time_end"',
+          'received: $data',
+        ),
+        StackTrace.current,
+      );
+    }
+
+    // Parse time range (required)
+    final timeStartStr = requireString(
+      data['time_start'],
+      '$metadataKey.time_start',
+    );
+    final timeEndStr = requireString(data['time_end'], '$metadataKey.time_end');
+
+    final TimeOfDay timeStart;
+    final TimeOfDay timeEnd;
+
+    try {
+      timeStart = TimeOfDay.parse(timeStartStr);
+    } on Object catch (_) {
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Invalid time format in "$metadataKey.time_start"',
+          'expected HH:mm, got: $timeStartStr',
+        ),
+        StackTrace.current,
+      );
+    }
+
+    try {
+      timeEnd = TimeOfDay.parse(timeEndStr);
+    } on Object catch (_) {
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Invalid time format in "$metadataKey.time_end"',
+          'expected HH:mm, got: $timeEndStr',
+        ),
+        StackTrace.current,
+      );
+    }
+
+    // Validate time range (start != end)
+    if (timeStart.isAtSameTime(timeEnd)) {
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Invalid time range in "$metadataKey"',
+          'time_start and time_end cannot be equal: $timeStartStr',
+        ),
+        StackTrace.current,
+      );
+    }
+
+    // Parse days of week (optional)
+    final Set<DayOfWeek> daysOfWeek;
+    final rawDays = data['days_of_week'];
+
+    if (rawDays == null) {
+      // No days specified = all days
+      daysOfWeek = {};
+    } else if (rawDays is List) {
+      final dayStrings = rawDays.whereType<String>().toList();
+      if (dayStrings.isEmpty && rawDays.isNotEmpty) {
+        Error.throwWithStackTrace(
+          MalformedMetadataException(
+            'Field "$metadataKey.days_of_week" must contain strings',
+            'received: $rawDays',
+          ),
+          StackTrace.current,
+        );
+      }
+
+      try {
+        daysOfWeek = dayStrings.map(DayOfWeek.parse).toSet();
+      } catch (e) {
+        Error.throwWithStackTrace(
+          MalformedMetadataException(
+            'Invalid day name in "$metadataKey.days_of_week"',
+            'error: $e',
+          ),
+          StackTrace.current,
+        );
+      }
+    } else {
+      Error.throwWithStackTrace(
+        MalformedMetadataException(
+          'Field "$metadataKey.days_of_week" must be a list of strings',
+          'received: $rawDays',
+        ),
+        StackTrace.current,
+      );
+    }
+
+    return [
+      RecurringTimePatternEligibility(
+        timeStart: timeStart,
+        timeEnd: timeEnd,
+        daysOfWeek: daysOfWeek,
+      ),
+    ];
   }
 }
 

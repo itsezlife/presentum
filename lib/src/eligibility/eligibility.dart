@@ -27,12 +27,13 @@
 ///   rules: createStandardRules(),
 ///   extractors: [
 ///     TimeRangeExtractor(),
+///     RecurringTimePatternExtractor(),
 ///     AnySegmentExtractor(),
 ///   ],
 /// );
 ///
-/// // Check eligibility
-/// final campaign = Campaign('promo-2025', {
+/// // Check eligibility with absolute time range
+/// final campaign1 = Campaign('holiday-promo', {
 ///   'time_range': {
 ///     'start': '2025-12-01T00:00:00Z',
 ///     'end': '2025-12-31T23:59:59Z',
@@ -40,12 +41,24 @@
 ///   'required_segments': ['premium', 'early_adopter'],
 /// });
 ///
+/// // Check eligibility with recurring time pattern (business hours)
+/// final campaign2 = Campaign('weekday-flash-sale', {
+///   'recurring_time_pattern': {
+///     'days_of_week': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+///     'time_start': '13:00',
+///     'time_end': '17:00',
+///   },
+/// });
+///
 /// final context = {
 ///   'user_segments': {'premium', 'verified'},
 /// };
 ///
-/// final isEligible = await resolver.isEligible(campaign, context);
+/// final isEligible1 = await resolver.isEligible(campaign1, context);
+/// final isEligible2 = await resolver.isEligible(campaign2, context);
 /// ```
+// ignore_for_file: lines_longer_than_80_chars
+
 library;
 
 export 'conditions.dart';
