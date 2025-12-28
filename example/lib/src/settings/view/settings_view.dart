@@ -28,7 +28,7 @@ class SettingsView extends StatelessWidget {
                 snap: true,
               ),
               SliverPadding(
-                padding: ScaffoldPadding.of(context, padding: 0),
+                padding: ScaffoldPadding.of(context, horizontalPadding: 0),
                 sliver: SliverList.list(
                   children: [
                     SettingsFeatureTogglesOutlet(

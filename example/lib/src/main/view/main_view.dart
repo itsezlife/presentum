@@ -2,17 +2,11 @@ import 'package:app_ui/app_ui.dart';
 import 'package:example/src/common/widgets/scaffold_padding.dart';
 import 'package:example/src/feature/widgets/snow_outlet.dart';
 import 'package:example/src/main/widgets/new_year_banner.dart';
-import 'package:example/src/updates/view/shorebird_updates_state_mixin.dart';
 import 'package:flutter/material.dart';
 
-class MainView extends StatefulWidget {
+class MainView extends StatelessWidget {
   const MainView({super.key});
 
-  @override
-  State<MainView> createState() => _MainViewState();
-}
-
-class _MainViewState extends State<MainView> with ShorebirdUpdatesStateMixin {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(

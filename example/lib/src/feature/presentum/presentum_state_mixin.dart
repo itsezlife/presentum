@@ -1,8 +1,8 @@
 import 'package:example/src/common/model/dependencies.dart';
-import 'package:example/src/feature/presentum/feature_presentum_storage.dart';
 import 'package:example/src/feature/presentum/guards/feature_scheduling_guard.dart';
 import 'package:example/src/feature/presentum/guards/sync_state_with_candidates.dart';
 import 'package:example/src/feature/presentum/payload.dart';
+import 'package:example/src/feature/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/feature/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
 import 'package:presentum/presentum.dart';
@@ -38,7 +38,7 @@ mixin FeaturePresentumStateMixin<T extends StatefulWidget> on State<T> {
 
     // Presentum storage used to store the state(dismissed, shown, converted)
     // of the feature items.
-    _storage = FeaturePresentumStorage(prefs: deps.sharedPreferences);
+    _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
     final eligibility = DefaultEligibilityResolver<FeatureItem>(
       // Standar set of rules that covers most of the common cases.

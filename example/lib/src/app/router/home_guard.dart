@@ -15,6 +15,11 @@ class HomeGuard extends OctopusGuard {
     OctopusState$Mutable state,
     Map<String, Object?> context,
   ) {
+    // If maintenance mode is active, don't change the state.
+    if (context['maintenance_mode'] == true) {
+      return state;
+    }
+
     // Home route should be the first route in the state
     // and should be only one in whole state.
     if (state.isEmpty) return _fix(state);

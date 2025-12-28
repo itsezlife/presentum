@@ -1,19 +1,18 @@
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/feature/presentum/persistent_presentum_storage.dart';
-import 'package:example/src/updates/presentum/eligibility/update_status_eligibility.dart';
-import 'package:example/src/updates/presentum/guards/updates_guard.dart';
-import 'package:example/src/updates/presentum/payload.dart';
-import 'package:example/src/updates/presentum/provider.dart';
+import 'package:example/src/maintenance/presentum/guards/maintenance_guard.dart';
+import 'package:example/src/maintenance/presentum/payload.dart';
+import 'package:example/src/maintenance/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 
-/// Mixin that provides Presentum for app updates and maintenance mode
-mixin AppUpdatesPresentumStateMixin<T extends StatefulWidget> on State<T> {
-  late final Presentum<AppUpdatesItem, AppSurface, AppVariant>
-  appUpdatesPresentum;
+/// Mixin that provides Presentum for maintenance mode
+mixin MaintaincePresentumStateMixin<T extends StatefulWidget> on State<T> {
+  late final Presentum<MaintenanceItem, AppSurface, AppVariant>
+  maintenancePresentum;
   late final PresentumStorage<AppSurface, AppVariant> _storage;
-  late final AppUpdatesProvider _provider;
+  late final MaintenanceProvider _provider;
 
   late final ValueNotifier<List<({Object error, StackTrace stackTrace})>>
   _errorsObserver;
@@ -43,28 +42,19 @@ mixin AppUpdatesPresentumStateMixin<T extends StatefulWidget> on State<T> {
     // Presentum storage
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
-    // Eligibility resolver
-    final eligibility = DefaultEligibilityResolver<AppUpdatesItem>(
-      rules: [...createStandardRules(), const UpdateStatusRule()],
+    final eligibilityResolver = DefaultEligibilityResolver<MaintenanceItem>(
+      rules: [...createStandardRules()],
       extractors: [
         const TimeRangeExtractor(),
         const ConstantExtractor(metadataKey: 'is_active'),
-        const UpdateStatusExtractor(),
       ],
     );
 
-    final updatesStore = deps.shorebirdUpdatesStore;
-
     // Create Presentum instance
-    appUpdatesPresentum = Presentum<AppUpdatesItem, AppSurface, AppVariant>(
+    maintenancePresentum = Presentum<MaintenanceItem, AppSurface, AppVariant>(
       storage: _storage,
       eventHandlers: [PresentumStorageEventHandler(storage: _storage)],
-      guards: [
-        AppUpdatesGuard(
-          eligibilityResolver: eligibility,
-          updatesStore: updatesStore,
-        ),
-      ],
+      guards: [MaintenanceGuard(eligibilityResolver: eligibilityResolver)],
       onError: (error, stackTrace) =>
           _errorsObserver.value = <({Object error, StackTrace stackTrace})>[
             (error: error, stackTrace: stackTrace),
@@ -73,10 +63,7 @@ mixin AppUpdatesPresentumStateMixin<T extends StatefulWidget> on State<T> {
     );
 
     // Create provider
-    _provider = AppUpdatesProvider(
-      engine: appUpdatesPresentum.config.engine,
-      updatesStore: updatesStore,
-    );
+    _provider = MaintenanceProvider(engine: maintenancePresentum.config.engine);
   }
 
   @override

@@ -19,4 +19,7 @@ enum AppVariant with PresentumVisualVariant {
 
   /// A maintenance screen presentation.
   maintenanceScreen,
+
+  /// A restart button presentation in maintenance screen.
+  maintenanceScreenRestartButton,
 }

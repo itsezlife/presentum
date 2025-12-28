@@ -4,13 +4,15 @@ import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-typedef AppUpdatesStorageKey = (
+typedef PersistentPresentumStorageKey = (
   String itemId,
   AppSurface surface,
   AppVariant variant,
 );
 
-extension type AppUpdatesStorageKeys(AppUpdatesStorageKey key) {
+extension type PersistentPresentumStorageKeys(
+  PersistentPresentumStorageKey key
+) {
   String get shownCount =>
       '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_count_key__';
   String get lastShown =>
@@ -31,9 +33,9 @@ extension type AppUpdatesStorageKeys(AppUpdatesStorageKey key) {
   ];
 }
 
-class AppUpdatesPresentumStorage
+class PersistentPresentumStorage
     implements PresentumStorage<AppSurface, AppVariant> {
-  AppUpdatesPresentumStorage({required SharedPreferencesWithCache prefs})
+  PersistentPresentumStorage({required SharedPreferencesWithCache prefs})
     : _prefs = prefs;
 
   final SharedPreferencesWithCache _prefs;
@@ -44,7 +46,7 @@ class AppUpdatesPresentumStorage
     required AppSurface surface,
     required AppVariant variant,
   }) => Future.wait(
-    AppUpdatesStorageKeys((
+    PersistentPresentumStorageKeys((
       itemId,
       surface,
       variant,
@@ -57,7 +59,11 @@ class AppUpdatesPresentumStorage
     required AppSurface surface,
     required AppVariant variant,
   }) async {
-    final key = AppUpdatesStorageKeys((itemId, surface, variant)).lastShown;
+    final key = PersistentPresentumStorageKeys((
+      itemId,
+      surface,
+      variant,
+    )).lastShown;
     final timestampStr = _prefs.getString(key);
     return timestampStr != null ? DateTime.parse(timestampStr) : null;
   }
@@ -69,7 +75,7 @@ class AppUpdatesPresentumStorage
     required AppVariant variant,
     required DateTime at,
   }) async {
-    final keys = AppUpdatesStorageKeys((itemId, surface, variant));
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
     final countKey = keys.shownCount;
     final lastShownKey = keys.lastShown;
     final timestampsKey = keys.timestamps;
@@ -92,7 +98,7 @@ class AppUpdatesPresentumStorage
     required AppSurface surface,
     required AppVariant variant,
   }) async {
-    final keys = AppUpdatesStorageKeys((itemId, surface, variant));
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
     final timestampsKey = keys.timestamps;
     final timestampStrings = _prefs.getStringList(timestampsKey) ?? [];
     final timestamps = timestampStrings.map(DateTime.parse).toList();
@@ -108,7 +114,7 @@ class AppUpdatesPresentumStorage
     required AppSurface surface,
     required AppVariant variant,
   }) async {
-    final keys = AppUpdatesStorageKeys((itemId, surface, variant));
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
     final timestampStr = _prefs.getString(keys.dismissedAt);
     return timestampStr != null ? DateTime.parse(timestampStr) : null;
   }
@@ -120,7 +126,7 @@ class AppUpdatesPresentumStorage
     required AppVariant variant,
     required DateTime at,
   }) async {
-    final keys = AppUpdatesStorageKeys((itemId, surface, variant));
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
     await _prefs.setString(keys.dismissedAt, at.toIso8601String());
   }
 
@@ -131,7 +137,7 @@ class AppUpdatesPresentumStorage
     required AppVariant variant,
     required DateTime at,
   }) async {
-    final keys = AppUpdatesStorageKeys((itemId, surface, variant));
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
     await _prefs.setString(keys.convertedAt, at.toIso8601String());
   }
 }

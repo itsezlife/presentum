@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:example/src/updates/data/updated_store.dart';
 import 'package:example/src/updates/presentum/payload.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
@@ -16,16 +16,17 @@ final class AppUpdatesProvider extends ChangeNotifier {
   final PresentumEngine<AppUpdatesItem, AppSurface, AppVariant> engine;
   final ShorebirdUpdatesStore updatesStore;
 
+  late final AppLifecycleListener _lifecycleListener;
+
   UpdateStatus? _currentStatus;
   Timer? _statusCheckTimer;
-  Timer? _maintenanceTimer;
-
-  // Maintenance mode configuration (would come from remote config in production)
-  MaintenancePayload? _maintenancePayload;
 
   UpdateStatus? get currentStatus => _currentStatus;
 
   Future<void> _initialize() async {
+    // Check for updates when the app is resumed
+    _lifecycleListener = AppLifecycleListener(onResume: _checkForUpdates);
+
     // Check for updates immediately
     await _checkForUpdates();
 
@@ -33,12 +34,6 @@ final class AppUpdatesProvider extends ChangeNotifier {
     _statusCheckTimer = Timer.periodic(
       const Duration(minutes: 30),
       (_) => _checkForUpdates(),
-    );
-
-    // Set up maintenance mode refresh (every minute to update countdown)
-    _maintenanceTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) => _refreshCandidates(),
     );
 
     // Initial candidates setup
@@ -62,14 +57,6 @@ final class AppUpdatesProvider extends ChangeNotifier {
           context: ErrorSummary('Error checking for updates'),
         ),
       );
-    }
-  }
-
-  /// Update maintenance payload (would be called from remote config listener)
-  void setMaintenancePayload(MaintenancePayload? payload) {
-    if (_maintenancePayload != payload) {
-      _maintenancePayload = payload;
-      _refreshCandidates();
     }
   }
 
@@ -116,7 +103,7 @@ final class AppUpdatesProvider extends ChangeNotifier {
   @override
   void dispose() {
     _statusCheckTimer?.cancel();
-    _maintenanceTimer?.cancel();
+    _lifecycleListener.dispose();
     super.dispose();
   }
 }

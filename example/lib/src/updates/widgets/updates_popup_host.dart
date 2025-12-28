@@ -16,8 +16,12 @@ class AppUpdatesPopupHost extends StatefulWidget {
 
 class _AppUpdatesPopupHostState extends State<AppUpdatesPopupHost>
     with
-        PresentumPopupSurfaceStateMixin<AppUpdatesItem, AppSurface, AppVariant,
-            AppUpdatesPopupHost> {
+        PresentumPopupSurfaceStateMixin<
+          AppUpdatesItem,
+          AppSurface,
+          AppVariant,
+          AppUpdatesPopupHost
+        > {
   @override
   AppSurface get surface => AppSurface.updateSnackbar;
 
@@ -32,7 +36,8 @@ class _AppUpdatesPopupHostState extends State<AppUpdatesPopupHost>
 
   @override
   Future<void> markDismissed({required AppUpdatesItem entry}) async {
-    final presentum = context.presentum<AppUpdatesItem, AppSurface, AppVariant>();
+    final presentum = context
+        .presentum<AppUpdatesItem, AppSurface, AppVariant>();
     await presentum.markDismissed(entry);
   }
 
@@ -40,8 +45,9 @@ class _AppUpdatesPopupHostState extends State<AppUpdatesPopupHost>
   Future<PopupPresentResult> present(AppUpdatesItem entry) async {
     if (!mounted) return PopupPresentResult.notPresented;
 
-    final presentum = context.presentum<AppUpdatesItem, AppSurface, AppVariant>();
-    
+    final presentum = context
+        .presentum<AppUpdatesItem, AppSurface, AppVariant>();
+
     // Mark as shown
     await presentum.markShown(entry);
 
@@ -58,4 +64,3 @@ class _AppUpdatesPopupHostState extends State<AppUpdatesPopupHost>
   @override
   Widget build(BuildContext context) => widget.child;
 }
-
