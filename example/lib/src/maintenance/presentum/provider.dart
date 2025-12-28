@@ -7,7 +7,7 @@ const _maintancePayload = MaintenancePayload(
   id: 'maintenance',
   priority: 1000,
   metadata: {
-    'any_of': {
+    'any_of': [
       {
         'time_range': {
           'start': '2025-12-28T00:00:00Z',
@@ -15,7 +15,7 @@ const _maintancePayload = MaintenancePayload(
         },
       },
       {'is_active': true},
-    },
+    ],
   },
   options: [
     MaintenanceOption(
@@ -41,8 +41,6 @@ class MaintenanceProvider extends ChangeNotifier {
               MaintenanceItem(payload: _maintancePayload, option: option),
         )
         .toList();
-    engine.setCandidates(
-      (state, candidates) => candidates..addAll(maintanceCandidates),
-    );
+    engine.setCandidates((state, candidates) => maintanceCandidates);
   }
 }

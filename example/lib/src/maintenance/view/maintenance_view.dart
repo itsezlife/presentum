@@ -44,15 +44,18 @@ class _MaintenanceViewState extends State<MaintenanceView> {
   void _onStateChange() {
     final state = _observer.value;
     final item = state.slots[AppSurface.maintenanceView]?.active;
-    if (item?.variant != AppVariant.maintenanceScreenRestartButton) {
-      _showRestartButton = false;
+    if (item?.payload.options.any(
+          (e) => e.variant == AppVariant.maintenanceScreenRestartButton,
+        ) ??
+        false) {
+      _showRestartButton = true;
       if (mounted) {
         setState(() {});
       }
       return;
     }
 
-    _showRestartButton = true;
+    _showRestartButton = false;
     if (mounted) {
       setState(() {});
     }
