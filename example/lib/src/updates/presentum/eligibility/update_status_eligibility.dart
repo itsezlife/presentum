@@ -34,12 +34,10 @@ final class UpdateStatusRule
 /// Extractor that pulls UpdateStatusEligibility from payload metadata
 final class UpdateStatusExtractor<T extends HasMetadata>
     extends MetadataExtractor<T> {
-  const UpdateStatusExtractor({this.metadataKey = 'required_update_status'});
-
-  final String metadataKey;
+  const UpdateStatusExtractor();
 
   @override
-  bool supports(T subject) => subject.metadata.containsKey(metadataKey);
+  String get metadataKey => 'required_update_status';
 
   @override
   List<Eligibility> extract(T subject) {

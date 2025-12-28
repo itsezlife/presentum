@@ -101,5 +101,13 @@
     }
   },
   "newYearBannerSubtitleSmallVersion": "Wishing you wins ✨",
-  "newYearBannerSubtitleLargeVersion": "Wishing you a year full of wins ✨"
+  "newYearBannerSubtitleLargeVersion": "Wishing you a year full of wins ✨",
+  "maintenanceTitle": "Under maintenance",
+  "maintenanceDescription": "We're currently performing maintenance to improve your experience.",
+  "maintenanceEstimatedTimeRemaining": "Estimated time remaining:",
+  "maintenanceComplete": "Maintenance complete!",
+  "maintenanceRestartApp": "Restart App",
+  "maintenancePleaseCheckBack": "Please check back soon.",
+  "restartingApp": "Restarting App",
+  "restartNotification": "Please tap here to open the app again."
 }

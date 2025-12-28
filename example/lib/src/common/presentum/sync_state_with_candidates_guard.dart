@@ -1,54 +1,71 @@
 import 'dart:async';
 import 'dart:developer' as dev;
 
-import 'package:example/src/feature/presentum/payload.dart';
 import 'package:presentum/presentum.dart';
-import 'package:shared/shared.dart';
 
-/// Syncs the current state slots with the latest candidates using DiffUtil.
+/// {@template sync_state_with_candidates_guard}
+/// This guard keeps the current state in sync with the list of candidates.
 ///
-/// This guard ensures that:
-/// - Items removed from candidates are removed from all slots
-/// - Items with updated metadata/content are refreshed in slots
-/// - Items that haven't changed remain in their positions
+/// When candidates change (items added, removed, or updated), this guard
+/// makes sure the state reflects those changes. It removes items that are
+/// no longer in the candidates list and updates items whose content has
+/// changed.
 ///
-/// This guard should typically run early in the guard chain, before
-/// scheduling and eligibility guards, to ensure state reflects the
-/// latest candidate data.
-final class SyncStateWithCandidatesGuard
-    extends PresentumGuard<FeatureItem, AppSurface, AppVariant> {
-  /// Creates a new [SyncStateWithCandidatesGuard].
-  SyncStateWithCandidatesGuard();
+/// The guard works by:
+/// - Comparing each item currently in state with the candidates
+/// - Removing items that don't exist in candidates anymore
+/// - Updating items whose metadata or properties have changed
+/// - Keeping items that haven't changed as they are
+///
+/// This is useful when you have a dynamic list of content that can change
+/// over time and you want the presentation state to stay current.
+///
+/// By default, the guard compares the items by their id, surface, variant,
+/// priority, option, and metadata.
+///
+/// You can override the [areContentsTheSame], [areItemsTheSame], and 
+/// [areOptionsTheSame] methods to provide a custom comparison logic, 
+/// if you need to compare the content of the items in a different way, 
+/// specific to your [TItem] type.
+/// {@endtemplate}
+abstract base class SyncStateWithCandidatesGuard<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    extends PresentumGuard<TItem, S, V> {
+  /// {@macro sync_state_with_candidates_guard}
+  SyncStateWithCandidatesGuard({super.refresh});
 
   @override
-  FutureOr<PresentumState<FeatureItem, AppSurface, AppVariant>> call(
+  FutureOr<PresentumState<TItem, S, V>> call(
     PresentumStorage storage,
-    List<PresentumHistoryEntry<FeatureItem, AppSurface, AppVariant>> history,
-    PresentumState$Mutable<FeatureItem, AppSurface, AppVariant> state,
-    List<FeatureItem> candidates,
+    List<PresentumHistoryEntry<TItem, S, V>> history,
+    PresentumState$Mutable<TItem, S, V> state,
+    List<TItem> candidates,
     Map<String, Object?> context,
   ) {
     // Build a map of candidates by their unique key (id + surface + variant)
     // for fast lookup.
-    final candidateMap = <String, FeatureItem>{};
+    final candidateMap = <String, TItem>{};
     for (final candidate in candidates) {
       final key = candidate.id;
       candidateMap[key] = candidate;
     }
 
     // Process each surface's slot.
-    // Convert to list to avoid ConcurrentModificationError when removing surfaces.
-    for (final surfaceEntry in state.slots.entries.toList()) {
+    final slots = [...state.slots.entries];
+    for (final surfaceEntry in slots) {
       final surface = surfaceEntry.key;
       final slot = surfaceEntry.value;
 
       // Collect current items in this slot (active + queue).
-      final currentItems = <FeatureItem>[?slot.active, ...slot.queue];
+      final currentItems = <TItem>[?slot.active, ...slot.queue];
 
       if (currentItems.isEmpty) continue;
 
       // Build list of items that should remain, checking against candidates.
-      final syncedItems = <FeatureItem>[];
+      final syncedItems = <TItem>[];
       var itemsChanged = false;
 
       for (final currentItem in currentItems) {
@@ -68,7 +85,7 @@ final class SyncStateWithCandidatesGuard
         }
 
         // Check if content has changed using DiffUtil's content comparison.
-        final contentsChanged = !_areContentsTheSame(
+        final contentsChanged = !areContentsTheSame(
           currentItem,
           candidateMatch,
         );
@@ -102,14 +119,14 @@ final class SyncStateWithCandidatesGuard
           final newActive = syncedItems.first;
           final newQueue = syncedItems.length > 1
               ? syncedItems.sublist(1)
-              : const <FeatureItem>[];
+              : <TItem>[];
 
           state.setActive(surface, newActive);
           if (newQueue.isNotEmpty) {
             state.setQueue(surface, newQueue);
           } else if (slot.queue.isNotEmpty) {
             // Clear queue if it was previously non-empty.
-            state.setQueue(surface, const <FeatureItem>[]);
+            state.setQueue(surface, <TItem>[]);
           }
 
           dev.log(
@@ -128,17 +145,36 @@ final class SyncStateWithCandidatesGuard
   ///
   /// This compares the payload's metadata and other relevant properties
   /// to determine if an item needs to be updated.
-  bool _areContentsTheSame(FeatureItem oldItem, FeatureItem newItem) {
+  bool areContentsTheSame(TItem oldItem, TItem newItem) {
     // Compare basic properties.
-    if (oldItem.id != newItem.id) return false;
-    if (oldItem.surface != newItem.surface) return false;
-    if (oldItem.variant != newItem.variant) return false;
-    if (oldItem.priority != newItem.priority) return false;
+    final itemsAreTheSame = areItemsTheSame(oldItem, newItem);
+    if (!itemsAreTheSame) return false;
 
     // Compare option properties.
     final oldOption = oldItem.option;
     final newOption = newItem.option;
 
+    final optionsAreTheSame = areOptionsTheSame(oldOption, newOption);
+    if (!optionsAreTheSame) return false;
+
+    // Compare metadata using deep equality.
+    final metadataAreTheSame = _areMetadataEqual(oldItem.metadata, newItem.metadata);
+    if (!metadataAreTheSame) return false;
+
+    return true;
+  }
+
+  /// Checks if two items have the same content.
+  bool areItemsTheSame(TItem oldItem, TItem newItem) {
+    if (oldItem.id != newItem.id) return false;
+    if (oldItem.surface != newItem.surface) return false;
+    if (oldItem.variant != newItem.variant) return false;
+    if (oldItem.priority != newItem.priority) return false;
+    if (oldItem.option != newItem.option) return false;
+    return true;
+  }
+
+  bool areOptionsTheSame(PresentumOption oldOption, PresentumOption newOption) {
     if (oldOption.stage != newOption.stage) return false;
     if (oldOption.maxImpressions != newOption.maxImpressions) return false;
     if (oldOption.cooldownMinutes != newOption.cooldownMinutes) {
@@ -148,9 +184,7 @@ final class SyncStateWithCandidatesGuard
     if (oldOption.alwaysOnIfEligible != newOption.alwaysOnIfEligible) {
       return false;
     }
-
-    // Compare metadata using deep equality.
-    return _areMetadataEqual(oldItem.metadata, newItem.metadata);
+    return true;
   }
 
   /// Deep equality check for metadata maps.

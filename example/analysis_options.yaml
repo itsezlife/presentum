@@ -84,6 +84,7 @@ linter:
     curly_braces_in_flow_control_structures: false
 
     # Enabled
+    comment_references: true
     use_named_constants: true
     unnecessary_constructor_name: true
     sort_constructors_first: true

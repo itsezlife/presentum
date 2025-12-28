@@ -199,6 +199,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wishing you a year full of wins ✨'**
   String get newYearBannerSubtitleLargeVersion;
+
+  /// No description provided for @maintenanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Under maintenance'**
+  String get maintenanceTitle;
+
+  /// No description provided for @maintenanceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'re currently performing maintenance to improve your experience.'**
+  String get maintenanceDescription;
+
+  /// No description provided for @maintenanceEstimatedTimeRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated time remaining:'**
+  String get maintenanceEstimatedTimeRemaining;
+
+  /// No description provided for @maintenanceComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance complete!'**
+  String get maintenanceComplete;
+
+  /// No description provided for @maintenanceRestartApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart App'**
+  String get maintenanceRestartApp;
+
+  /// No description provided for @maintenancePleaseCheckBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check back soon.'**
+  String get maintenancePleaseCheckBack;
+
+  /// No description provided for @restartingApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Restarting App'**
+  String get restartingApp;
+
+  /// No description provided for @restartNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'Please tap here to open the app again.'**
+  String get restartNotification;
 }
 
 class _AppLocalizationsDelegate

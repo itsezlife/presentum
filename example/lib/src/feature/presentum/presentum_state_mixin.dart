@@ -1,6 +1,6 @@
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/feature/presentum/guards/feature_scheduling_guard.dart';
-import 'package:example/src/feature/presentum/guards/sync_state_with_candidates.dart';
+import 'package:example/src/feature/presentum/guards/sync_feature_state_guard.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/feature/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/feature/presentum/provider.dart';
@@ -40,15 +40,12 @@ mixin FeaturePresentumStateMixin<T extends StatefulWidget> on State<T> {
     // of the feature items.
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
-    final eligibility = DefaultEligibilityResolver<FeatureItem>(
+    final eligibilityResolver = DefaultEligibilityResolver<FeatureItem>(
       // Standar set of rules that covers most of the common cases.
       rules: createStandardRules(),
       extractors: [
         /// Extracts the `time_range` from the feature item.
         const TimeRangeExtractor(),
-
-        /// Extracts the `user_segments` from the feature item.
-        const AnySegmentExtractor(),
 
         /// Extracts the `is_active` from the feature item.
         const ConstantExtractor(metadataKey: 'is_active'),
@@ -68,12 +65,12 @@ mixin FeaturePresentumStateMixin<T extends StatefulWidget> on State<T> {
       eventHandlers: [PresentumStorageEventHandler(storage: _storage)],
       guards: [
         // Syncs the state with the candidates.
-        SyncStateWithCandidatesGuard(),
+        SyncFeatureStateGuard(),
         // Schedules the feature items.
         FeatureSchedulingGuard(
           catalog: deps.featureCatalog,
           prefs: deps.featurePreferences,
-          eligibilityResolver: eligibility,
+          eligibilityResolver: eligibilityResolver,
         ),
       ],
       onError: (error, stackTrace) =>

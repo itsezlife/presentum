@@ -1,3 +1,4 @@
+import 'package:example/src/common/presentum/remove_ineligible_candidates_guard.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
 import 'package:example/src/feature/presentum/payload.dart';
@@ -5,8 +6,27 @@ import 'package:flutter/foundation.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 
+/// {@template feature_scheduling_guard}
+/// This guard rebuilds the entire feature state from scratch by filtering
+/// candidates and repopulating all slots. It clears existing state and
+/// rebuilds based on current feature catalog, preferences, and eligibility.
+///
+/// This approach differs from incremental guards (like [RemoveIneligibleCandidatesGuard])
+/// that preserve existing state structure and only remove ineligible items.
+///
+/// This guard is useful when:
+/// - You need complete state rebuilds based on external data changes
+/// - Feature catalog or preferences have changed significantly
+/// - You want deterministic ordering and fresh state on each evaluation
+/// - The cost of full rebuild is acceptable for your use case
+///
+/// Performance consideration: This does full eligibility checks on all
+/// candidates and rebuilds all slots from scratch, which can be more expensive
+/// than incremental updates but ensures consistency with current data sources.
+/// {@endtemplate}
 final class FeatureSchedulingGuard
     extends PresentumGuard<FeatureItem, AppSurface, AppVariant> {
+  /// {@macro feature_scheduling_guard}
   FeatureSchedulingGuard({
     required this.catalog,
     required this.prefs,

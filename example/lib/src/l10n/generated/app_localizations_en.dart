@@ -93,4 +93,29 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get newYearBannerSubtitleLargeVersion =>
       'Wishing you a year full of wins ✨';
+
+  @override
+  String get maintenanceTitle => 'Under maintenance';
+
+  @override
+  String get maintenanceDescription =>
+      'We\'re currently performing maintenance to improve your experience.';
+
+  @override
+  String get maintenanceEstimatedTimeRemaining => 'Estimated time remaining:';
+
+  @override
+  String get maintenanceComplete => 'Maintenance complete!';
+
+  @override
+  String get maintenanceRestartApp => 'Restart App';
+
+  @override
+  String get maintenancePleaseCheckBack => 'Please check back soon.';
+
+  @override
+  String get restartingApp => 'Restarting App';
+
+  @override
+  String get restartNotification => 'Please tap here to open the app again.';
 }

@@ -21,7 +21,7 @@ class MainView extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             const SliverAppBar(
-              title: Text('Main'),
+              title: Text('Main View'),
               pinned: true,
               floating: true,
               snap: true,

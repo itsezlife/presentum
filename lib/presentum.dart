@@ -15,6 +15,7 @@ export 'src/state/payload.dart';
 export 'src/state/state.dart';
 export 'src/utils/diff_util.dart';
 export 'src/utils/diff_util_helpers.dart';
+export 'src/widgets/active_surface_item_observer_mixin.dart';
 export 'src/widgets/build_context_extension.dart';
 export 'src/widgets/inherited_presentum.dart';
 export 'src/widgets/outlet.dart';

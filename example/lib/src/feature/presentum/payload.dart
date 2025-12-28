@@ -57,7 +57,7 @@ final class FeaturePayload extends PresentumPayload<AppSurface, AppVariant> {
   final Map<String, Object?> metadata;
 
   @override
-  final List<PresentumOption<AppSurface, AppVariant>> options;
+  final List<FeatureOption> options;
 
   /// The feature this presentation belongs to (used by the preference guard).
   final String featureKey;
@@ -90,5 +90,5 @@ final class FeatureItem
   final FeaturePayload payload;
 
   @override
-  final PresentumOption<AppSurface, AppVariant> option;
+  final FeatureOption option;
 }

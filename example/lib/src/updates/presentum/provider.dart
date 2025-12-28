@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:example/src/updates/data/updated_store.dart';
+import 'package:example/src/updates/data/updates_store.dart';
 import 'package:example/src/updates/presentum/payload.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:presentum/presentum.dart';
@@ -11,6 +11,8 @@ import 'package:shorebird_code_push/shorebird_code_push.dart';
 final class AppUpdatesProvider extends ChangeNotifier {
   AppUpdatesProvider({required this.engine, required this.updatesStore}) {
     _initialize();
+    updatesStore.addListener(_onUpdatesStoreChanged);
+    _checkForUpdates();
   }
 
   final PresentumEngine<AppUpdatesItem, AppSurface, AppVariant> engine;
@@ -22,6 +24,14 @@ final class AppUpdatesProvider extends ChangeNotifier {
   Timer? _statusCheckTimer;
 
   UpdateStatus? get currentStatus => _currentStatus;
+
+  void _onUpdatesStoreChanged() {
+    final status = updatesStore.status;
+    if (status == UpdateStatus.outdated) {
+      updatesStore.update();
+    }
+    _checkForUpdates();
+  }
 
   Future<void> _initialize() async {
     // Check for updates when the app is resumed
@@ -104,6 +114,7 @@ final class AppUpdatesProvider extends ChangeNotifier {
   void dispose() {
     _statusCheckTimer?.cancel();
     _lifecycleListener.dispose();
+    updatesStore.removeListener(_onUpdatesStoreChanged);
     super.dispose();
   }
 }

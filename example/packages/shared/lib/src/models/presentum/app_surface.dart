@@ -17,5 +17,23 @@ enum AppSurface with PresentumSurface {
   updateSnackbar,
 
   /// The maintenance view surface.
-  maintenanceView,
+  maintenanceView;
+
+  /// The name of the surface.
+  /// 
+  /// Throws [ArgumentError] if the name is not valid.
+  static AppSurface fromName(
+    String name, {
+    AppSurface? fallback,
+  }) {
+    return switch (name) {
+      'popup' => AppSurface.popup,
+      'homeHeader' => AppSurface.homeHeader,
+      'background' => AppSurface.background,
+      'settingsToggles' => AppSurface.settingsToggles,
+      'updateSnackbar' => AppSurface.updateSnackbar,
+      'maintenanceView' => AppSurface.maintenanceView,
+      _ => fallback ?? (throw ArgumentError.value(name)),
+    };
+  }
 }

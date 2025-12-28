@@ -384,6 +384,15 @@ enum DayOfWeek {
     'sunday' || 'sun' => sunday,
     _ => throw ArgumentError('Invalid day: $day'),
   };
+
+  /// Parse from lowercase string.
+  static DayOfWeek? tryParse(String day) {
+    try {
+      return parse(day);
+    } on Object catch (_) {
+      return null;
+    }
+  }
 }
 
 /// Time of day representation (hours and minutes).
@@ -409,6 +418,15 @@ final class TimeOfDay {
     }
 
     return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  /// Parse from "HH:mm" format.
+  static TimeOfDay? tryParse(String time) {
+    try {
+      return TimeOfDay.parse(time);
+    } on Object catch (_) {
+      return null;
+    }
   }
 
   /// Hour (0-23).

@@ -1,7 +1,8 @@
 import 'package:example/src/app/initialization/widget/inherited_dependencies.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
-import 'package:example/src/updates/data/updated_store.dart';
+import 'package:example/src/maintenance/data/maintenance_store.dart';
+import 'package:example/src/updates/data/updates_store.dart';
 import 'package:firebase_remote_config_client/firebase_remote_config_client.dart';
 import 'package:flutter/widgets.dart' show BuildContext;
 import 'package:remote_config_repository/remote_config_repository.dart';
@@ -32,4 +33,7 @@ class Dependencies {
 
   /// Shorebird updates store
   late final ShorebirdUpdatesStore shorebirdUpdatesStore;
+
+  /// Maintenance store
+  late final MaintenanceStore maintenanceStore;
 }

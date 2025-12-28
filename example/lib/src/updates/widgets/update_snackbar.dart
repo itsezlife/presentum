@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:app_ui/app_ui.dart';
 import 'package:example/src/common/constant/config.dart';
+import 'package:example/src/l10n/l10n.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:restart_app/restart_app.dart';
@@ -24,7 +25,7 @@ class UpdateSnackbar {
           action: SnackBarAction(
             label: 'RESTART',
             textColor: context.theme.colorScheme.onInverseSurface,
-            onPressed: _restartApp,
+            onPressed: () => _restartApp(context),
           ),
           duration: const Duration(days: 365), // Effectively permanent
           behavior: SnackBarBehavior.floating,
@@ -33,12 +34,14 @@ class UpdateSnackbar {
       );
   }
 
-  static Future<void> _restartApp() async {
+  static Future<void> _restartApp(BuildContext context) async {
+    final l10n = context.l10n;
+
     // Restart the app
     await Restart.restartApp(
       webOrigin: Config.websiteUrl,
-      notificationTitle: 'Restarting App',
-      notificationBody: 'Please tap here to open the app again.',
+      notificationTitle: l10n.restartingApp,
+      notificationBody: l10n.restartNotification,
     );
 
     // Force kill the process to ensure Shorebird patch loads

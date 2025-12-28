@@ -1,7 +1,7 @@
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/feature/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/updates/presentum/eligibility/update_status_eligibility.dart';
-import 'package:example/src/updates/presentum/guards/updates_guard.dart';
+import 'package:example/src/updates/presentum/guards/updates_scheduling_guard.dart';
 import 'package:example/src/updates/presentum/payload.dart';
 import 'package:example/src/updates/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
@@ -44,7 +44,7 @@ mixin AppUpdatesPresentumStateMixin<T extends StatefulWidget> on State<T> {
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
     // Eligibility resolver
-    final eligibility = DefaultEligibilityResolver<AppUpdatesItem>(
+    final eligibilityResolver = DefaultEligibilityResolver<AppUpdatesItem>(
       rules: [...createStandardRules(), const UpdateStatusRule()],
       extractors: [
         const TimeRangeExtractor(),
@@ -61,8 +61,9 @@ mixin AppUpdatesPresentumStateMixin<T extends StatefulWidget> on State<T> {
       eventHandlers: [PresentumStorageEventHandler(storage: _storage)],
       guards: [
         AppUpdatesGuard(
-          eligibilityResolver: eligibility,
-          updatesStore: updatesStore,
+          eligibilityResolver: eligibilityResolver,
+          getUpdateStatus: () => updatesStore.status,
+          refresh: updatesStore,
         ),
       ],
       onError: (error, stackTrace) =>

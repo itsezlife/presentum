@@ -56,7 +56,7 @@ class _AppViewState extends State<AppView> with RouterStateMixin {
               ? Brightness.light
               : Brightness.dark,
           textScaler: TextScaler.linear(
-            context.textScaleFactor(maxTextScaleFactor: 1.2),
+            context.textScaleFactor(maxTextScaleFactor: 1.1),
           ),
         ),
         child: child!,

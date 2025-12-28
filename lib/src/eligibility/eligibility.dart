@@ -63,5 +63,7 @@ library;
 
 export 'conditions.dart';
 export 'extractors.dart';
+export 'metadata_extraction.dart';
+export 'metadata_keys.dart';
 export 'resolver.dart';
 export 'rules.dart';
