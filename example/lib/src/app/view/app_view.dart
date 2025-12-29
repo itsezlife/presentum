@@ -2,6 +2,7 @@ import 'package:app_ui/app_ui.dart';
 import 'package:example/src/app/router/router_state_mixin.dart';
 import 'package:example/src/common/constant/config.dart';
 import 'package:example/src/l10n/l10n.dart';
+import 'package:example/src/shop/widget/shop_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -59,7 +60,7 @@ class _AppViewState extends State<AppView> with RouterStateMixin {
             context.textScaleFactor(maxTextScaleFactor: 1.1),
           ),
         ),
-        child: child!,
+        child: ShopScope(child: child!),
       ),
     );
   }

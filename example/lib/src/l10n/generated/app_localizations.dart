@@ -110,13 +110,13 @@ abstract class AppLocalizations {
   /// The label for the bottom navigation bar tab.
   ///
   /// In en, this message translates to:
-  /// **'{tab, select, main{Home} settings{Settings} other{Other}}'**
+  /// **'{tab, select, main{Home} catalog{Catalog} favorites{Favorites} settings{Settings} other{Other}}'**
   String bottomNavBarTabLabel(String tab);
 
   /// The name of the feature.
   ///
   /// In en, this message translates to:
-  /// **'{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} other{Unknown Feature}}'**
+  /// **'{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} catalogCategoriesSection{Catalog Categories Section} catalogRecentlyViewedProductsSection{Catalog Recently Viewed Products Section} other{Unknown Feature}}'**
   String featureName(String featureKey);
 
   /// The description for the feature enabled button.
@@ -247,6 +247,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please tap here to open the app again.'**
   String get restartNotification;
+
+  /// No description provided for @copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copied;
+
+  /// No description provided for @aboutDialogNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get aboutDialogNameTitle;
+
+  /// No description provided for @aboutDialogVersionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get aboutDialogVersionTitle;
+
+  /// No description provided for @aboutDialogDescriptionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get aboutDialogDescriptionTitle;
+
+  /// No description provided for @aboutDialogHomepageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Homepage'**
+  String get aboutDialogHomepageTitle;
+
+  /// No description provided for @aboutDialogRepositoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get aboutDialogRepositoryTitle;
+
+  /// Short description for product categories.
+  ///
+  /// In en, this message translates to:
+  /// **'{category, select, groceries{Fresh food and daily essentials} electronics{Tech gadgets and devices} fashion{Clothing and accessories} other{Miscellaneous items}}'**
+  String categoryDescription(String category);
 }
 
 class _AppLocalizationsDelegate

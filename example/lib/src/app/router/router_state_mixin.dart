@@ -3,8 +3,10 @@ import 'package:example/src/app/router/maintenance_mode_guard.dart';
 import 'package:example/src/app/router/route_tracker.dart';
 import 'package:example/src/app/router/routes.dart';
 import 'package:example/src/app/router/tabs_guard.dart';
+import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/maintenance/presentum/payload.dart';
 import 'package:example/src/maintenance/presentum/provider.dart';
+import 'package:example/src/shop/data/shop_tabs_cache_service.dart';
 import 'package:flutter/material.dart';
 import 'package:octopus/octopus.dart';
 import 'package:presentum/presentum.dart';
@@ -30,11 +32,19 @@ mixin RouterStateMixin<T extends StatefulWidget> on State<T> {
 
     final observer = maintenancePresentum.observer;
 
+    final deps = Dependencies.of(context);
+
+    // Create cache for shop tabs.
+    final shopTabCache = ShopTabsCacheService(
+      sharedPreferences: deps.sharedPreferences,
+    );
+
     // Create router.
     router = Octopus(
       routes: Routes.values,
       defaultRoute: Routes.home,
       transitionDelegate: const DefaultTransitionDelegate<void>(),
+      duplicateStrategy: OctopusDuplicateStrategy.allow,
       guards: [
         // Maintenance guard to check if the maintenance mode is active.
         MaintenanceModeGuard(
@@ -53,7 +63,7 @@ mixin RouterStateMixin<T extends StatefulWidget> on State<T> {
         // Home route should be always on top.
         HomeGuard(),
         // Home tabs guard.
-        HomeTabsGuard(),
+        HomeTabsGuard(cache: shopTabCache),
       ],
       onError: (error, stackTrace) =>
           errorsObserver.value = <({Object error, StackTrace stackTrace})>[

@@ -2,6 +2,10 @@ import 'package:example/src/app/initialization/widget/inherited_dependencies.dar
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
 import 'package:example/src/maintenance/data/maintenance_store.dart';
+import 'package:example/src/shop/controller/favorite_controller.dart';
+import 'package:example/src/shop/controller/shop_controller.dart';
+import 'package:example/src/shop/data/recently_viewed_store.dart';
+import 'package:example/src/shop/data/recommendation_store.dart';
 import 'package:example/src/updates/data/updates_store.dart';
 import 'package:firebase_remote_config_client/firebase_remote_config_client.dart';
 import 'package:flutter/widgets.dart' show BuildContext;
@@ -36,4 +40,16 @@ class Dependencies {
 
   /// Maintenance store
   late final MaintenanceStore maintenanceStore;
+
+  /// Shop controller
+  late final ShopController shopController;
+
+  /// Favorite controller
+  late final FavoriteController favoriteController;
+
+  /// Recently viewed store
+  late final RecentlyViewedStore recentlyViewedStore;
+
+  /// Recommendation store
+  late final RecommendationStore recommendationStore;
 }

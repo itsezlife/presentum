@@ -23,9 +23,9 @@ import 'package:presentum/presentum.dart';
 /// By default, the guard compares the items by their id, surface, variant,
 /// priority, option, and metadata.
 ///
-/// You can override the [areContentsTheSame], [areItemsTheSame], and 
-/// [areOptionsTheSame] methods to provide a custom comparison logic, 
-/// if you need to compare the content of the items in a different way, 
+/// You can override the [areContentsTheSame], [areItemsTheSame], and
+/// [areOptionsTheSame] methods to provide a custom comparison logic,
+/// if you need to compare the content of the items in a different way,
 /// specific to your [TItem] type.
 /// {@endtemplate}
 abstract base class SyncStateWithCandidatesGuard<
@@ -158,7 +158,10 @@ abstract base class SyncStateWithCandidatesGuard<
     if (!optionsAreTheSame) return false;
 
     // Compare metadata using deep equality.
-    final metadataAreTheSame = _areMetadataEqual(oldItem.metadata, newItem.metadata);
+    final metadataAreTheSame = _areMetadataEqual(
+      oldItem.metadata,
+      newItem.metadata,
+    );
     if (!metadataAreTheSame) return false;
 
     return true;

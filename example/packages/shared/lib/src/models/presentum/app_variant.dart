@@ -21,7 +21,22 @@ enum AppVariant with PresentumVisualVariant {
   maintenanceScreen,
 
   /// A restart button presentation in maintenance screen.
-  maintenanceScreenRestartButton;
+  maintenanceScreenRestartButton,
+
+  /// A catalog view presentation.
+  catalogCategoriesSection,
+
+  /// A catalog recently viewed products section presentation.
+  catalogRecentlyViewedProductsSection,
+
+  /// Product recommendations grid presentation
+  productRecommendationsGrid;
+
+  /// A list of catalog sections.
+  static const catalogSections = <AppVariant>[
+    catalogCategoriesSection,
+    catalogRecentlyViewedProductsSection,
+  ];
 
   /// The name of the variant.
   ///
@@ -39,6 +54,10 @@ enum AppVariant with PresentumVisualVariant {
       'maintenanceScreen' => AppVariant.maintenanceScreen,
       'maintenanceScreenRestartButton' =>
         AppVariant.maintenanceScreenRestartButton,
+      'catalogCategoriesSection' => AppVariant.catalogCategoriesSection,
+      'catalogRecentlyViewedProductsSection' =>
+        AppVariant.catalogRecentlyViewedProductsSection,
+      'productRecommendationsGrid' => AppVariant.productRecommendationsGrid,
       _ => fallback ?? (throw ArgumentError.value(name)),
     };
   }

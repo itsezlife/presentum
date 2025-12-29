@@ -16,11 +16,17 @@ enum AppSurface with PresentumSurface {
   /// The update snackbar surface.
   updateSnackbar,
 
+  /// The catalog view surface.
+  catalogView,
+
   /// The maintenance view surface.
-  maintenanceView;
+  maintenanceView,
+
+  /// Product recommendations surface
+  productRecommendations;
 
   /// The name of the surface.
-  /// 
+  ///
   /// Throws [ArgumentError] if the name is not valid.
   static AppSurface fromName(
     String name, {
@@ -33,6 +39,8 @@ enum AppSurface with PresentumSurface {
       'settingsToggles' => AppSurface.settingsToggles,
       'updateSnackbar' => AppSurface.updateSnackbar,
       'maintenanceView' => AppSurface.maintenanceView,
+      'catalogView' => AppSurface.catalogView,
+      'productRecommendations' => AppSurface.productRecommendations,
       _ => fallback ?? (throw ArgumentError.value(name)),
     };
   }

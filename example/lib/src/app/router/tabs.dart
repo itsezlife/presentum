@@ -23,19 +23,34 @@ class HomeAppTab with AppTab {
 
   static const _root = Routes.home;
 
+  static const mainTab = Routes.main;
+  static const catalogTab = Routes.catalog;
+  static const favoritesTab = Routes.favorites;
+  static const settingsTab = Routes.settings;
+
   @override
   OctopusRoute get root => _root;
 
-  static const _tabs = <OctopusRoute>[Routes.main, Routes.settings];
+  static const _tabs = <OctopusRoute>[
+    mainTab,
+    catalogTab,
+    favoritesTab,
+    settingsTab,
+  ];
 
   @override
   List<OctopusRoute> get tabs => _tabs;
 
   static const _bottomTabs = <NavBarTab>[
-    BottomNavBarTab.main,
-    BottomNavBarTab.settings,
+    HomeTabsEnum.main,
+    HomeTabsEnum.catalog,
+    HomeTabsEnum.favorites,
+    HomeTabsEnum.settings,
   ];
 
   @override
   List<NavBarTab> get bottomTabs => _bottomTabs;
+
+  @override
+  String toString() => 'HomeAppTab(identifier: $identifier)';
 }

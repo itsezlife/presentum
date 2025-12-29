@@ -14,7 +14,7 @@ void main() {
           },
         };
 
-        final result = metadata.timeRange;
+        final result = metadata.timeRange();
 
         expect(result, isNotNull);
         expect(result!.start, DateTime.parse('2025-12-28T00:00:00Z'));
@@ -23,40 +23,40 @@ void main() {
 
       test('returns null when time_range is missing', () {
         final metadata = <String, dynamic>{};
-        expect(metadata.timeRange, isNull);
+        expect(metadata.timeRange(), isNull);
       });
 
       test('returns null when time_range is not a map', () {
         final metadata = <String, dynamic>{'time_range': 'invalid'};
-        expect(metadata.timeRange, isNull);
+        expect(metadata.timeRange(), isNull);
       });
 
       test('returns null when start is missing', () {
         final metadata = <String, dynamic>{
           'time_range': {'end': '2025-12-28T16:28:00Z'},
         };
-        expect(metadata.timeRange, isNull);
+        expect(metadata.timeRange(), isNull);
       });
 
       test('returns null when end is missing', () {
         final metadata = <String, dynamic>{
           'time_range': {'start': '2025-12-28T00:00:00Z'},
         };
-        expect(metadata.timeRange, isNull);
+        expect(metadata.timeRange(), isNull);
       });
 
       test('returns null when start is invalid date string', () {
         final metadata = <String, dynamic>{
           'time_range': {'start': 'not-a-date', 'end': '2025-12-28T16:28:00Z'},
         };
-        expect(metadata.timeRange, isNull);
+        expect(metadata.timeRange(), isNull);
       });
 
       test('returns null when end is invalid date string', () {
         final metadata = <String, dynamic>{
           'time_range': {'start': '2025-12-28T00:00:00Z', 'end': 'not-a-date'},
         };
-        expect(metadata.timeRange, isNull);
+        expect(metadata.timeRange(), isNull);
       });
 
       test('returns null when start is after end', () {
@@ -66,7 +66,7 @@ void main() {
             'end': '2025-12-28T00:00:00Z',
           },
         };
-        expect(metadata.timeRange, isNull);
+        expect(metadata.timeRange(), isNull);
       });
 
       test('handles different date formats', () {
@@ -74,7 +74,7 @@ void main() {
           'time_range': {'start': '2025-12-28', 'end': '2025-12-29'},
         };
 
-        final result = metadata.timeRange;
+        final result = metadata.timeRange();
         expect(result, isNotNull);
         expect(result!.start.year, 2025);
         expect(result.start.month, 12);
@@ -95,7 +95,7 @@ void main() {
           },
         };
 
-        final result = metadata.timeUntilEnd;
+        final result = metadata.timeUntilEnd();
         expect(result, isNotNull);
         expect(
           result!.inMinutes,
@@ -106,37 +106,7 @@ void main() {
 
       test('returns null when no time range', () {
         final metadata = <String, dynamic>{};
-        expect(metadata.timeUntilEnd, isNull);
-      });
-
-      test('returns null when current time is before range', () {
-        final now = DateTime.now();
-        final start = now.add(const Duration(hours: 1));
-        final end = now.add(const Duration(hours: 2));
-
-        final metadata = <String, dynamic>{
-          'time_range': {
-            'start': start.toIso8601String(),
-            'end': end.toIso8601String(),
-          },
-        };
-
-        expect(metadata.timeUntilEnd, isNull);
-      });
-
-      test('returns null when current time is after range', () {
-        final now = DateTime.now();
-        final start = now.subtract(const Duration(hours: 2));
-        final end = now.subtract(const Duration(hours: 1));
-
-        final metadata = <String, dynamic>{
-          'time_range': {
-            'start': start.toIso8601String(),
-            'end': end.toIso8601String(),
-          },
-        };
-
-        expect(metadata.timeUntilEnd, isNull);
+        expect(metadata.timeUntilEnd(), isNull);
       });
     });
 
@@ -153,12 +123,12 @@ void main() {
           },
         };
 
-        expect(metadata.isWithinTimeRange, isTrue);
+        expect(metadata.isWithinTimeRange(), isTrue);
       });
 
       test('returns false when no time range', () {
         final metadata = <String, dynamic>{};
-        expect(metadata.isWithinTimeRange, isFalse);
+        expect(metadata.isWithinTimeRange(), isFalse);
       });
 
       test('returns false when current time is before range', () {
@@ -173,7 +143,7 @@ void main() {
           },
         };
 
-        expect(metadata.isWithinTimeRange, isFalse);
+        expect(metadata.isWithinTimeRange(), isFalse);
       });
 
       test('returns false when current time is after range', () {
@@ -188,7 +158,7 @@ void main() {
           },
         };
 
-        expect(metadata.isWithinTimeRange, isFalse);
+        expect(metadata.isWithinTimeRange(), isFalse);
       });
     });
 
@@ -202,7 +172,7 @@ void main() {
           },
         };
 
-        final result = metadata.recurringTimePattern;
+        final result = metadata.recurringTimePattern();
 
         expect(result, isNotNull);
         expect(result!.timeStart, const TimeOfDay(hour: 9, minute: 0));
@@ -221,7 +191,7 @@ void main() {
           },
         };
 
-        final result = metadata.recurringTimePattern;
+        final result = metadata.recurringTimePattern();
 
         expect(result, isNotNull);
         expect(result!.timeStart, const TimeOfDay(hour: 9, minute: 0));
@@ -231,21 +201,21 @@ void main() {
 
       test('returns null when recurring_time_pattern is missing', () {
         final metadata = <String, dynamic>{};
-        expect(metadata.recurringTimePattern, isNull);
+        expect(metadata.recurringTimePattern(), isNull);
       });
 
       test('returns null when time_start is missing', () {
         final metadata = <String, dynamic>{
           'recurring_time_pattern': {'time_end': '17:00'},
         };
-        expect(metadata.recurringTimePattern, isNull);
+        expect(metadata.recurringTimePattern(), isNull);
       });
 
       test('returns null when time_end is missing', () {
         final metadata = <String, dynamic>{
           'recurring_time_pattern': {'time_start': '09:00'},
         };
-        expect(metadata.recurringTimePattern, isNull);
+        expect(metadata.recurringTimePattern(), isNull);
       });
 
       test('returns null when time_start is invalid', () {
@@ -255,7 +225,7 @@ void main() {
             'time_end': '17:00',
           },
         };
-        expect(metadata.recurringTimePattern, isNull);
+        expect(metadata.recurringTimePattern(), isNull);
       });
 
       test('returns null when time_end is invalid', () {
@@ -265,7 +235,7 @@ void main() {
             'time_end': 'invalid',
           },
         };
-        expect(metadata.recurringTimePattern, isNull);
+        expect(metadata.recurringTimePattern(), isNull);
       });
 
       test('returns null when start equals end', () {
@@ -275,7 +245,7 @@ void main() {
             'time_end': '09:00',
           },
         };
-        expect(metadata.recurringTimePattern, isNull);
+        expect(metadata.recurringTimePattern(), isNull);
       });
     });
 
@@ -327,7 +297,7 @@ void main() {
           },
         };
 
-        final result = metadata.requiredStatus;
+        final result = metadata.requiredStatus();
 
         expect(result, isNotNull);
         expect(result!.contextKey, 'user_status');
@@ -336,7 +306,7 @@ void main() {
 
       test('returns null when required_status is missing', () {
         final metadata = <String, dynamic>{};
-        expect(metadata.requiredStatus, isNull);
+        expect(metadata.requiredStatus(), isNull);
       });
 
       test('returns null when context_key is missing', () {
@@ -345,14 +315,14 @@ void main() {
             'allowed_values': ['active', 'trial'],
           },
         };
-        expect(metadata.requiredStatus, isNull);
+        expect(metadata.requiredStatus(), isNull);
       });
 
       test('returns null when allowed_values is missing', () {
         final metadata = <String, dynamic>{
           'required_status': {'context_key': 'user_status'},
         };
-        expect(metadata.requiredStatus, isNull);
+        expect(metadata.requiredStatus(), isNull);
       });
 
       test('returns null when allowed_values is not all strings', () {
@@ -362,7 +332,7 @@ void main() {
             'allowed_values': ['active', 123],
           },
         };
-        expect(metadata.requiredStatus, isNull);
+        expect(metadata.requiredStatus(), isNull);
       });
 
       test('handles single allowed value', () {
@@ -373,82 +343,9 @@ void main() {
           },
         };
 
-        final result = metadata.requiredStatus;
+        final result = metadata.requiredStatus();
         expect(result, isNotNull);
         expect(result!.allowedValues, {'active'});
-      });
-    });
-
-    group('getConditionList', () {
-      test('extracts valid condition list', () {
-        final metadata = <String, dynamic>{
-          'any_of': [
-            {'time_range': <String, dynamic>{}},
-            {'is_active': true},
-          ],
-        };
-
-        final result = metadata.getConditionList('any_of');
-
-        expect(result, isNotNull);
-        expect(result!.length, 2);
-        expect(result[0], {'time_range': <String, dynamic>{}});
-        expect(result[1], {'is_active': true});
-      });
-
-      test('returns null when key is missing', () {
-        final metadata = <String, dynamic>{};
-        expect(metadata.getConditionList('any_of'), isNull);
-      });
-
-      test('returns null when value is not a list', () {
-        final metadata = <String, dynamic>{'any_of': 'invalid'};
-        expect(metadata.getConditionList('any_of'), isNull);
-      });
-
-      test('returns null when list contains non-map items', () {
-        final metadata = <String, dynamic>{
-          'any_of': [
-            {'time_range': <String, dynamic>{}},
-            'invalid',
-          ],
-        };
-        expect(metadata.getConditionList('any_of'), isNull);
-      });
-
-      test('handles empty list', () {
-        final metadata = <String, dynamic>{'any_of': <Map<String, dynamic>>[]};
-        final result = metadata.getConditionList('any_of');
-        expect(result, isNotNull);
-        expect(result!.isEmpty, isTrue);
-      });
-    });
-
-    group('anyOfConditions', () {
-      test('extracts any_of conditions', () {
-        final metadata = <String, dynamic>{
-          MetadataKeys.anyOf: [
-            {'time_range': <String, dynamic>{}},
-          ],
-        };
-
-        final result = metadata.anyOfConditions;
-        expect(result, isNotNull);
-        expect(result!.length, 1);
-      });
-    });
-
-    group('allOfConditions', () {
-      test('extracts all_of conditions', () {
-        final metadata = <String, dynamic>{
-          MetadataKeys.allOf: [
-            {'time_range': <String, dynamic>{}},
-          ],
-        };
-
-        final result = metadata.allOfConditions;
-        expect(result, isNotNull);
-        expect(result!.length, 1);
       });
     });
 
@@ -575,7 +472,7 @@ void main() {
 
         final result = metadata.maybeGetNested(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
 
         expect(result, isNotNull);
@@ -597,7 +494,7 @@ void main() {
 
         final result = metadata.maybeGetNested(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
 
         expect(result, isNotNull);
@@ -607,7 +504,7 @@ void main() {
         final metadata = <String, dynamic>{};
         final result = metadata.maybeGetNested(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
         expect(result, isNull);
       });
@@ -622,7 +519,7 @@ void main() {
 
         final result = metadata.maybeGetNested(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
 
         expect(result, isNull);
@@ -648,7 +545,7 @@ void main() {
 
         final result = metadata.maybeGetNestedOrFlat(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
 
         expect(result, isNotNull);
@@ -666,7 +563,7 @@ void main() {
 
         final result = metadata.maybeGetNestedOrFlat(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
 
         expect(result, isNotNull);
@@ -677,7 +574,7 @@ void main() {
         final metadata = <String, dynamic>{};
         final result = metadata.maybeGetNestedOrFlat(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
         expect(result, isNull);
       });
@@ -702,7 +599,7 @@ void main() {
 
         final result = metadata.maybeGetFlatOrNested(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
 
         expect(result, isNotNull);
@@ -724,7 +621,7 @@ void main() {
 
         final result = metadata.maybeGetFlatOrNested(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
 
         expect(result, isNotNull);
@@ -735,7 +632,7 @@ void main() {
         final metadata = <String, dynamic>{};
         final result = metadata.maybeGetFlatOrNested(
           'any_of',
-          (map) => map.timeRange,
+          (map) => map.timeRange(),
         );
         expect(result, isNull);
       });

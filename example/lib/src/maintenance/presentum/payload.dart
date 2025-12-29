@@ -42,10 +42,10 @@ final class MaintenanceOption extends PresentumOption<AppSurface, AppVariant> {
 }
 
 /// Maintenance payload supports various eligibility conditions in metadata:
-/// 
-/// If you want, you can add platform specific conditions, versions, 
+///
+/// If you want, you can add platform specific conditions, versions,
 /// feature flags, etc:
-/// 
+///
 /// Show maintenance only on iOS and Android:
 /// ```json
 /// {
@@ -56,7 +56,7 @@ final class MaintenanceOption extends PresentumOption<AppSurface, AppVariant> {
 ///   }
 /// }
 /// ```
-/// 
+///
 /// Show maintenance only for versions 1.0.0 and 1.1.0:
 /// ```json
 /// {
@@ -69,10 +69,10 @@ final class MaintenanceOption extends PresentumOption<AppSurface, AppVariant> {
 /// ```
 ///
 /// Sample payload for maintenance, that you can publish to remote config:
-/// 
-/// Note: this payload uses the `any_of` rule, which means that the maintenance 
+///
+/// Note: this payload uses the `any_of` rule, which means that the maintenance
 /// will be shown if either time range matches or `is_active` is explicitly set
-/// to true. Consider using `is_active` primarily for testing purposes, 
+/// to true. Consider using `is_active` primarily for testing purposes,
 /// it is totally up to you.
 /// ```json
 /// {
@@ -192,14 +192,14 @@ final class MaintenancePayload
   /// then falls back to extracting from the nested structure.
   Duration? get timeUntilEnd => metadata.maybeGetFlatOrNested<Duration>(
     MetadataKeys.anyOf,
-    (map) => map.timeUntilEnd,
+    (map) => map.timeUntilEnd(),
   );
 
   /// Tries to extract the active flag from the flat metadata first,
   /// then falls back to extracting from the nested structure.
   bool? get isActive => metadata.maybeGetFlatOrNested<bool>(
     MetadataKeys.anyOf,
-    (map) => map.getBoolFlag(MetadataKeys.isActive),
+    (map) => map.isActive,
   );
 }
 

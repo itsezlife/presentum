@@ -13,28 +13,37 @@ import 'package:restart_app/restart_app.dart';
 /// {@endtemplate}
 class UpdateSnackbar {
   /// {@macro update_snackbar}
-  const UpdateSnackbar._();
+  UpdateSnackbar();
+
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
+  _snackbarController;
 
   /// Shows an undismissible snackbar with a restart button.
-  static void show(BuildContext context) {
-    ScaffoldMessenger.of(context)
-      ..removeCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: const Text('Update available'),
-          action: SnackBarAction(
-            label: 'RESTART',
-            textColor: context.theme.colorScheme.onInverseSurface,
-            onPressed: () => _restartApp(context),
-          ),
-          duration: const Duration(days: 365), // Effectively permanent
-          behavior: SnackBarBehavior.floating,
-          dismissDirection: DismissDirection.none, // Prevents swipe to dismiss
+  void show(BuildContext context) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+
+    final snackbarController = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Update available'),
+        action: SnackBarAction(
+          label: 'RESTART',
+          textColor: context.theme.colorScheme.onInverseSurface,
+          onPressed: () => _restartApp(context),
         ),
-      );
+        duration: const Duration(days: 365), // Effectively permanent
+        behavior: SnackBarBehavior.floating,
+        dismissDirection: DismissDirection.none, // Prevents swipe to dismiss
+      ),
+    );
+    _snackbarController = snackbarController;
   }
 
-  static Future<void> _restartApp(BuildContext context) async {
+  void hide() {
+    _snackbarController?.close();
+    _snackbarController = null;
+  }
+
+  Future<void> _restartApp(BuildContext context) async {
     final l10n = context.l10n;
 
     // Restart the app

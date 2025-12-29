@@ -78,6 +78,52 @@ final _payloads = <String, FeaturePayload>{
       ),
     ],
   ),
+
+  /// You can have any local logic you want, for example, not display this
+  /// payload, if the [ShopController] returned no categories.
+  FeatureId.catalogCategoriesSection: const FeaturePayload(
+    id: FeatureId.catalogCategoriesSection,
+    featureKey: FeatureId.catalogCategoriesSection,
+    dependsOnFeatureKey: FeatureId.catalogCategoriesSection,
+    priority: 200,
+    metadata: {},
+    options: [
+      FeatureOption(
+        surface: AppSurface.catalogView,
+        variant: AppVariant.catalogCategoriesSection,
+
+        /// Change stage to adjust the order of the items in the [CatalogScreen]. Lower stage means higher priority.
+        ///
+        /// This is higher priority than recently viewed products section, it'll be showed first.
+        stage: 200,
+        isDismissible: false,
+        alwaysOnIfEligible: true,
+      ),
+    ],
+  ),
+
+  /// You can have any local logic to not display this payload, until
+  /// there are some recently viewed products, or any other condition you want.
+  FeatureId.catalogRecentlyViewedProductsSection: const FeaturePayload(
+    id: FeatureId.catalogRecentlyViewedProductsSection,
+    featureKey: FeatureId.catalogRecentlyViewedProductsSection,
+    dependsOnFeatureKey: FeatureId.catalogRecentlyViewedProductsSection,
+    priority: 400,
+    metadata: {},
+    options: [
+      FeatureOption(
+        surface: AppSurface.catalogView,
+        variant: AppVariant.catalogRecentlyViewedProductsSection,
+
+        /// Change stage to adjust the order of the items in the [CatalogScreen]. Lower stage means higher priority.
+        ///
+        /// This is lower priority thatn categories section, it'll be showed second.
+        stage: 300,
+        isDismissible: false,
+        alwaysOnIfEligible: true,
+      ),
+    ],
+  ),
 };
 
 final class FeatureDrivenProvider extends ChangeNotifier {
@@ -198,6 +244,7 @@ final class FeatureDrivenProvider extends ChangeNotifier {
           dev.log(
             'Skipping payload ${payload.id} because dependent '
             'feature "$dependsOnFeatureKey" is not in current features',
+            name: 'FeatureDrivenProvider',
           );
           continue;
         }

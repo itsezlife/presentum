@@ -2,7 +2,7 @@
   "@@locale": "en",
   "language": "English",
   "languageEn": "English",
-  "bottomNavBarTabLabel": "{tab, select, main{Home} settings{Settings} other{Other}}",
+  "bottomNavBarTabLabel": "{tab, select, main{Home} catalog{Catalog} favorites{Favorites} settings{Settings} other{Other}}",
   "@bottomNavBarTabLabel": {
     "description": "The label for the bottom navigation bar tab.",
     "placeholders": {
@@ -13,7 +13,7 @@
       }
     }
   },
-  "featureName": "{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} other{Unknown Feature}}",
+  "featureName": "{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} catalogCategoriesSection{Catalog Categories Section} catalogRecentlyViewedProductsSection{Catalog Recently Viewed Products Section} other{Unknown Feature}}",
   "@featureName": {
     "description": "The name of the feature.",
     "placeholders": {
@@ -109,5 +109,22 @@
   "maintenanceRestartApp": "Restart App",
   "maintenancePleaseCheckBack": "Please check back soon.",
   "restartingApp": "Restarting App",
-  "restartNotification": "Please tap here to open the app again."
+  "restartNotification": "Please tap here to open the app again.",
+  "copied": "Copied",
+  "aboutDialogNameTitle": "Name",
+  "aboutDialogVersionTitle": "Version",
+  "aboutDialogDescriptionTitle": "Description",
+  "aboutDialogHomepageTitle": "Homepage",
+  "aboutDialogRepositoryTitle": "Repository",
+  "categoryDescription": "{category, select, groceries{Fresh food and daily essentials} electronics{Tech gadgets and devices} fashion{Clothing and accessories} other{Miscellaneous items}}",
+  "@categoryDescription": {
+    "description": "Short description for product categories.",
+    "placeholders": {
+      "category": {
+        "type": "String",
+        "example": "groceries",
+        "description": "Category identifier."
+      }
+    }
+  }
 }

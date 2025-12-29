@@ -10,9 +10,12 @@ import 'package:shorebird_code_push/shorebird_code_push.dart';
 /// Provider that manages app updates and maintenance mode using Shorebird
 final class AppUpdatesProvider extends ChangeNotifier {
   AppUpdatesProvider({required this.engine, required this.updatesStore}) {
-    _initialize();
+    // Check for updates when the app is resumed
+    _lifecycleListener = AppLifecycleListener(onResume: _onUpdatesStoreChanged);
+    // Listen for updates store changes
     updatesStore.addListener(_onUpdatesStoreChanged);
-    _checkForUpdates();
+    // Initial check for updates
+    _onUpdatesStoreChanged();
   }
 
   final PresentumEngine<AppUpdatesItem, AppSurface, AppVariant> engine;
@@ -21,10 +24,6 @@ final class AppUpdatesProvider extends ChangeNotifier {
   late final AppLifecycleListener _lifecycleListener;
 
   UpdateStatus? _currentStatus;
-  Timer? _statusCheckTimer;
-
-  UpdateStatus? get currentStatus => _currentStatus;
-
   void _onUpdatesStoreChanged() {
     final status = updatesStore.status;
     if (status == UpdateStatus.outdated) {
@@ -33,29 +32,16 @@ final class AppUpdatesProvider extends ChangeNotifier {
     _checkForUpdates();
   }
 
-  Future<void> _initialize() async {
-    // Check for updates when the app is resumed
-    _lifecycleListener = AppLifecycleListener(onResume: _checkForUpdates);
-
-    // Check for updates immediately
-    await _checkForUpdates();
-
-    // Set up periodic update checks (every 30 minutes in production)
-    _statusCheckTimer = Timer.periodic(
-      const Duration(minutes: 30),
-      (_) => _checkForUpdates(),
-    );
-
-    // Initial candidates setup
-    _refreshCandidates();
-  }
-
   Future<void> _checkForUpdates() async {
     try {
       final status = await updatesStore.checkForUpdate();
 
       if (status == _currentStatus) return;
       _currentStatus = status;
+
+      if (status == UpdateStatus.outdated) {
+        await updatesStore.update();
+      }
 
       _refreshCandidates();
     } on Object catch (error, stackTrace) {
@@ -94,25 +80,14 @@ final class AppUpdatesProvider extends ChangeNotifier {
       }
     }
 
-    // Add maintenance mode if configured
-    // if (_maintenancePayload case final payload?) {
-    //   for (final option in payload.options) {
-    //     candidates.add(MaintenanceItem(payload: payload, option: option));
-    //   }
-    // }
-
     // Update engine with new candidates
     engine.setCandidates((_, _) => candidates);
 
     notifyListeners();
   }
 
-  /// Force check for updates (can be called manually)
-  Future<void> checkForUpdates() => _checkForUpdates();
-
   @override
   void dispose() {
-    _statusCheckTimer?.cancel();
     _lifecycleListener.dispose();
     updatesStore.removeListener(_onUpdatesStoreChanged);
     super.dispose();

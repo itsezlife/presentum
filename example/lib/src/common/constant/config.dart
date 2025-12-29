@@ -47,6 +47,25 @@ abstract final class Config {
     'MAX_LAYOUT_WIDTH',
     defaultValue: 768,
   );
+
+  /// --- CURRENCY --- //
+
+  /// Currency symbol.
+  static const currencySymbol = r'$';
+
+  /// --- RECOMMENDATION --- //
+
+  /// Maximum age of recommendations in seconds.
+  static const int recommendationMaxAgeSeconds = int.fromEnvironment(
+    'RECOMMENDATION_MAX_AGE',
+    defaultValue: 60,
+  );
+
+  /// Maximum age of recommendation set in seconds.
+  static const int recommendationSetExpirationSeconds = int.fromEnvironment(
+    'RECOMMENDATION_SET_EXPIRATION',
+    defaultValue: 60,
+  );
 }
 
 /// Environment flavor.

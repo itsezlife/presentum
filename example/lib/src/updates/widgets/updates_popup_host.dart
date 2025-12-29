@@ -16,49 +16,34 @@ class AppUpdatesPopupHost extends StatefulWidget {
 
 class _AppUpdatesPopupHostState extends State<AppUpdatesPopupHost>
     with
-        PresentumPopupSurfaceStateMixin<
+        PresentumActiveSurfaceItemObserverMixin<
           AppUpdatesItem,
           AppSurface,
           AppVariant,
           AppUpdatesPopupHost
         > {
+  late final UpdateSnackbar _updateSnackbar;
+
+  @override
+  void initState() {
+    _updateSnackbar = UpdateSnackbar();
+    super.initState();
+  }
+
   @override
   AppSurface get surface => AppSurface.updateSnackbar;
 
   @override
-  PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.replace;
-
-  @override
-  bool get ignoreDuplicates => true;
-
-  @override
-  Duration? get duplicateThreshold => const Duration(seconds: 10);
-
-  @override
-  Future<void> markDismissed({required AppUpdatesItem entry}) async {
-    final presentum = context
-        .presentum<AppUpdatesItem, AppSurface, AppVariant>();
-    await presentum.markDismissed(entry);
-  }
-
-  @override
-  Future<PopupPresentResult> present(AppUpdatesItem entry) async {
-    if (!mounted) return PopupPresentResult.notPresented;
-
-    final presentum = context
-        .presentum<AppUpdatesItem, AppSurface, AppVariant>();
-
-    // Mark as shown
-    await presentum.markShown(entry);
-
-    if (!mounted) return PopupPresentResult.notPresented;
-
-    // Show the update snackbar
-    UpdateSnackbar.show(context);
-
-    // Snackbars are persistent until user action, so we return userDismissed
-    // The snackbar will stay visible until restart
-    return PopupPresentResult.userDismissed;
+  void onActiveItemChanged({
+    required AppUpdatesItem? current,
+    required AppUpdatesItem? previous,
+  }) {
+    if (current case final _? when previous == null) {
+      _updateSnackbar.show(context);
+    }
+    if (previous case final _? when current == null) {
+      _updateSnackbar.hide();
+    }
   }
 
   @override

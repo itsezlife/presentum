@@ -1,5 +1,5 @@
 import 'package:example/src/common/model/dependencies.dart';
-import 'package:example/src/feature/presentum/persistent_presentum_storage.dart';
+import 'package:example/src/common/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/updates/presentum/eligibility/update_status_eligibility.dart';
 import 'package:example/src/updates/presentum/guards/updates_scheduling_guard.dart';
 import 'package:example/src/updates/presentum/payload.dart';

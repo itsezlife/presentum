@@ -72,7 +72,7 @@ class _Body extends StatelessWidget {
     final screenSize = context.screenSize;
 
     return screenSize.maybeWhen(
-      phone: () => Scaffold(
+      orElse: () => Scaffold(
         body: child,
         bottomNavigationBar: BottomNavBar(
           tabs: tabs,
@@ -80,7 +80,7 @@ class _Body extends StatelessWidget {
           onTap: onTap,
         ),
       ),
-      orElse: () => Row(
+      desktop: () => Row(
         children: [
           NavRail(currentIndex: currentIndex, onTap: onTap, tabs: tabs),
           const VerticalDivider(thickness: 1, width: 1),

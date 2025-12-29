@@ -5,7 +5,8 @@ import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/maintenance/presentum/payload.dart';
 import 'package:example/src/updates/data/updates_store.dart';
 import 'package:example/src/updates/presentum/provider.dart';
-import 'package:example/src/updates/widgets/updates_popup_host.dart' show AppUpdatesPopupHost;
+import 'package:example/src/updates/widgets/updates_popup_host.dart'
+    show AppUpdatesPopupHost;
 import 'package:flutter/material.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';

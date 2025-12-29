@@ -1,8 +1,8 @@
 import 'package:example/src/common/model/dependencies.dart';
+import 'package:example/src/common/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/feature/presentum/guards/feature_scheduling_guard.dart';
 import 'package:example/src/feature/presentum/guards/sync_feature_state_guard.dart';
 import 'package:example/src/feature/presentum/payload.dart';
-import 'package:example/src/feature/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/feature/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
 import 'package:presentum/presentum.dart';

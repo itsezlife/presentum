@@ -41,7 +41,7 @@ version: ## show current flutter version
 .PHONY: get
 get: ## get dependencies
 	$(call print-target)
-	@fvm flutter pub get
+	@flutter pub get
 
 .PHONY: upgrade
 upgrade: get ## upgrade dependencies
@@ -57,6 +57,7 @@ outdated: ## check for outdated dependencies
 codegen: get ## run codegenerators
 	$(call print-target)
 	@fvm dart run build_runner build --delete-conflicting-outputs
+	@fvm dart run pubspec_generator:generate --input pubspec.yaml --output lib/src/common/constant/pubspec.yaml.g.dart
 	$(call fix)
 
 .PHONY: gen
@@ -108,7 +109,7 @@ coverage: test ## generate coverage report
 .PHONY: build
 build: get ## build the application
 	$(call print-target)
-	@fvm flutter build web --release --source-maps --pwa-strategy none --base-href / --dart-define VERSION=0.0.0 --dart-define-from-file=.env.dev
+	@fvm flutter build web --release --source-maps --pwa-strategy none --base-href / --dart-define VERSION=0.0.0 --dart-define-from-file=config/production.json
 
 .PHONY: build-apk
 build-apk: get ## build the application

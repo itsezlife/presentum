@@ -1,6 +1,7 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:example/src/common/widgets/scaffold_padding.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 /// {@template app_error}
@@ -18,16 +19,17 @@ class AppError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const themeMode = ThemeMode.system;
+
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final colorScheme = theme.colorScheme;
+
     return MaterialApp(
       title: 'App Error',
-      theme:
-          View.of(context).platformDispatcher.platformBrightness ==
-              Brightness.dark
-          ? const AppTheme().theme
-          : const AppDarkTheme().theme,
+      themeMode: ThemeMode.system,
+      theme: const AppTheme().theme,
+      darkTheme: const AppDarkTheme().theme,
       home: Scaffold(
         body: SafeArea(
           child: Center(
@@ -44,7 +46,8 @@ class AppError extends StatelessWidget {
                     textScaler: TextScaler.noScaling,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  if (stackTrace case final stackTrace?) ...[
+                  if (stackTrace != null &&
+                      stackTrace.toString().trim().isNotEmpty) ...[
                     Stack(
                       children: [
                         Container(
@@ -102,7 +105,12 @@ class AppError extends StatelessWidget {
         ),
       ),
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
+        data: context.mediaQuery.copyWith(
+          platformBrightness: themeMode == ThemeMode.system
+              ? SchedulerBinding.instance.platformDispatcher.platformBrightness
+              : themeMode == ThemeMode.light
+              ? Brightness.light
+              : Brightness.dark,
           textScaler: TextScaler.linear(
             context.textScaleFactor(maxTextScaleFactor: 1.5),
           ),

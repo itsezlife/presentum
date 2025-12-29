@@ -20,6 +20,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String bottomNavBarTabLabel(String tab) {
     String _temp0 = intl.Intl.selectLogic(tab, {
       'main': 'Home',
+      'catalog': 'Catalog',
+      'favorites': 'Favorites',
       'settings': 'Settings',
       'other': 'Other',
     });
@@ -31,6 +33,9 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(featureKey, {
       'newYearTheme': 'New Year Theme',
       'newYearBanner': 'New Year Banner',
+      'catalogCategoriesSection': 'Catalog Categories Section',
+      'catalogRecentlyViewedProductsSection':
+          'Catalog Recently Viewed Products Section',
       'other': 'Unknown Feature',
     });
     return '$_temp0';
@@ -118,4 +123,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restartNotification => 'Please tap here to open the app again.';
+
+  @override
+  String get copied => 'Copied';
+
+  @override
+  String get aboutDialogNameTitle => 'Name';
+
+  @override
+  String get aboutDialogVersionTitle => 'Version';
+
+  @override
+  String get aboutDialogDescriptionTitle => 'Description';
+
+  @override
+  String get aboutDialogHomepageTitle => 'Homepage';
+
+  @override
+  String get aboutDialogRepositoryTitle => 'Repository';
+
+  @override
+  String categoryDescription(String category) {
+    String _temp0 = intl.Intl.selectLogic(category, {
+      'groceries': 'Fresh food and daily essentials',
+      'electronics': 'Tech gadgets and devices',
+      'fashion': 'Clothing and accessories',
+      'other': 'Miscellaneous items',
+    });
+    return '$_temp0';
+  }
 }

@@ -18,7 +18,7 @@ import 'package:presentum/src/eligibility/metadata_keys.dart';
 /// }
 ///
 /// // Extract boolean flag
-/// final isActive = payload.getBoolFlag(MetadataKeys.isActive);
+/// final isActive = payload.metadata.getBoolFlag(MetadataKeys.isActive);
 /// ```
 /// {@endtemplate}
 extension MetadataExtraction on Map<String, dynamic> {
@@ -41,14 +41,12 @@ extension MetadataExtraction on Map<String, dynamic> {
       }
     }
 
+    if (mapConditions.isEmpty) return null;
+
     return mapConditions.map(mapper).firstWhereOrNull((e) => e != null);
   }
 
   /// Extracts a nested value from metadata or falls back to flat extraction.
-  ///
-  /// First tries to extract from nested structure using the key, then falls
-  /// back to applying the mapper directly to the current map if nested
-  /// extraction returns null.
   ///
   /// Example:
   /// ```dart
@@ -61,10 +59,6 @@ extension MetadataExtraction on Map<String, dynamic> {
 
   /// Extracts a flat value first, then tries nested extraction as fallback.
   ///
-  /// First tries to apply the mapper directly to the current map, then falls
-  /// back to extracting from nested structure using the key if flat
-  /// extraction returns null.
-  ///
   /// Example:
   /// ```dart
   /// metadata.maybeGetFlatOrNested('any_of', (map) => map.timeRange);
@@ -73,10 +67,6 @@ extension MetadataExtraction on Map<String, dynamic> {
     String key,
     T? Function(Map<String, dynamic>) mapper,
   ) => mapper(this) ?? maybeGetNested(key, mapper);
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Time-based extractions
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /// Extracts a time range from metadata.
   ///
@@ -92,15 +82,16 @@ extension MetadataExtraction on Map<String, dynamic> {
   ///   }
   /// }
   /// ```
-  ({DateTime start, DateTime end})? get timeRange =>
-      switch (this[MetadataKeys.timeRange]) {
-        <String, dynamic>{
-          MetadataKeys.start: final String startStr,
-          MetadataKeys.end: final String endStr,
-        } =>
-          _parseTimeRange(startStr, endStr),
-        _ => null,
-      };
+  ({DateTime start, DateTime end})? timeRange({
+    String key = MetadataKeys.timeRange,
+  }) => switch (this[key]) {
+    <String, dynamic>{
+      MetadataKeys.start: final String startStr,
+      MetadataKeys.end: final String endStr,
+    } =>
+      _parseTimeRange(startStr, endStr),
+    _ => null,
+  };
 
   /// Internal helper to parse and validate time ranges.
   ({DateTime start, DateTime end})? _parseTimeRange(
@@ -118,14 +109,8 @@ extension MetadataExtraction on Map<String, dynamic> {
   }
 
   /// Calculates time remaining until the end of a time range.
-  ///
-  /// Returns `null` if:
-  /// - No time range is present
-  /// - Time range is invalid
-  /// - Current time is before the range starts
-  /// - Current time is after the range ends
-  Duration? get timeUntilEnd {
-    final range = timeRange;
+  Duration? timeUntilEnd({String key = MetadataKeys.timeRange}) {
+    final range = timeRange(key: key);
     if (range == null) return null;
 
     final now = DateTime.now();
@@ -133,8 +118,8 @@ extension MetadataExtraction on Map<String, dynamic> {
   }
 
   /// Checks if current time is within the time range.
-  bool get isWithinTimeRange {
-    final range = timeRange;
+  bool isWithinTimeRange({String key = MetadataKeys.timeRange}) {
+    final range = timeRange(key: key);
     if (range == null) return false;
 
     final now = DateTime.now();
@@ -156,18 +141,19 @@ extension MetadataExtraction on Map<String, dynamic> {
   /// }
   /// ```
   ({TimeOfDay timeStart, TimeOfDay timeEnd, Set<DayOfWeek>? daysOfWeek})?
-  get recurringTimePattern => switch (this[MetadataKeys.recurringTimePattern]) {
-    <String, dynamic>{
-      MetadataKeys.timeStart: final String startStr,
-      MetadataKeys.timeEnd: final String endStr,
-    } =>
-      _parseRecurringPattern(
-        startStr,
-        endStr,
-        this[MetadataKeys.recurringTimePattern] as Map<String, dynamic>,
-      ),
-    _ => null,
-  };
+  recurringTimePattern({String key = MetadataKeys.recurringTimePattern}) =>
+      switch (this[key]) {
+        <String, dynamic>{
+          MetadataKeys.timeStart: final String startStr,
+          MetadataKeys.timeEnd: final String endStr,
+        } =>
+          _parseRecurringPattern(
+            startStr,
+            endStr,
+            this[key] as Map<String, dynamic>,
+          ),
+        _ => null,
+      };
 
   /// Internal helper to parse recurring time patterns.
   ({TimeOfDay timeStart, TimeOfDay timeEnd, Set<DayOfWeek>? daysOfWeek})?
@@ -197,30 +183,6 @@ extension MetadataExtraction on Map<String, dynamic> {
     return (timeStart: start, timeEnd: end, daysOfWeek: daysOfWeek);
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Boolean and flag extractions
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  /// Extracts a boolean flag from metadata by key.
-  ///
-  /// Returns `null` if the key doesn't exist or value is not a boolean.
-  ///
-  /// Example:
-  /// ```dart
-  /// final isActive = payload.getBoolFlag('is_active');
-  /// ```
-  bool? getBoolFlag(String key) => switch (this[key]) {
-    final bool value => value,
-    _ => null,
-  };
-
-  /// Convenience getter for the common "is_active" flag.
-  bool? get isActive => getBoolFlag(MetadataKeys.isActive);
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Structured extractions
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
   /// Extracts set membership configuration.
   ///
   /// Expected structure:
@@ -232,54 +194,20 @@ extension MetadataExtraction on Map<String, dynamic> {
   ///   }
   /// }
   /// ```
-  ({String contextKey, Set<String> allowedValues})? get requiredStatus =>
-      switch (this[MetadataKeys.requiredStatus]) {
-        <String, dynamic>{
-          MetadataKeys.contextKey: final String contextKey,
-          MetadataKeys.allowedValues: final List<dynamic> allowedValues,
-        }
-            when allowedValues.every((e) => e is String) =>
-          (
-            contextKey: contextKey,
-            allowedValues: allowedValues.cast<String>().toSet(),
-          ),
-        _ => null,
-      };
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Composite condition extractions
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  /// Extracts list of condition maps for logical operators (any_of, all_of).
-  ///
-  /// Returns `null` if key doesn't exist or value is not a list of maps.
-  ///
-  /// Example:
-  /// ```dart
-  /// final conditions = payload.getConditionList('any_of');
-  /// for (final condition in conditions ?? []) {
-  ///   // Process each condition map
-  /// }
-  /// ```
-  List<Map<String, dynamic>>? getConditionList(String key) =>
-      switch (this[key]) {
-        final List<dynamic> list
-            when list.every((e) => e is Map<String, dynamic>) =>
-          list.cast<Map<String, dynamic>>(),
-        _ => null,
-      };
-
-  /// Extracts "any_of" conditions.
-  List<Map<String, dynamic>>? get anyOfConditions =>
-      getConditionList(MetadataKeys.anyOf);
-
-  /// Extracts "all_of" conditions.
-  List<Map<String, dynamic>>? get allOfConditions =>
-      getConditionList(MetadataKeys.allOf);
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Generic extractions
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ({String contextKey, Set<String> allowedValues})? requiredStatus({
+    String key = MetadataKeys.requiredStatus,
+  }) => switch (this[key]) {
+    <String, dynamic>{
+      MetadataKeys.contextKey: final String contextKey,
+      MetadataKeys.allowedValues: final List<dynamic> allowedValues,
+    }
+        when allowedValues.every((e) => e is String) =>
+      (
+        contextKey: contextKey,
+        allowedValues: allowedValues.cast<String>().toSet(),
+      ),
+    _ => null,
+  };
 
   /// Safely extracts a value of type [T].
   T? getValue<T>(String key) => switch (this[key]) {
@@ -289,6 +217,19 @@ extension MetadataExtraction on Map<String, dynamic> {
 
   /// Safely extracts a numeric value.
   num? getNum(String key) => getValue<num>(key);
+
+  /// Extracts a boolean flag from metadata by key.
+  ///
+  /// Returns `null` if the key doesn't exist or value is not a boolean.
+  ///
+  /// Example:
+  /// ```dart
+  /// final isActive = payload.getBoolFlag('is_active');
+  /// ```
+  bool? getBoolFlag(String key) => getValue<bool>(key);
+
+  /// Convenience getter for the common "is_active" flag.
+  bool? get isActive => getBoolFlag(MetadataKeys.isActive);
 
   /// Safely extracts a string value.
   String? getString(String key) => getValue<String>(key);

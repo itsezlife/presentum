@@ -4,7 +4,9 @@ import 'package:example/src/app/router/route_tracker.dart';
 import 'package:example/src/app/router/routes.dart';
 import 'package:example/src/app/router/tabs.dart';
 import 'package:example/src/feature/feature_presentum.dart';
+import 'package:example/src/feature/widgets/snow_outlet.dart';
 import 'package:example/src/home/widgets/home_tabs_mixin.dart';
+import 'package:example/src/shop/presentum/recommendation_presentum.dart';
 import 'package:example/src/updates/presentum/app_updates_presentum.dart';
 import 'package:flutter/material.dart';
 import 'package:octopus/octopus.dart';
@@ -43,18 +45,30 @@ class HomeController {
 /// {@template home_view}
 /// HomeView widget.
 /// {@endtemplate}
-class HomeView extends StatefulWidget {
+class HomeView extends StatelessWidget {
   const HomeView({super.key});
 
   @override
-  State<HomeView> createState() => _HomeViewState();
+  Widget build(BuildContext context) => AppUpdatesPresentum(
+    child: FeaturePresentum(
+      child: RecommendationPresentum(
+        child: SnowOutlet(child: Builder(builder: (context) => const _Tabs())),
+      ),
+    ),
+  );
 }
 
-class _HomeViewState extends State<HomeView> with HomeTabsMixin {
+class _Tabs extends StatefulWidget {
+  const _Tabs();
+
+  @override
+  State<_Tabs> createState() => _TabsState();
+}
+
+class _TabsState extends State<_Tabs> with HomeTabsMixin {
   @override
   AppTab get tab => const HomeAppTab();
 
   @override
-  Widget build(BuildContext context) =>
-      AppUpdatesPresentum(child: FeaturePresentum(child: buildTabs(context)));
+  Widget build(BuildContext context) => buildTabs(context);
 }
