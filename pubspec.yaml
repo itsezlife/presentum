@@ -24,8 +24,14 @@ topics:
   - presentum
 
 environment:
-  sdk: ">=3.8.0"
+  sdk: ">=3.8.0 <4.0.0"
   flutter: ">=3.24.0"
+
+false_secrets:
+  - /example/android/app/google-services.json
+  - /example/ios/Runner/GoogleService-Info.plist
+  - /example/lib/firebase_options.dart
+  - /example/macos/Runner/GoogleService-Info.plist
 
 dependencies:
   flutter:

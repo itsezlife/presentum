@@ -52,7 +52,7 @@ Create `lib/presentation/payload.dart`:
 
 ```dart lib/presentation/payload.dart
 import 'package:presentum/presentum.dart';
-import 'surfaces.dart';
+import '../docs/surfaces.dart';
 
 class CampaignPresentumOption
     extends PresentumOption<AppSurface, CampaignVariant> {
@@ -134,7 +134,7 @@ Create `lib/presentation/storage.dart`:
 ```dart lib/presentation/storage.dart
 import 'dart:async';
 import 'package:presentum/presentum.dart';
-import 'surfaces.dart';
+import '../docs/surfaces.dart';
 
 class InMemoryStorage implements PresentumStorage<AppSurface, CampaignVariant> {
   final Map<String, DateTime> _lastShown = {};
@@ -234,8 +234,8 @@ Create `lib/presentation/guards.dart`:
 ```dart lib/presentation/guards.dart
 import 'dart:async';
 import 'package:presentum/presentum.dart';
-import 'payload.dart';
-import 'surfaces.dart';
+import '../docs/payload.dart';
+import '../docs/surfaces.dart';
 
 class CampaignGuard
     extends PresentumGuard<CampaignPresentumItem, AppSurface, CampaignVariant> {
@@ -292,10 +292,10 @@ Update `lib/main.dart`:
 ```dart lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:presentum/presentum.dart';
-import 'presentation/surfaces.dart';
-import 'presentation/payload.dart';
-import 'presentation/storage.dart';
-import 'presentation/guards.dart';
+import '../docs/presentation/surfaces.dart';
+import '../docs/presentation/payload.dart';
+import '../docs/presentation/storage.dart';
+import '../docs/presentation/guards.dart';
 
 late final Presentum<CampaignPresentumItem, AppSurface, CampaignVariant>
     campaignPresentum;
