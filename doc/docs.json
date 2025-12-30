@@ -5,8 +5,7 @@
   "theme": "mint",
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg",
-    "href": "https://github.com/itsezlife/presentum"
+    "dark": "/logo/dark.svg"
   },
   "favicon": "/favicon.svg",
   "colors": {
