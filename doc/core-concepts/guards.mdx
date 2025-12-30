@@ -635,16 +635,31 @@ class SequencingGuard extends MyGuard {
 
   <Accordion title="Use eligibility system">
     For complex conditions, use the built-in eligibility system instead of
-    manual if/else chains. ```dart final eligible = await
-    eligibilityResolver.isEligible( candidate.payload, context, ); ``` [Learn
-    more about eligibility ->](/features/eligibility-system)
+    manual if/else chains.
+    
+```dart
+final eligible = await eligibilityResolver.isEligible(
+  candidate.payload,
+  context,
+);
+```
+
+[Learn more about eligibility ->](/features/eligibility-system)
+
   </Accordion>
 
   <Accordion title="Share data via context">
     Use the `context` parameter to pass data between guards instead of external
-    state. ```dart // In first guard context['premiumUser'] = true; // In later
-    guard if (context['premiumUser'] == true) {/* ... */}
-    ```
+    state.
+    
+```dart
+// In first guard
+context['premiumUser'] = true;
+
+// In later guard
+if (context['premiumUser'] == true) {/* ... */}
+
+````
   </Accordion>
 
   <Accordion title="Don't call notifyListeners in guards">
@@ -666,7 +681,7 @@ await presentum.setState((state) {
   state.setActive(surface, item);
   return state;
 });
-```
+````
 
 </Warning>
 
@@ -704,16 +719,18 @@ class CampaignProvider {
     Step-by-step guard building guide
   </Card>
 
-  <Card
-    title="Eligibility system"
-    icon="check-circle"
-    href="/features/eligibility-system">
-    Use declarative eligibility rules
-  </Card>
+{" "}
+<Card
+  title="Eligibility system"
+  icon="check-circle"
+  href="/features/eligibility-system">
+  Use declarative eligibility rules
+</Card>
 
-  <Card title="Storage" icon="database" href="/core-concepts/storage">
-    Understand the storage interface
-  </Card>
+{" "}
+<Card title="Storage" icon="database" href="/core-concepts/storage">
+  Understand the storage interface
+</Card>
 
   <Card
     title="Production examples"
