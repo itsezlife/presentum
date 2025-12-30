@@ -100,31 +100,20 @@ abstract interface class EligibilityExtractor<S> {
 }
 
 /// Resolves whether a subject is eligible based on extracted conditions.
-///
-/// Type parameter [S] is the subject type being evaluated for eligibility.
 abstract interface class EligibilityResolver<S> {
   /// Returns the first [Eligibility] condition that fails, or `null` if all
   /// pass.
-  ///
-  /// This method:
-  /// 1. Uses extractors to derive eligibility conditions from the subject
-  /// 2. Evaluates each condition using registered rules
-  /// 3. Short-circuits on the first failure
   Future<Eligibility?> getIneligibleCondition(
     S subject,
     Map<String, dynamic> context,
   );
 
   /// Returns `true` if all eligibility conditions pass for the [subject].
-  ///
-  /// Convenience method equivalent to `getIneligibleCondition(...) == null`.
   Future<bool> isEligible(S subject, Map<String, dynamic> context) =>
       getIneligibleCondition(subject, context).then((c) => c == null);
 }
 
 /// Default implementation of [EligibilityResolver].
-///
-/// Coordinates extractors and rules to determine eligibility.
 final class DefaultEligibilityResolver<S> implements EligibilityResolver<S> {
   /// {@macro default_eligibility_resolver}
   const DefaultEligibilityResolver({

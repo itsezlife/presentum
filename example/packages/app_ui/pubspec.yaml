@@ -1,0 +1,22 @@
+name: app_ui
+description: A Very Good Project created by Very Good CLI.
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  animations: ^2.1.1
+  flutter:
+    sdk: flutter
+  shared:
+    path: ../shared
+  skeletonizer: ^2.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.4
+  very_good_analysis: ^10.0.0

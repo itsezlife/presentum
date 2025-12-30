@@ -1,69 +1,70 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "Presentum",
+  "description": "A declarative Flutter engine for building dynamic, conditional UI at scale",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://github.com/itsezlife/presentum"
+  },
+  "favicon": "/favicon.svg",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
     "dark": "#15803D"
   },
-  "favicon": "/favicon.svg",
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
             "group": "Getting started",
+            "pages": ["introduction", "installation", "quickstart"]
+          },
+          {
+            "group": "Core concepts",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "core-concepts/overview",
+              "core-concepts/surfaces",
+              "core-concepts/payloads-options-items",
+              "core-concepts/slots-state",
+              "core-concepts/guards",
+              "core-concepts/storage",
+              "core-concepts/outlets"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Guides",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "guides/implementing-guards",
+              "guides/implementing-storage",
+              "guides/building-outlets",
+              "guides/state-management"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Features",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "features/eligibility-system",
+              "features/events",
+              "features/transition-observers",
+              "features/inherited-widgets"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Recipes",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
+              "recipes/remote-config",
+              "recipes/happy-new-year",
+              "recipes/milestone-fullscreen-dialog",
+              "recipes/user-preferences-feature-toggles"
             ]
           },
           {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
+            "group": "Advanced",
+            "pages": ["advanced/popup-hosts"]
           }
         ]
       }
@@ -71,52 +72,51 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "icon": "github",
+          "href": "https://github.com/itsezlife/presentum"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "pub.dev",
+          "icon": "box",
+          "href": "https://pub.dev/packages/presentum"
+        },
+        {
+          "anchor": "Ultimate production-ready example app",
+          "icon": "rocket",
+          "href": "https://example.presentum.dev"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Discussions",
+        "href": "https://github.com/itsezlife/presentum/discussions"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Get Started",
+      "href": "/quickstart"
     }
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/itsezlife/presentum"
     }
   }
 }

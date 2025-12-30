@@ -1,97 +1,310 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Presentum Documentation"
+description: "A declarative Flutter engine for building dynamic, conditional UI at scale"
 ---
 
-## Setting up
+<Frame>
+  <img
+    className="block dark:hidden rounded-xl"
+    src="/images/hero-light.png"
+    alt="Presentum - Declarative presentation engine for Flutter"
+  />
+  <img
+    className="hidden dark:block rounded-xl"
+    src="/images/hero-dark.png"
+    alt="Presentum - Declarative presentation engine for Flutter"
+  />
+</Frame>
 
-Get your documentation site up and running in minutes.
+## Build dynamic UI at scale
+
+Presentum is a declarative Flutter engine that helps you manage campaigns, app updates, special offers, tips, and notifications with clean, testable, type-safe code.
+
+Show the right message to the right user at the right time, with impression limits, cooldowns, A/B testing, and analytics - all handled automatically.
+
+<CardGroup cols={2}>
+  <Card title="Declarative by design" icon="code">
+    Describe presentations as data. No imperative show/hide logic.
+  </Card>
+  <Card title="Type-safe" icon="shield-check">
+    Generics ensure compile-time correctness. No runtime surprises.
+  </Card>
+  <Card title="Clean architecture" icon="layer-group">
+    Business logic in guards, UI in outlets, tracking in storage.
+  </Card>
+  <Card title="Production ready" icon="rocket">
+    Eligibility rules, A/B tests, cooldowns, impression tracking built-in.
+  </Card>
+</CardGroup>
+
+## Quick example
+
+```dart
+// 1. Define surfaces
+enum AppSurface with PresentumSurface {
+  homeTopBanner,
+  popup;
+}
+
+// 2. Create payload
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
+  final String id;
+  final int priority;
+  final Map<String, Object?> metadata;
+  final List<PresentumOption> options;
+}
+
+// 3. Initialize
+final presentum = Presentum(
+  storage: MyStorage(),
+  guards: [CampaignGuard()],
+);
+
+// 4. Render
+PresentumOutlet(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, item) => BannerWidget(item),
+)
+```
+
+<Check>
+  That's it! Presentum handles eligibility, impressions, cooldowns, and state
+  automatically.
+</Check>
+
+## Get started
+
+<CardGroup cols={3}>
+  <Card title="Introduction" icon="book-open" href="/introduction">
+    Learn what Presentum is and why it exists
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first presentation in 5 minutes
+  </Card>
+  <Card title="Core concepts" icon="lightbulb" href="/core-concepts/overview">
+    Deep dive into architecture
+  </Card>
+</CardGroup>
+
+## What you can build
+
+<Tabs>
+  <Tab title="App updates">
+    Force update dialogs, optional upgrade prompts, changelog announcements
+    using Shorebird or CodePush.
+  </Tab>
+  <Tab title="Marketing">
+    Special offers with discount codes, limited-time sales, seasonal campaigns,
+    A/B tests.
+  </Tab>
+  <Tab title="Onboarding">
+    Feature discovery tips, contextual tutorials, progressive disclosure,
+    completion tracking.
+  </Tab>
+  <Tab title="Messaging">
+    User-specific promotions, survey requests, upgrade prompts, time-sensitive
+    alerts.
+  </Tab>
+</Tabs>
+
+## Production example
+
+Real-world implementation from a live app:
+
+<CodeGroup>
+
+```dart Initialization
+final presentum = Presentum(
+  storage: CampaignStorage(),
+  eventHandlers: [
+    PresentumStorageEventHandler(storage: storage),
+  ],
+  guards: [
+    AppOpenedCountGuard(
+      appOpenedCount: userRepository.fetchAppOpenedCount,
+    ),
+    AppLifecycleChangedGuard(
+      refresh: AppLifecycleChangedRefresh(),
+    ),
+    SyncStateWithCandidatesGuard(),
+    CampaignSchedulingGuard(eligibility),
+    RemoveIneligibleCampaignsGuard(eligibility),
+  ],
+);
+```
+
+```dart Firebase provider
+class CampaignProvider {
+  Future<void> init() async {
+    await _fetchFromRemoteConfig();
+
+    remoteConfig.onConfigUpdated.listen((_) async {
+      await remoteConfig.activate();
+      await _fetchFromRemoteConfig();
+    });
+  }
+
+  Future<void> _fetchFromRemoteConfig() async {
+    final json = remoteConfig.getString('campaigns');
+    final campaigns = (jsonDecode(json) as List)
+        .map((j) => CampaignPayload.fromJson(j))
+        .toList();
+
+    await _diffAndUpdate(campaigns);
+  }
+}
+```
+
+```dart Popup host
+class CampaignPopupHost extends StatefulWidget {
+  @override
+  State createState() => _CampaignPopupHostState();
+}
+
+class _CampaignPopupHostState extends State
+    with PresentumPopupSurfaceStateMixin {
+
+  @override
+  CampaignSurface get surface => CampaignSurface.popup;
+
+  @override
+  Future<void> present(CampaignItem entry) async {
+    await context.campaigns.markShown(entry);
+
+    final result = await showDialog<bool?>(
+      context: context,
+      builder: (context) => CampaignDialog(entry),
+    );
+
+    if (result == null || result == false) {
+      await markDismissed(entry: entry);
+    }
+  }
+
+  // ... markDismissed implementation
+}
+```
+
+</CodeGroup>
+
+[See complete implementation ->](https://github.com/itsezlife/presentum/tree/master/campaigns)
+
+## Guides
+
+<CardGroup cols={2}>
+  <Card title="Basic setup" icon="wrench" href="/guides/basic-setup">
+    Complete setup walkthrough
+  </Card>
+
+  <Card
+    title="Implementing guards"
+    icon="shield"
+    href="/guides/implementing-guards">
+    Build eligibility logic
+  </Card>
+
+  <Card
+    title="Implementing storage"
+    icon="database"
+    href="/guides/implementing-storage">
+    Persistent tracking layer
+  </Card>
+
+  <Card title="Building outlets" icon="tv" href="/guides/building-outlets">
+    Create presentation widgets
+  </Card>
+</CardGroup>
+
+## Recipes
+
+<CardGroup cols={2}>
+  <Card
+    title="Firebase Remote Config"
+    icon="fire"
+    href="/recipes/remote-config">
+    Dynamic campaign management
+  </Card>
+
+  <Card title="App update dialogs" icon="arrow-up" href="/recipes/app-updates">
+    Force and optional updates
+  </Card>
+
+  <Card title="A/B testing" icon="flask" href="/recipes/ab-testing">
+    Multi-variant experiments
+  </Card>
+
+  <Card
+    title="Analytics integration"
+    icon="chart-line"
+    href="/recipes/analytics">
+    Track impressions and conversions
+  </Card>
+</CardGroup>
+
+## Powerful features
+
+<Tabs>
+  <Tab title="Eligibility system">
+    Build complex targeting rules with conditions and extractors:
+    ```dart
+    AllOfEligibility(conditions: [
+      TimeRangeEligibility(start: start, end: end),
+      AnySegmentEligibility(requiredSegments: {"premium"}),
+      NumericComparisonEligibility(
+        contextKey: 'app_version',
+        comparison: NumericComparison.greaterThanOrEqual,
+        threshold: 2.0,
+      ),
+    ])
+    ```
+    [Learn more ->](/features/eligibility-system)
+  </Tab>
+
+  <Tab title="Event system">
+    React to user interactions with flexible handlers:
+    ```dart
+    eventHandlers: [
+      PresentumStorageEventHandler(storage: storage),
+      AnalyticsEventHandler(analytics),
+      BlocEventHandler(bloc),
+    ]
+    ```
+    [Learn more ->](/features/events)
+  </Tab>
+
+  <Tab title="Transition observers">
+    Monitor state changes with comprehensive diffs:
+    ```dart
+    transitionObservers: [
+      BlocTransitionObserver(bloc),
+      LoggingObserver(),
+    ]
+    ```
+    [Learn more ->](/features/transition-observers)
+  </Tab>
+</Tabs>
+
+## Community
+
+<CardGroup cols={2}>
+  <Card
+    title="GitHub"
+    icon="github"
+    href="https://github.com/itsezlife/presentum">
+    Source code and issues
+  </Card>
+
+  <Card title="pub.dev" icon="box" href="https://pub.dev/packages/presentum">
+    Package page and API docs
+  </Card>
+</CardGroup>
+
+## Ready to start?
 
 <Card
-  title="Start here"
-  icon="rocket"
+  title="Start with the quickstart guide"
+  icon="play"
   href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+  horizontal>
+  Build your first Presentum presentation in 5 minutes
 </Card>

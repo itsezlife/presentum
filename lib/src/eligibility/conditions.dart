@@ -344,3 +344,173 @@ final class ConstantEligibility extends Eligibility {
   @override
   String toString() => 'ConstantEligibility($value)';
 }
+
+/// Days of the week for recurring patterns.
+enum DayOfWeek {
+  /// Monday
+  monday(DateTime.monday),
+
+  /// Tuesday
+  tuesday(DateTime.tuesday),
+
+  /// Wednesday
+  wednesday(DateTime.wednesday),
+
+  /// Thursday
+  thursday(DateTime.thursday),
+
+  /// Friday
+  friday(DateTime.friday),
+
+  /// Saturday
+  saturday(DateTime.saturday),
+
+  /// Sunday
+  sunday(DateTime.sunday);
+
+  const DayOfWeek(this.value);
+
+  /// Corresponding DateTime weekday constant (1-7).
+  final int value;
+
+  /// Parse from lowercase string.
+  static DayOfWeek parse(String day) => switch (day.toLowerCase()) {
+    'monday' || 'mon' => monday,
+    'tuesday' || 'tue' => tuesday,
+    'wednesday' || 'wed' => wednesday,
+    'thursday' || 'thu' => thursday,
+    'friday' || 'fri' => friday,
+    'saturday' || 'sat' => saturday,
+    'sunday' || 'sun' => sunday,
+    _ => throw ArgumentError('Invalid day: $day'),
+  };
+
+  /// Parse from lowercase string.
+  static DayOfWeek? tryParse(String day) {
+    try {
+      return parse(day);
+    } on Object catch (_) {
+      return null;
+    }
+  }
+}
+
+/// Time of day representation (hours and minutes).
+@immutable
+final class TimeOfDay {
+  /// Creates a time of day.
+  const TimeOfDay({required this.hour, required this.minute})
+    : assert(hour >= 0 && hour < 24, 'Hour must be 0-23'),
+      assert(minute >= 0 && minute < 60, 'Minute must be 0-59');
+
+  /// Parse from "HH:mm" format.
+  factory TimeOfDay.parse(String time) {
+    final parts = time.split(':');
+    if (parts.length != 2) {
+      throw FormatException('Time must be in HH:mm format: $time');
+    }
+
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+
+    if (hour == null || minute == null) {
+      throw FormatException('Invalid time format: $time');
+    }
+
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  /// Parse from "HH:mm" format.
+  static TimeOfDay? tryParse(String time) {
+    try {
+      return TimeOfDay.parse(time);
+    } on Object catch (_) {
+      return null;
+    }
+  }
+
+  /// Hour (0-23).
+  final int hour;
+
+  /// Minute (0-59).
+  final int minute;
+
+  /// Convert to minutes since midnight for comparison.
+  int get minutesSinceMidnight => hour * 60 + minute;
+
+  /// Check if this time is before another time (within same day).
+  bool isBefore(TimeOfDay other) =>
+      minutesSinceMidnight < other.minutesSinceMidnight;
+
+  /// Check if this time equals another time.
+  bool isAtSameTime(TimeOfDay other) =>
+      hour == other.hour && minute == other.minute;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TimeOfDay && hour == other.hour && minute == other.minute;
+
+  @override
+  int get hashCode => Object.hash(hour, minute);
+
+  @override
+  String toString() =>
+      '${hour.toString().padLeft(2, '0')}:'
+      '${minute.toString().padLeft(2, '0')}';
+}
+
+/// {@template recurring_time_pattern_eligibility}
+/// Time must match a recurring weekly pattern (cron-like).
+///
+/// Evaluates against **local time** (not UTC) for intuitive user experience.
+///
+/// Examples:
+/// - Monday-Friday 9am-5pm (business hours)
+/// - Saturday-Sunday 10am-11pm (weekend hours)
+/// - Any day 5pm-2am (evening/night, crosses midnight)
+/// {@endtemplate}
+@immutable
+final class RecurringTimePatternEligibility extends Eligibility {
+  /// {@macro recurring_time_pattern_eligibility}
+  const RecurringTimePatternEligibility({
+    required this.timeStart,
+    required this.timeEnd,
+    this.daysOfWeek = const {},
+  });
+
+  /// Start time of the daily window (inclusive).
+  final TimeOfDay timeStart;
+
+  /// End time of the daily window (exclusive).
+  final TimeOfDay timeEnd;
+
+  /// Days of week this pattern applies to.
+  ///
+  /// Empty set means all days.
+  final Set<DayOfWeek> daysOfWeek;
+
+  /// Whether this pattern crosses midnight (e.g., 22:00-02:00).
+  bool get crossesMidnight => timeEnd.isBefore(timeStart);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RecurringTimePatternEligibility &&
+          timeStart == other.timeStart &&
+          timeEnd == other.timeEnd &&
+          daysOfWeek.length == other.daysOfWeek.length &&
+          daysOfWeek.every(other.daysOfWeek.contains);
+
+  @override
+  int get hashCode =>
+      Object.hash(timeStart, timeEnd, Object.hashAll(daysOfWeek));
+
+  @override
+  String toString() {
+    final daysStr = daysOfWeek.isEmpty
+        ? 'any day'
+        : daysOfWeek.map((d) => d.name).join(', ');
+    return 'RecurringTimePatternEligibility($daysStr $timeStart-$timeEnd)';
+  }
+}

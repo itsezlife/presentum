@@ -1,0 +1,415 @@
+---
+title: "Firebase Remote Config integration"
+description: "Manage campaigns dynamically with Firebase Remote Config"
+---
+
+## Overview
+
+Firebase Remote Config lets you update campaigns without deploying app updates. This recipe shows how to fetch campaigns from Remote Config and feed them to Presentum.
+
+<Info>
+  This example is based on a real production implementation. See the [full
+  source
+  code](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart).
+</Info>
+
+## Setup
+
+### 1. Add dependencies
+
+```bash
+dart pub add firebase_remote_config
+dart pub add firebase_core
+```
+
+### 2. Initialize Firebase
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const MyApp());
+}
+```
+
+## Campaign provider
+
+Create a provider that fetches and syncs campaigns:
+
+```dart
+class CampaignProvider {
+  CampaignProvider({
+    required this.storage,
+    required this.engine,
+    required this.eligibility,
+    required this.remoteConfig,
+  });
+
+  final PresentumStorage storage;
+  final PresentumEngine<CampaignItem, AppSurface, CampaignVariant> engine;
+  final EligibilityResolver<CampaignPayload> eligibility;
+  final FirebaseRemoteConfig remoteConfig;
+
+  final List<CampaignPayload> _campaigns = [];
+  final Map<String, Timer> _startTimers = {};
+  final Map<String, Timer> _endTimers = {};
+
+  Future<void> init() async {
+    // Initial fetch
+    await _fetchAndUpdateCampaigns();
+
+    // Listen for Remote Config updates
+    remoteConfig.onConfigUpdated.listen((event) async {
+      await remoteConfig.activate();
+      await _fetchAndUpdateCampaigns();
+    });
+  }
+
+  Future<void> _fetchAndUpdateCampaigns() async {
+    final json = remoteConfig.getString('campaigns');
+
+    if (json.isEmpty) {
+      await _removeAllCampaigns();
+      return;
+    }
+
+    final campaignsList = (jsonDecode(json) as List)
+        .cast<Map<String, Object?>>();
+
+    final newCampaigns = campaignsList
+        .map((json) => CampaignPayload.fromJson(json))
+        .toList();
+
+    await _diffAndUpdate(newCampaigns);
+  }
+
+  Future<void> _diffAndUpdate(List<CampaignPayload> newCampaigns) async {
+    final oldCampaigns = List.from(_campaigns);
+
+    // Calculate diff
+    final diffOps = DiffUtils.calculateListDiffOperations(
+      oldCampaigns,
+      newCampaigns,
+      (campaign) => campaign.id,
+      detectMoves: false,
+    );
+
+    // Process insertions
+    for (final insertion in diffOps.insertions) {
+      final campaign = newCampaigns[insertion.position];
+      _campaigns.insert(insertion.position, campaign);
+      await _addCampaign(campaign);
+    }
+
+    // Process removals
+    for (final removal in diffOps.removals) {
+      final campaign = oldCampaigns[removal.position];
+      _campaigns.removeWhere((c) => c.id == campaign.id);
+      await _removeCampaign(campaign);
+    }
+
+    // Process changes
+    for (final change in diffOps.changes) {
+      final newCampaign = change.payload as CampaignPayload;
+      final index = _campaigns.indexWhere((c) => c.id == newCampaign.id);
+      if (index != -1) {
+        _campaigns[index] = newCampaign;
+      }
+      await _addCampaign(newCampaign);
+    }
+  }
+
+  Future<void> _addCampaign(CampaignPayload campaign) async {
+    // Check if eligible
+    final ineligibleCondition = await eligibility.getIneligibleCondition(
+      campaign,
+      {},
+    );
+
+    if (ineligibleCondition case TimeRangeEligibility(:final start)) {
+      // Schedule for future start date
+      _scheduleForFuture(campaign, start);
+      return;
+    } else if (ineligibleCondition != null) {
+      // Not eligible - remove it
+      await _removeCampaign(campaign);
+      return;
+    }
+
+    // Convert to items
+    final items = campaign.options
+        .map((opt) => CampaignPresentumItem(payload: campaign, option: opt))
+        .toList();
+
+    // Feed to engine
+    await engine.setCandidatesWithDiff((state) => items);
+
+    // Schedule removal at end date
+    _scheduleRemovalAtEnd(campaign);
+  }
+
+  void _scheduleForFuture(CampaignPayload campaign, DateTime start) {
+    _startTimers[campaign.id]?.cancel();
+
+    final now = DateTime.now();
+    if (now.isAfter(start)) return;
+
+    final delay = start.difference(now);
+    _startTimers[campaign.id] = Timer(delay, () {
+      _addCampaign(campaign);
+      _startTimers.remove(campaign.id);
+    });
+  }
+
+  void _scheduleRemovalAtEnd(CampaignPayload campaign) {
+    _endTimers[campaign.id]?.cancel();
+
+    final timeRange = campaign.metadata['time_range'] as Map?;
+    if (timeRange == null) return;
+
+    final endStr = timeRange['end'] as String?;
+    if (endStr == null) return;
+
+    final end = DateTime.parse(endStr);
+    final now = DateTime.now();
+    if (now.isAfter(end)) return;
+
+    final delay = end.difference(now);
+    _endTimers[campaign.id] = Timer(delay, () {
+      _removeCampaign(campaign);
+      _endTimers.remove(campaign.id);
+    });
+  }
+
+  Future<void> _removeCampaign(CampaignPayload campaign) async {
+    _startTimers[campaign.id]?.cancel();
+    _endTimers[campaign.id]?.cancel();
+    _campaigns.removeWhere((c) => c.id == campaign.id);
+
+    await engine.setCandidates((state, current) {
+      return current.where((item) => item.payload.id != campaign.id).toList();
+    });
+  }
+
+  Future<void> _removeAllCampaigns() async {
+    final toRemove = List.from(_campaigns);
+    _campaigns.clear();
+    await Future.wait(toRemove.map(_removeCampaign));
+  }
+
+  void dispose() {
+    _startTimers.values.forEach((t) => t.cancel());
+    _endTimers.values.forEach((t) => t.cancel());
+    _startTimers.clear();
+    _endTimers.clear();
+  }
+}
+```
+
+[Full production implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart)
+
+## Remote Config JSON structure
+
+Structure your campaigns in Firebase Remote Config:
+
+```json
+[
+  {
+    "id": "black_friday_2025",
+    "priority": 100,
+    "metadata": {
+      "title": "Black Friday Sale",
+      "message": "50% off all premium features",
+      "imageUrl": "https://...",
+      "time_range": {
+        "start": "2025-11-29T00:00:00Z",
+        "end": "2025-12-02T23:59:59Z"
+      },
+      "required_segments": ["active_users"],
+      "is_active": true
+    },
+    "options": [
+      {
+        "surface": "popup",
+        "variant": "fullscreenDialog",
+        "is_dismissible": true,
+        "stage": 0,
+        "max_impressions": 3,
+        "cooldown_minutes": 1440,
+        "always_on_if_eligible": false
+      },
+      {
+        "surface": "watchlistHeader",
+        "variant": "banner",
+        "is_dismissible": true,
+        "stage": 0,
+        "max_impressions": null,
+        "cooldown_minutes": null,
+        "always_on_if_eligible": true
+      }
+    ]
+  }
+]
+```
+
+## Payload deserialization
+
+Implement `fromJson` for your payload:
+
+```dart
+class CampaignPayload extends PresentumPayload<CampaignSurface, CampaignVariant> {
+  factory CampaignPayload.fromJson(Map<String, Object?> json) {
+    return CampaignPayload(
+      id: json['id'] as String,
+      priority: (json['priority'] as num?)?.toInt() ?? 0,
+      metadata: json['metadata'] as Map<String, Object?>,
+      options: (json['options'] as List)
+          .map((o) => CampaignPresentumOption.fromJson(o))
+          .toList(),
+    );
+  }
+
+  // ... rest of class
+}
+
+class CampaignPresentumOption
+    extends PresentumOption<CampaignSurface, CampaignVariant> {
+  factory CampaignPresentumOption.fromJson(Map<String, Object?> json) {
+    return CampaignPresentumOption(
+      surface: CampaignSurface.fromName(json['surface'] as String),
+      variant: CampaignVariant.fromName(json['variant'] as String),
+      isDismissible: json['is_dismissible'] as bool,
+      stage: json['stage'] as int?,
+      maxImpressions: json['max_impressions'] as int?,
+      cooldownMinutes: json['cooldown_minutes'] as int?,
+      alwaysOnIfEligible: json['always_on_if_eligible'] as bool? ?? false,
+    );
+  }
+
+  // ... rest of class
+}
+```
+
+[See production payload implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+
+## Initialize in app
+
+```dart
+class MyApp extends StatefulWidget {
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final Presentum<CampaignItem, AppSurface, CampaignVariant> presentum;
+  late final CampaignProvider provider;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final storage = CampaignStorage();
+    final eligibility = DefaultEligibilityResolver(
+      rules: createStandardRules(),
+      extractors: [
+        TimeRangeExtractor(),
+        AnySegmentExtractor(),
+        ConstantExtractor(metadataKey: 'is_active'),
+      ],
+    );
+
+    presentum = Presentum(
+      storage: storage,
+      guards: [
+        SyncStateWithCandidatesGuard(),
+        CampaignSchedulingGuard(eligibility),
+        RemoveIneligibleCampaignsGuard(eligibility),
+      ],
+      eventHandlers: [
+        PresentumStorageEventHandler(storage: storage),
+      ],
+    );
+
+    provider = CampaignProvider(
+      storage: storage,
+      engine: presentum.config.engine,
+      eligibility: eligibility,
+      remoteConfig: FirebaseRemoteConfig.instance,
+    );
+
+    provider.init();
+  }
+
+  @override
+  void dispose() {
+    provider.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return presentum.config.engine.build(
+      context,
+      MaterialApp(home: HomeScreen()),
+    );
+  }
+}
+```
+
+## Testing Remote Config locally
+
+Use Remote Config defaults for local testing:
+
+```dart
+await remoteConfig.setDefaults({
+  'campaigns': jsonEncode([
+    {
+      'id': 'test-campaign',
+      'priority': 100,
+      'metadata': {
+        'title': 'Test Campaign',
+        'is_active': true,
+      },
+      'options': [
+        {
+          'surface': 'homeTopBanner',
+          'variant': 'banner',
+          'is_dismissible': true,
+          'max_impressions': 5,
+          'cooldown_minutes': 60,
+          'always_on_if_eligible': true,
+        },
+      ],
+    },
+  ]),
+});
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Eligibility system"
+    icon="check-circle"
+    href="/features/eligibility-system">
+    Advanced targeting rules
+  </Card>
+
+  <Card
+    title="Storage guide"
+    icon="database"
+    href="/guides/implementing-storage">
+    Implement storage layer
+  </Card>
+
+  <Card title="Guards guide" icon="shield" href="/guides/implementing-guards">
+    Build scheduling guards
+  </Card>
+
+  <Card
+    title="Production code"
+    icon="code"
+    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart">
+    See complete implementation
+  </Card>
+</CardGroup>

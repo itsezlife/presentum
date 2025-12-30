@@ -156,6 +156,12 @@ class CollectingListUpdateCallback implements ListUpdateCallback {
   /// Returns the total number of operations collected.
   int get totalOperations =>
       insertions.length + removals.length + moves.length + changes.length;
+
+  @override
+  String toString() =>
+      'CollectingListUpdateCallback(insertions: $insertions, removals: '
+      '$removals, moves: $moves, changes: $changes, '
+      'totalOperations: $totalOperations)';
 }
 
 /// Represents an insert operation.

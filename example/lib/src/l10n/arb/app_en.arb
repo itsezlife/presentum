@@ -1,0 +1,133 @@
+{
+  "@@locale": "en",
+  "language": "English",
+  "languageEn": "English",
+  "bottomNavBarTabLabel": "{tab, select, main{Home} catalog{Catalog} favorites{Favorites} settings{Settings} other{Other}}",
+  "@bottomNavBarTabLabel": {
+    "description": "The label for the bottom navigation bar tab.",
+    "placeholders": {
+      "tab": {
+        "type": "String",
+        "example": "home",
+        "description": "The label for the bottom navigation bar tab."
+      }
+    }
+  },
+  "featureName": "{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} catalogCategoriesSection{Catalog Categories Section} catalogRecentlyViewedProductsSection{Catalog Recently Viewed Products Section} other{Unknown Feature}}",
+  "@featureName": {
+    "description": "The name of the feature.",
+    "placeholders": {
+      "featureKey": {
+        "type": "String",
+        "example": "newYearTheme",
+        "description": "The key of the feature."
+      }
+    }
+  },
+  "settingsFeatureEnabledDescription": "Enable the {featureName} feature for the app.",
+  "@settingsFeatureEnabledDescription": {
+    "description": "The description for the feature enabled button.",
+    "placeholders": {
+      "featureName": {
+        "type": "String",
+        "example": "New Year Theme",
+        "description": "The name of the feature."
+      }
+    }
+  },
+  "settingsCatalogFeaturesTitle": "Catalog Features",
+  "settingsCatalogFeaturesDescription": "Enable or disable catalog feature from both settings and the app.",
+  "toggleFeatureTitle": "{featureName} feature",
+  "@toggleFeatureTitle": {
+    "description": "The title for the toggle feature button.",
+    "placeholders": {
+      "featureName": {
+        "type": "String",
+        "example": "New Year",
+        "description": "The name of the feature."
+      }
+    }
+  },
+  "removeCatalogFeatureDescription": "Add or completely remove {featureName} feature from the settings and the app.",
+  "@removeCatalogFeatureDescription": {
+    "description": "The description for the remove feature button.",
+    "placeholders": {
+      "featureName": {
+        "type": "String",
+        "example": "New Year Theme",
+        "description": "The name of the feature."
+      }
+    }
+  },
+  "resetPresentumItemsStorageTitle": "Reset presentum items storage",
+  "resetPresentumItemsStorageSubtitle": "Tap to reset storage for specific item",
+  "resetAllPresentumItemsStorageTitle": "Reset all presentum items storage",
+  "resetPresentumItemSurfaceVariant": "Surface: {surface}, Variant: {variant}",
+  "@resetPresentumItemSurfaceVariant": {
+    "description": "The surface and variant information for a presentum item.",
+    "placeholders": {
+      "surface": {
+        "type": "String",
+        "example": "mobile",
+        "description": "The surface name of the presentum item."
+      },
+      "variant": {
+        "type": "String",
+        "example": "default",
+        "description": "The variant name of the presentum item."
+      }
+    }
+  },
+  "resetPresentumItemId": "ID: {id}",
+  "@resetPresentumItemId": {
+    "description": "The ID of the presentum item.",
+    "placeholders": {
+      "id": {
+        "type": "String",
+        "example": "feature_123",
+        "description": "The unique identifier of the presentum item."
+      }
+    }
+  },
+  "newYearBannerTitle": "Happy New Year!",
+  "newYearBannerTitleWithYear": "Happy New {year} Year!",
+  "@newYearBannerTitleWithYear": {
+    "description": "The title for the New Year banner with year included.",
+    "placeholders": {
+      "year": {
+        "type": "String",
+        "example": "2026",
+        "description": "The year to display in the banner title."
+      }
+    }
+  },
+  "newYearBannerSubtitleSmallVersion": "Wishing you wins ✨",
+  "newYearBannerSubtitleLargeVersion": "Wishing you a year full of wins ✨",
+  "maintenanceTitle": "Under maintenance",
+  "maintenanceDescription": "We're currently performing maintenance to improve your experience.",
+  "maintenanceEstimatedTimeRemaining": "Estimated time remaining:",
+  "maintenanceComplete": "Maintenance complete!",
+  "maintenanceRestartApp": "Restart App",
+  "maintenancePleaseCheckBack": "Please check back soon.",
+  "restartingApp": "Restarting App",
+  "restartNotification": "Please tap here to open the app again.",
+  "copied": "Copied",
+  "aboutDialogNameTitle": "Name",
+  "aboutDialogVersionTitle": "Version",
+  "aboutDialogDescriptionTitle": "Description",
+  "aboutDialogHomepageTitle": "Homepage",
+  "aboutDialogRepositoryTitle": "Repository",
+  "categoryDescription": "{category, select, groceries{Fresh food and daily essentials} electronics{Tech gadgets and devices} fashion{Clothing and accessories} other{Miscellaneous items}}",
+  "@categoryDescription": {
+    "description": "Short description for product categories.",
+    "placeholders": {
+      "category": {
+        "type": "String",
+        "example": "groceries",
+        "description": "Category identifier."
+      }
+    }
+  },
+  "settingsCatalogFeatureNotDependentDescription": "Disabling this feature will only disable it from settings, but associated payload wouldn't be disabled"
+  
+}

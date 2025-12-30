@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:presentum/src/state/state.dart';
+import 'package:presentum/presentum.dart';
 
 /// {@template presentum_option}
 /// One renderable option of an item for a given `surface` and visual `variant`
@@ -34,6 +34,17 @@ abstract class PresentumOption<
 
   /// Whether this presentation can be dismissed.
   abstract final bool isDismissible;
+
+  /// Serialize the option to a JSON map.
+  Map<String, Object?> toJson() => {
+    'surface': surface.name,
+    'variant': variant.name,
+    'is_dismissible': isDismissible,
+    'stage': ?stage,
+    'max_impressions': ?maxImpressions,
+    'cooldown_minutes': ?cooldownMinutes,
+    'always_on_if_eligible': alwaysOnIfEligible,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -73,7 +84,8 @@ abstract class PresentumOption<
 abstract class PresentumPayload<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
-> {
+>
+    implements HasMetadata {
   /// {@macro presentum_payload}
   const PresentumPayload();
 
@@ -84,10 +96,19 @@ abstract class PresentumPayload<
   abstract final int priority;
 
   /// Arbitrary domain metadata.
+  @override
   abstract final Map<String, Object?> metadata;
 
   /// All possible presentation options for this item.
   abstract final List<PresentumOption<S, V>> options;
+
+  /// Serialize the payload to a JSON map.
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'priority': priority,
+    'metadata': metadata,
+    'options': options.map((option) => option.toJson()).toList(),
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -120,7 +141,8 @@ abstract class PresentumItem<
   TPayload extends PresentumPayload<S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
-> {
+>
+    implements HasMetadata {
   /// {@macro presentum_item}
   const PresentumItem();
 
@@ -138,6 +160,7 @@ abstract class PresentumItem<
   int get priority => payload.priority;
 
   /// Arbitrary domain metadata.
+  @override
   Map<String, Object?> get metadata => payload.metadata;
 
   /// The surface where the option can be presented.

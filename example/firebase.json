@@ -1,0 +1,47 @@
+{
+  "hosting": {
+    "public": "build/web",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "frameworksBackend": { "region": "europe-west1" },
+    "rewrites": [{ "source": "!(assets/**)", "destination": "/index.html" }]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "flutter-presentum-example",
+          "appId": "1:342835125572:android:2af41c5435c195c8320b11",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "flutter-presentum-example",
+          "appId": "1:342835125572:ios:831608d83b2a9569320b11",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "flutter-presentum-example",
+          "appId": "1:342835125572:ios:831608d83b2a9569320b11",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "flutter-presentum-example",
+          "configurations": {
+            "android": "1:342835125572:android:2af41c5435c195c8320b11",
+            "ios": "1:342835125572:ios:831608d83b2a9569320b11",
+            "macos": "1:342835125572:ios:831608d83b2a9569320b11",
+            "web": "1:342835125572:web:174d52fd4e8f031f320b11",
+            "windows": "1:342835125572:web:1a2329f3a4302c06320b11"
+          }
+        }
+      }
+    }
+  }
+}

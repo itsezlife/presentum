@@ -1,0 +1,406 @@
+---
+title: "Slots & State"
+description: "Understand how Presentum manages state through slots"
+---
+
+## State structure
+
+Presentum manages state as a map of **slots**, where each slot represents one surface in your app.
+
+### Visual representation
+
+Imagine three surfaces with different presentations:
+
+```
+homeTopBanner
+├─ active: Campaign "Black Friday" (priority: 100)
+└─ queue: [
+     Campaign "New Year" (priority: 80),
+     Tip "Swipe to refresh" (priority: 50)
+   ]
+
+profileAlert
+├─ active: AppUpdate "Version 2.0" (priority: 200)
+└─ queue: []
+
+popup
+├─ active: null
+└─ queue: [
+     Tip "Enable notifications" (priority: 60)
+   ]
+```
+
+### State object
+
+Here's the actual state object:
+
+```dart
+final state = PresentumState$Immutable(
+  intention: PresentumStateIntention.auto,
+  slots: {
+    AppSurface.homeTopBanner: PresentumSlot(
+      surface: AppSurface.homeTopBanner,
+      active: CampaignItem(
+        payload: CampaignPayload(
+          id: 'black-friday-2025',
+          priority: 100,
+          metadata: {
+            'title': 'Black Friday Sale',
+            'discount': '50%',
+          },
+          options: [/* ... */],
+        ),
+        option: CampaignOption(/* ... */),
+      ),
+      queue: [
+        CampaignItem(/* New Year */),
+        TipItem(/* Swipe to refresh */),
+      ],
+    ),
+    
+    AppSurface.profileAlert: PresentumSlot(
+      surface: AppSurface.profileAlert,
+      active: AppUpdateItem(/* ... */),
+      queue: [],
+    ),
+    
+    AppSurface.popup: PresentumSlot(
+      surface: AppSurface.popup,
+      active: null,
+      queue: [TipItem(/* Enable notifications */)],
+    ),
+  },
+);
+```
+
+## Slots
+
+Each slot is a container for one surface:
+
+```dart
+PresentumSlot<TItem, S, V> {
+  final S surface;           // Which surface
+  final TItem? active;       // Currently showing (or null)
+  final List<TItem> queue;   // Waiting items (FIFO)
+}
+```
+
+### Active item
+
+The `active` item is what's currently displayed. Only one item can be active per surface.
+
+```dart
+final slot = state.slots[AppSurface.homeTopBanner];
+final activeItem = slot?.active;
+
+if (activeItem != null) {
+  print('Showing: ${activeItem.id}');
+}
+```
+
+### Queue
+
+The `queue` is a FIFO (First In, First Out) list of items waiting their turn.
+
+When the active item is dismissed, the first queued item automatically becomes active:
+
+**Before dismiss:**
+```
+homeTopBanner
+├─ active: "Black Friday"
+└─ queue: ["New Year", "Swipe tip"]
+```
+
+**After dismiss:**
+```
+homeTopBanner
+├─ active: "New Year"  ← Promoted
+└─ queue: ["Swipe tip"]
+```
+
+This happens automatically via `state.clearActive(surface)` or `presentum.markDismissed(item)`.
+
+## State intentions
+
+Every state change has an **intention** controlling history management:
+
+```dart
+enum PresentumStateIntention {
+  auto,     // Default: update history when values change
+  replace,  // Overwrite last history entry
+  append,   // Force new history entry
+  cancel,   // Abort transition
+}
+```
+
+### Usage in guards
+
+```dart
+@override
+FutureOr<PresentumState> call(
+  storage, history, state, candidates, context,
+) async {
+  // Cancel if user offline
+  if (!isOnline) {
+    state.intention = PresentumStateIntention.cancel;
+    return state;
+  }
+
+  // Replace last history entry
+  state.intention = PresentumStateIntention.replace;
+  state.setActive(surface, item);
+  
+  return state;
+}
+```
+
+## State queries
+
+Access and query state:
+
+<CodeGroup>
+
+```dart Active items
+final state = presentum.state;
+
+// All active items across surfaces
+final allActive = state.activeItems;
+
+// Active item for specific surface
+final bannerItem = state.slots[AppSurface.homeTopBanner]?.active;
+
+// All surfaces with active items
+final activeSurfaces = state.activeSurfaces;
+```
+
+```dart Slot operations
+// Visit all slots
+state.visitSlots((surface, slot) {
+  print('$surface: ${slot.active?.id}');
+  return true; // Continue
+});
+
+// Find specific slot
+final slot = state.findSlot((surface, slot) =>
+  surface == AppSurface.homeTopBanner && slot.active != null
+);
+
+// Fold over slots
+final totalPriority = state.foldSlots<int>(
+  0,
+  (sum, surface, slot) => sum + (slot.active?.priority ?? 0),
+);
+```
+
+```dart Checks
+// Check if surface has active item
+final hasActive = state.slots[AppSurface.homeTopBanner]?.active != null;
+
+// Check if any slots exist
+final hasSlots = state.hasSlots;
+
+// Count total items
+var totalItems = 0;
+state.visitSlots((surface, slot) {
+  if (slot.active != null) totalItems++;
+  totalItems += slot.queue.length;
+  return true;
+});
+```
+
+</CodeGroup>
+
+## Mutable vs Immutable
+
+Presentum uses two state types:
+
+<Tabs>
+  <Tab title="PresentumState$Immutable">
+    **Read-only** snapshot exposed to widgets and observers.
+    
+    ```dart
+    // In widgets
+    final state = presentum.state; // Immutable
+    final item = state.slots[surface]?.active;
+    
+    // state.slots[surface] = newSlot; // ❌ Won't compile
+    ```
+    
+    Benefits:
+    - Predictable - never changes unexpectedly
+    - Testable - compare with `==`
+    - Debuggable - inspect snapshots
+  </Tab>
+  
+  <Tab title="PresentumState$Mutable">
+    **Writable** version used in guards.
+    
+    ```dart
+    // In guards
+    state.setActive(surface, item);
+    state.enqueue(surface, anotherItem);
+    state.removeWhere((item) => !eligible(item));
+    
+    return state; // Auto-converted to immutable
+    ```
+    
+    Benefits:
+    - Efficient mutations
+    - Clear API for state changes
+    - Auto-freezes to immutable before commit
+  </Tab>
+</Tabs>
+
+## State mutations
+
+Inside guards, use these methods:
+
+<CodeGroup>
+
+```dart Set active
+// Set active item
+state.setActive(surface, item);
+
+// With intention
+state.setActive(
+  surface,
+  item,
+  intention: PresentumStateIntention.replace,
+);
+
+// Clear active (promotes queue)
+state.clearActive(surface);
+```
+
+```dart Queue management
+// Add to queue
+state.enqueue(surface, item);
+
+// Set entire queue
+state.setQueue(surface, [item1, item2]);
+
+// Get queue copy
+final queue = state.queueOf(surface);
+
+// Remove from queue
+final removed = state.dequeue(surface);
+```
+
+```dart Remove items
+// Remove by predicate
+state.removeWhere((item) => item.priority < 50);
+
+// Remove from specific surface
+state.removeFromSurface(
+  surface,
+  (item) => item.id == 'expired',
+);
+
+// Remove by ID
+state.removeById('campaign-123');
+
+// Clear entire surface
+state.clearSurface(surface);
+
+// Clear everything
+state.clearAll();
+```
+
+```dart Bulk operations
+// Add item
+state.add(surface, item);
+
+// Add multiple
+state.addAll(surface, [item1, item2, item3]);
+
+// Insert at position
+state.insert(surface, 0, item);
+
+// Insert multiple at position
+state.insertAll(surface, 1, [item1, item2]);
+```
+
+</CodeGroup>
+
+## Serialization
+
+State can be serialized for persistence or debugging:
+
+```dart
+final json = state.toJson(
+  encodeItem: (item) => {
+    'id': item.id,
+    'priority': item.priority,
+    'surface': item.surface.name,
+    'variant': item.variant.name,
+    'metadata': item.metadata,
+  },
+);
+```
+
+Result:
+
+```json
+{
+  "intention": "auto",
+  "slots": [
+    {
+      "surface": "homeTopBanner",
+      "active": {
+        "id": "black-friday-2025",
+        "priority": 100,
+        "metadata": {"title": "Black Friday Sale"}
+      },
+      "queue": [
+        {"id": "new-year-promo", "priority": 80},
+        {"id": "tip-swipe", "priority": 50}
+      ]
+    }
+  ]
+}
+```
+
+## History
+
+Presentum tracks all state changes:
+
+```dart
+final history = presentum.observer.history;
+
+// Each entry contains
+for (final entry in history) {
+  print('At ${entry.timestamp}:');
+  print('  Active surfaces: ${entry.state.activeSurfaces}');
+}
+```
+
+Enable time-travel debugging, analytics, or restoration after login.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Engine"
+    href="/core-concepts/engine"
+    icon="engine"
+  >
+    How the engine processes state
+  </Card>
+  
+  <Card
+    title="State management guide"
+    href="/guides/state-management"
+    icon="sliders"
+  >
+    Direct state manipulation
+  </Card>
+  
+  <Card
+    title="Guards"
+    href="/core-concepts/guards"
+    icon="shield"
+  >
+    Mutate state in guards
+  </Card>
+</CardGroup>
+

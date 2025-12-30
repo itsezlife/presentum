@@ -1,0 +1,255 @@
+---
+title: "Surfaces"
+description: "Define where presentations appear in your app"
+---
+
+## What are surfaces?
+
+A **surface** is a named location in your UI where presentations can appear. Think of them as "slots" where content gets inserted.
+
+Examples:
+
+- `homeTopBanner` - Banner at top of home screen
+- `watchlistHeader` - Header in watchlist
+- `popup` - Modal overlays and dialogs
+- `profileAlert` - Alert on profile page
+
+<Tip>Surfaces answer the question: **WHERE** should this be shown?</Tip>
+
+## Defining surfaces
+
+Surfaces are typically enums with the `PresentumSurface` mixin:
+
+```dart
+enum AppSurface with PresentumSurface {
+  homeTopBanner,
+  watchlistHeader,
+  watchlistFooter,
+  profileAlert,
+  popup,
+  menuTile;
+}
+```
+
+That's it! The mixin provides a `key` property automatically.
+
+## Production example
+
+From a real app handling Black Friday campaigns:
+
+```dart
+enum CampaignSurface with PresentumSurface {
+  popup,              // Fullscreen dialogs and modals
+  watchlistHeader,    // Banner at top of watchlist
+  watchlistFooter,    // Banner at bottom of watchlist
+  menuTile;           // Tile in navigation menu
+}
+```
+
+[See source ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/surfaces.dart)
+
+## Variants
+
+Surfaces describe **where**, variants describe **how** presentations appear:
+
+```dart
+enum CampaignVariant with PresentumVisualVariant {
+  fullscreenDialog,  // Full-screen modal
+  dialog,            // Standard dialog
+  banner,            // Banner strip
+  inline;            // Inline card
+}
+```
+
+Same surface can support multiple variants:
+
+```dart
+// Both target the same surface but different styles
+PresentumOption(
+  surface: AppSurface.popup,
+  variant: CampaignVariant.fullscreenDialog,
+  // ...
+)
+
+PresentumOption(
+  surface: AppSurface.popup,
+  variant: CampaignVariant.dialog,
+  // ...
+)
+```
+
+## Surface naming
+
+Choose descriptive names that indicate location, not content:
+
+<Tabs>
+  <Tab title="✅ Good names">
+    ```dart
+    enum AppSurface with PresentumSurface {
+      homeTopBanner,       // Location-based
+      watchlistHeader,     // Location-based
+      settingsNotice,      // Location-based
+      profileAlert,        // Location-based
+      popup,               // Location-based
+    }
+    ```
+  </Tab>
+  
+  <Tab title="❌ Bad names">
+    ```dart
+    enum AppSurface with PresentumSurface {
+      campaignBanner,      // Content-based (too specific)
+      tipDialog,           // Content-based (too specific)
+      updateAlert,         // Content-based (limits reuse)
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+  **Why location-based?** Surfaces should be reusable. `homeTopBanner` can show
+  campaigns, tips, or alerts. `campaignBanner` artificially limits it.
+</Info>
+
+## Accessing surfaces
+
+In guards and outlets, surfaces are type-safe:
+
+```dart
+// In guards
+state.setActive(AppSurface.homeTopBanner, item);
+
+// In outlets
+PresentumOutlet(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, item) => BannerWidget(item),
+)
+
+// Query state
+final slot = state.slots[AppSurface.homeTopBanner];
+```
+
+## Surface organization
+
+Group related surfaces:
+
+```dart
+enum AppSurface with PresentumSurface {
+  // Home screen surfaces
+  homeTopBanner,
+  homeInlinePromo,
+
+  // Watchlist surfaces
+  watchlistHeader,
+  watchlistFooter,
+  watchlistInline,
+
+  // Profile surfaces
+  profileAlert,
+  profileBanner,
+
+  // Global surfaces
+  popup,
+  snackbar;
+}
+```
+
+## Advanced: String conversion
+
+Add helper methods for serialization:
+
+```dart
+enum CampaignSurface with PresentumSurface {
+  popup,
+  watchlistHeader,
+  watchlistFooter,
+  menuTile;
+
+  static CampaignSurface fromName(
+    String name, {
+    CampaignSurface? fallback,
+  }) {
+    return switch (name) {
+      'popup' => CampaignSurface.popup,
+      'watchlistHeader' => CampaignSurface.watchlistHeader,
+      'watchlistFooter' => CampaignSurface.watchlistFooter,
+      'menuTile' => CampaignSurface.menuTile,
+      _ => fallback ?? (throw ArgumentError.value(name)),
+    };
+  }
+}
+```
+
+[See production implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/surfaces.dart)
+
+## Surface independence
+
+Each surface has its own slot. They don't interfere unless your guards coordinate them:
+
+```dart
+slots: {
+  AppSurface.homeTopBanner: Slot(
+    active: Campaign A,
+    queue: [],
+  ),
+  AppSurface.watchlistHeader: Slot(
+    active: Tip B,
+    queue: [Alert C],
+  ),
+  AppSurface.popup: Slot(
+    active: Update D,
+    queue: [],
+  ),
+}
+```
+
+## Coordinating surfaces
+
+Guards can coordinate multiple surfaces:
+
+```dart
+class SequencingGuard extends CampaignGuard {
+  @override
+  FutureOr<PresentumState> call(
+    storage, history, state, candidates, context,
+  ) async {
+    // Show popup only after header is dismissed
+    final headerSlot = state.slots[CampaignSurface.watchlistHeader];
+    final headerActive = headerSlot?.active != null;
+
+    for (final candidate in candidates) {
+      if (candidate.surface == CampaignSurface.popup && headerActive) {
+        continue; // Don't show popup while header is active
+      }
+
+      state.setActive(candidate.surface, candidate);
+    }
+
+    return state;
+  }
+}
+```
+
+[See production sequencing ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Payloads & Options"
+    href="/core-concepts/payloads-options-items"
+    icon="box">
+    Create domain objects
+  </Card>
+
+  <Card
+    title="Slots & State"
+    href="/core-concepts/slots-state"
+    icon="layer-group">
+    Understand state structure
+  </Card>
+
+  <Card title="Guards" href="/core-concepts/guards" icon="shield">
+    Control presentation logic
+  </Card>
+</CardGroup>

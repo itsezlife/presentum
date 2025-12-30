@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:presentum/src/controller/observer.dart';
 import 'package:presentum/src/state/payload.dart';
@@ -77,7 +78,7 @@ class _PresentumOutletState<
 
     if (currentItem != _lastItem) {
       _lastItem = currentItem;
-      setState(() {});
+      if (mounted) setState(() {});
     }
   }
 
@@ -92,7 +93,7 @@ class _PresentumOutletState<
     if (_lastItem case final item?) {
       return InheritedPresentumItem<TItem, S, V>(
         item: item,
-        child: widget.builder(context, item),
+        child: widget.builder.call(context, item),
       );
     }
     return widget.placeholderBuilder(context);
@@ -104,23 +105,10 @@ enum OutletGroupMode {
   /// Only the highest priority item (active or first in queue).
   single,
 
-  /// Up to `maxItems` items from active + queue.
-  multiple,
+  /// All items from the slot (active + queue).
+  all,
 
   /// Let the resolver decide how to select items from the full list.
-  custom,
-}
-
-/// How a [PresentumOutlet$Composition] should merge items from multiple
-/// surfaces.
-enum CompositionMergeMode {
-  /// Concatenate all items from all surfaces in order.
-  concatenate,
-
-  /// Only items from the first surface that has any.
-  firstNonEmpty,
-
-  /// Let the resolver decide how to merge items from the full list.
   custom,
 }
 
@@ -129,7 +117,7 @@ typedef CompositionItemsResolver<TItem> =
     List<TItem> Function(List<TItem> items);
 
 /// {@template presentum_outlet_composition}
-/// Outlet that can render items from multiple surfaces of the same type.
+/// Outlet that can render items from a surface of the same type.
 /// {@endtemplate}
 class PresentumOutlet$Composition<
   TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
@@ -140,35 +128,42 @@ class PresentumOutlet$Composition<
   /// {@macro presentum_outlet_composition}
   const PresentumOutlet$Composition({
     required this.surface,
-    required this.builder,
+    this.builder,
+    this.compositeBuilder,
     this.resolver,
-    this.mergeMode = CompositionMergeMode.concatenate,
     this.surfaceMode = OutletGroupMode.single,
-    this.maxItems = 2,
+    this.buildWhen,
     this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
   }) : assert(
-         resolver != null || mergeMode != CompositionMergeMode.custom,
-         'resolver must be provided when mergeMode is custom',
+         builder != null || compositeBuilder != null,
+         'builder or compositeBuilder must be provided',
        );
 
   /// The surface to render items from.
   final S surface;
 
-  /// How to merge items from the slot (active + queue).
-  final CompositionMergeMode mergeMode;
-
   /// How to select items from the slot (active + queue).
   final OutletGroupMode surfaceMode;
-
-  /// Maximum number of items to include in final result.
-  final int maxItems;
 
   /// Custom resolver that decides how to select items from the slot.
   final CompositionItemsResolver<TItem>? resolver;
 
   /// Builder that receives the list of items from the slot.
-  final PresentumOutletBuilder<List<TItem>> builder;
+  final PresentumOutletBuilder<List<TItem>>? builder;
+
+  /// Builder that receives the [BuildContext] and the list of items from the
+  /// slot combined and takes the responsibility of rendering them
+  /// and hanlding an empty state.
+  ///
+  /// By default, the widget [builder] is used to render the items and
+  /// [placeholderBuilder] is used to render a placeholder when the items are
+  /// empty.
+  final PresentumOutletBuilder<List<TItem>>? compositeBuilder;
+
+  /// Function that decides whether to rebuild the widget when the items change.
+  final bool Function(List<TItem> previousItems, List<TItem> currentItems)?
+  buildWhen;
 
   /// Builder function that receives the [BuildContext] and returns a
   /// placeholder widget.
@@ -205,17 +200,15 @@ class _PresentumOutlet$CompositionState<
       widget.surface,
       _observer,
       widget.surfaceMode,
-      maxItems: widget.maxItems,
       resolver: widget.resolver,
     );
 
     // Check if items changed
-    if (_items.length == items.length && _items.every(items.contains)) {
-      return;
+    final defaultBuildWhen = !ListEquality<TItem>().equals(_items, items);
+    if (widget.buildWhen?.call(_items, items) ?? defaultBuildWhen) {
+      _items = items;
+      if (mounted) setState(() {});
     }
-
-    _items = items;
-    setState(() {});
   }
 
   @override
@@ -226,15 +219,18 @@ class _PresentumOutlet$CompositionState<
 
   @override
   Widget build(BuildContext context) {
+    if (widget.compositeBuilder case final compositeBuilder?) {
+      return compositeBuilder(context, _items);
+    }
     if (_items.isEmpty) return widget.placeholderBuilder(context);
-    return widget.builder(context, _items);
+    return widget.builder!.call(context, _items);
   }
 }
 
 /// Resolver function that decides how to combine items from two different
 /// presentums.
 typedef CompositionItemsResolver2<TItem1, TItem2> =
-    List<TItem1> Function(List<TItem1> items1, List<TItem2> items2);
+    List<PresentumItem> Function(List<TItem1> items1, List<TItem2> items2);
 
 /// {@template presentum_outlet_composition2}
 /// Cross-presentum composition outlet for two different presentums.
@@ -253,16 +249,20 @@ class PresentumOutlet$Composition2<
     required this.surface1,
     required this.surface2,
     required this.resolver,
-    required this.builder,
+    this.builder,
+    this.compositeBuilder,
+    this.buildWhen,
+    this.resolverMode = OutletGroupMode.single,
     this.surfaceMode1 = OutletGroupMode.single,
     this.surfaceMode2 = OutletGroupMode.single,
-    this.mergeMode1 = CompositionMergeMode.concatenate,
-    this.mergeMode2 = CompositionMergeMode.concatenate,
     this.resolver1,
     this.resolver2,
     this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
-  });
+  }) : assert(
+         builder != null || compositeBuilder != null,
+         'builder or compositeBuilder must be provided',
+       );
 
   /// The surface to render items from the first presentum.
   final S1 surface1;
@@ -276,11 +276,11 @@ class PresentumOutlet$Composition2<
   /// How to select items from the second surface.
   final OutletGroupMode surfaceMode2;
 
-  /// How to merge items from the first surface.
-  final CompositionMergeMode mergeMode1;
+  /// How to select items from both surfaces.
+  final OutletGroupMode resolverMode;
 
-  /// How to merge items from the second surface.
-  final CompositionMergeMode mergeMode2;
+  /// Custom resolver that decides how to combine items from both presentums.
+  final CompositionItemsResolver2<TItem1, TItem2>? resolver;
 
   /// Custom resolver that decides how to select items from the first surface.
   final CompositionItemsResolver<TItem1>? resolver1;
@@ -288,16 +288,24 @@ class PresentumOutlet$Composition2<
   /// Custom resolver that decides how to select items from the second surface.
   final CompositionItemsResolver<TItem2>? resolver2;
 
-  /// Custom resolver that decides how to combine items from both presentums.
-  final CompositionItemsResolver2<TItem1, TItem2> resolver;
-
   /// Builder that receives the list of items from the two presentums combined.
-  final Widget Function(
-    BuildContext context,
-    List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> items1,
-    List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> items2,
-  )
-  builder;
+  final PresentumOutletBuilder<List<PresentumItem>>? builder;
+
+  /// Builder that receives the [BuildContext] and the list of items from the
+  /// two presentums combined and takes the responsibility of rendering them
+  /// and hanlding an empty state.
+  ///
+  /// By default, the widget [builder] is used to render the items and
+  /// [placeholderBuilder] is used to render a placeholder when the items are
+  /// empty.
+  final PresentumOutletBuilder<List<PresentumItem>>? compositeBuilder;
+
+  /// Function that decides whether to rebuild the widget when the items change.
+  final bool Function(
+    List<PresentumItem> previousItems,
+    List<PresentumItem> currentItems,
+  )?
+  buildWhen;
 
   /// Builder function that receives the [BuildContext] and returns a
   /// placeholder widget.
@@ -324,8 +332,7 @@ class _PresentumOutlet$Composition2State<
     with PresentumOutlet$CompositionMixin {
   late final PresentumStateObserver<TItem1, S1, V1> _observer1;
   late final PresentumStateObserver<TItem2, S2, V2> _observer2;
-  List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> _items1 = [];
-  List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> _items2 = [];
+  List<PresentumItem> _items = [];
 
   @override
   void initState() {
@@ -352,16 +359,22 @@ class _PresentumOutlet$Composition2State<
       resolver: widget.resolver2,
     );
 
-    if (_items1.length == items1.length &&
-        _items1.every(items1.contains) &&
-        _items2.length == items2.length &&
-        _items2.every(items2.contains)) {
-      return;
-    }
+    final allItems = <PresentumItem>[...items1, ...items2];
 
-    _items1 = items1;
-    _items2 = items2;
-    setState(() {});
+    final resolvedItems = switch (widget.resolverMode) {
+      OutletGroupMode.single => <PresentumItem>[allItems.first],
+      OutletGroupMode.all => allItems,
+      OutletGroupMode.custom => widget.resolver!.call(items1, items2),
+    };
+
+    final defaultBuildWhen = !const ListEquality<PresentumItem>().equals(
+      _items,
+      resolvedItems,
+    );
+    if (widget.buildWhen?.call(_items, resolvedItems) ?? defaultBuildWhen) {
+      _items = resolvedItems;
+      if (mounted) setState(() {});
+    }
   }
 
   @override
@@ -373,16 +386,18 @@ class _PresentumOutlet$Composition2State<
 
   @override
   Widget build(BuildContext context) {
-    if (_items1.isEmpty && _items2.isEmpty)
-      return widget.placeholderBuilder(context);
-    return widget.builder(context, _items1, _items2);
+    if (widget.compositeBuilder case final compositeBuilder?) {
+      return compositeBuilder(context, _items);
+    }
+    if (_items.isEmpty) return widget.placeholderBuilder(context);
+    return widget.builder!.call(context, _items);
   }
 }
 
 /// Resolver function that decides how to combine items from three different
 /// presentums.
 typedef CompositionItemsResolver3<TItem1, TItem2, TItem3> =
-    List<TItem1> Function(
+    List<PresentumItem> Function(
       List<TItem1> items1,
       List<TItem2> items2,
       List<TItem3> items3,
@@ -405,29 +420,42 @@ class PresentumOutlet$Composition3<
     extends StatefulWidget {
   /// {@macro presentum_outlet_composition3}
   const PresentumOutlet$Composition3({
-    required this.surfaces1,
-    required this.surfaces2,
-    required this.surfaces3,
-    required this.resolver,
-    required this.builder,
+    required this.surface1,
+    required this.surface2,
+    required this.surface3,
+    this.resolverMode = OutletGroupMode.single,
     this.surfaceMode1 = OutletGroupMode.single,
     this.surfaceMode2 = OutletGroupMode.single,
     this.surfaceMode3 = OutletGroupMode.single,
-    this.mergeMode1 = CompositionMergeMode.concatenate,
-    this.mergeMode2 = CompositionMergeMode.concatenate,
-    this.mergeMode3 = CompositionMergeMode.concatenate,
+    this.resolver,
+    this.resolver1,
+    this.resolver2,
+    this.resolver3,
+    this.builder,
+    this.compositeBuilder,
+    this.buildWhen,
     this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
-  });
+  }) : assert(
+         (builder != null) ^ (compositeBuilder != null),
+         'Either builder or compositeBuilder must be provided, but not both.',
+       ),
+       assert(
+         resolverMode != OutletGroupMode.custom || resolver != null,
+         'resolver must be provided when surfaceMode is custom.',
+       );
 
-  /// The surfaces to render items from the first presentum.
-  final List<S1> surfaces1;
+  /// The surface to render items from the first presentum.
+  final S1 surface1;
 
-  /// The surfaces to render items from the second presentum.
-  final List<S2> surfaces2;
+  /// The surface to render items from the second presentum.
+  final S2 surface2;
 
-  /// The surfaces to render items from the third presentum.
-  final List<S3> surfaces3;
+  /// The surface to render items from the third presentum.
+  final S3 surface3;
+
+  /// How to combine items from all three presentums.
+  final OutletGroupMode resolverMode;
 
   /// How to select items from the first surface.
   final OutletGroupMode surfaceMode1;
@@ -438,28 +466,33 @@ class PresentumOutlet$Composition3<
   /// How to select items from the third surface.
   final OutletGroupMode surfaceMode3;
 
-  /// How to merge items from the first surface.
-  final CompositionMergeMode mergeMode1;
-
-  /// How to merge items from the second surface.
-  final CompositionMergeMode mergeMode2;
-
-  /// How to merge items from the third surface.
-  final CompositionMergeMode mergeMode3;
-
   /// Custom resolver that decides how to combine items from all three
   /// presentums.
-  final CompositionItemsResolver3<TItem1, TItem2, TItem3> resolver;
+  final CompositionItemsResolver3<TItem1, TItem2, TItem3>? resolver;
+
+  /// Custom resolver for the first surface.
+  final CompositionItemsResolver<TItem1>? resolver1;
+
+  /// Custom resolver for the second surface.
+  final CompositionItemsResolver<TItem2>? resolver2;
+
+  /// Custom resolver for the third surface.
+  final CompositionItemsResolver<TItem3>? resolver3;
 
   /// Builder that receives the list of items from the three presentums
   /// combined.
-  final Widget Function(
-    BuildContext context,
-    List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> items1,
-    List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> items2,
-    List<PresentumItem<PresentumPayload<S3, V3>, S3, V3>> items3,
-  )
-  builder;
+  final PresentumOutletBuilder<List<PresentumItem>>? builder;
+
+  /// Composite builder that receives the list of items from the three
+  /// presentums combined.
+  final PresentumOutletBuilder<List<PresentumItem>>? compositeBuilder;
+
+  /// Function that decides whether to rebuild the widget when the items change.
+  final bool Function(
+    List<PresentumItem> previousItems,
+    List<PresentumItem> currentItems,
+  )?
+  buildWhen;
 
   /// Builder function that receives the [BuildContext] and returns a
   /// placeholder widget.
@@ -515,9 +548,7 @@ class _PresentumOutlet$Composition3State<
   late final PresentumStateObserver<TItem1, S1, V1> _observer1;
   late final PresentumStateObserver<TItem2, S2, V2> _observer2;
   late final PresentumStateObserver<TItem3, S3, V3> _observer3;
-  List<PresentumItem<PresentumPayload<S1, V1>, S1, V1>> _items1 = [];
-  List<PresentumItem<PresentumPayload<S2, V2>, S2, V2>> _items2 = [];
-  List<PresentumItem<PresentumPayload<S3, V3>, S3, V3>> _items3 = [];
+  List<PresentumItem> _items = [];
 
   @override
   void initState() {
@@ -533,40 +564,41 @@ class _PresentumOutlet$Composition3State<
   }
 
   void _onStateChange() {
-    final items1 = collectItems<TItem1, S1, V1>(
-      widget.surfaces1,
+    final items1 = collectItemsForSlot<TItem1, S1, V1>(
+      widget.surface1,
       _observer1,
       widget.surfaceMode1,
-      widget.mergeMode1,
+      resolver: widget.resolver1,
     );
-    final items2 = collectItems<TItem2, S2, V2>(
-      widget.surfaces2,
+    final items2 = collectItemsForSlot<TItem2, S2, V2>(
+      widget.surface2,
       _observer2,
       widget.surfaceMode2,
-      widget.mergeMode2,
+      resolver: widget.resolver2,
     );
-    final items3 = collectItems<TItem3, S3, V3>(
-      widget.surfaces3,
+    final items3 = collectItemsForSlot<TItem3, S3, V3>(
+      widget.surface3,
       _observer3,
       widget.surfaceMode3,
-      widget.mergeMode3,
+      resolver: widget.resolver3,
     );
 
-    // final resolved = widget.resolver(items1, items2, items3);
+    final allItems = <PresentumItem>[...items1, ...items2, ...items3];
 
-    if (_items1.length == items1.length &&
-        _items1.every(items1.contains) &&
-        _items2.length == items2.length &&
-        _items2.every(items2.contains) &&
-        _items3.length == items3.length &&
-        _items3.every(items3.contains)) {
-      return;
+    final resolvedItems = switch (widget.resolverMode) {
+      OutletGroupMode.single => <PresentumItem>[allItems.first],
+      OutletGroupMode.all => allItems,
+      OutletGroupMode.custom => widget.resolver!.call(items1, items2, items3),
+    };
+
+    final defaultBuildWhen = !const ListEquality<PresentumItem>().equals(
+      _items,
+      resolvedItems,
+    );
+    if (widget.buildWhen?.call(_items, resolvedItems) ?? defaultBuildWhen) {
+      _items = resolvedItems;
+      if (mounted) setState(() {});
     }
-
-    _items1 = items1;
-    _items2 = items2;
-    _items3 = items3;
-    setState(() {});
   }
 
   @override
@@ -579,10 +611,11 @@ class _PresentumOutlet$Composition3State<
 
   @override
   Widget build(BuildContext context) {
-    if (_items1.isEmpty && _items2.isEmpty && _items3.isEmpty) {
-      return widget.placeholderBuilder(context);
+    if (widget.compositeBuilder case final compositeBuilder?) {
+      return compositeBuilder(context, _items);
     }
-    return widget.builder(context, _items1, _items2, _items3);
+    if (_items.isEmpty) return widget.placeholderBuilder(context);
+    return widget.builder!.call(context, _items);
   }
 }
 
@@ -597,7 +630,6 @@ mixin PresentumOutlet$CompositionMixin {
     S surface,
     PresentumStateObserver<T, S, V> observer,
     OutletGroupMode mode, {
-    int maxItems = 2,
     CompositionItemsResolver<T>? resolver,
   }) {
     final state = observer.value;
@@ -615,100 +647,8 @@ mixin PresentumOutlet$CompositionMixin {
 
     return switch (mode) {
       OutletGroupMode.single => <T>[all.first],
-      OutletGroupMode.multiple => all.take(maxItems).toList(growable: false),
+      OutletGroupMode.all => all,
       OutletGroupMode.custom => resolver!.call(all),
     };
-  }
-
-  /// Collect items from multiple surfaces.
-  List<PresentumItem<PresentumPayload<S, V>, S, V>> collectItems<
-    T extends PresentumItem<PresentumPayload<S, V>, S, V>,
-    S extends PresentumSurface,
-    V extends PresentumVisualVariant
-  >(
-    List<S> surfaces,
-    PresentumStateObserver<T, S, V> observer,
-    OutletGroupMode mode,
-    CompositionMergeMode mergeMode, {
-    int? maxItems,
-    CompositionItemsResolver<PresentumItem<PresentumPayload<S, V>, S, V>>?
-    resolver,
-  }) {
-    // Collect items from each surface according to surfaceMode
-    final surfaceItems =
-        <S, List<PresentumItem<PresentumPayload<S, V>, S, V>>>{};
-
-    for (final surface in surfaces) {
-      final state = observer.value;
-      final slot = state.slots[surface];
-      final all = <PresentumItem<PresentumPayload<S, V>, S, V>>[];
-
-      if (slot?.active case final active?) {
-        all.add(active);
-      }
-      if (slot?.queue case final queue?) {
-        all.addAll(queue);
-      }
-
-      List<PresentumItem<PresentumPayload<S, V>, S, V>> surfaceResult;
-      switch (mode) {
-        case OutletGroupMode.single:
-          surfaceResult = all.isEmpty
-              ? <PresentumItem<PresentumPayload<S, V>, S, V>>[]
-              : <PresentumItem<PresentumPayload<S, V>, S, V>>[all.first];
-        case OutletGroupMode.multiple:
-          surfaceResult = all.take(2).toList(growable: false);
-        case OutletGroupMode.custom:
-          surfaceResult = all;
-      }
-
-      surfaceItems[surface] = surfaceResult;
-    }
-
-    return _mergeItems(
-      surfaceItems.values.toList(),
-      mergeMode,
-      maxItems: maxItems,
-      resolver: resolver,
-    );
-  }
-
-  /// Merge items from multiple surfaces.
-  List<PresentumItem<PresentumPayload<S, V>, S, V>>
-  _mergeItems<S extends PresentumSurface, V extends PresentumVisualVariant>(
-    List<List<PresentumItem<PresentumPayload<S, V>, S, V>>> itemLists,
-    CompositionMergeMode mergeMode, {
-    int? maxItems,
-    List<PresentumItem<PresentumPayload<S, V>, S, V>> Function(
-      List<PresentumItem<PresentumPayload<S, V>, S, V>> items,
-    )?
-    resolver,
-  }) {
-    assert(
-      resolver != null || mergeMode != CompositionMergeMode.custom,
-      'resolver must be provided when mergeMode is custom',
-    );
-    // Merge items according to mergeMode
-    List<PresentumItem<PresentumPayload<S, V>, S, V>> result;
-    switch (mergeMode) {
-      case CompositionMergeMode.concatenate:
-        result = itemLists.expand((items) => items).toList();
-
-      case CompositionMergeMode.firstNonEmpty:
-        result = itemLists.firstWhere(
-          (items) => items.isNotEmpty,
-          orElse: () => <PresentumItem<PresentumPayload<S, V>, S, V>>[],
-        );
-
-      case CompositionMergeMode.custom:
-        result = resolver!.call(itemLists.expand((items) => items).toList());
-    }
-
-    // Apply maxItems limit if specified
-    if (maxItems case final max?) {
-      result = result.take(max).toList(growable: false);
-    }
-
-    return result;
   }
 }

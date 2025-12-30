@@ -1,0 +1,494 @@
+---
+title: "Outlets"
+description: "Learn how outlets render presentations in your UI"
+---
+
+## What are outlets?
+
+Outlets are widgets that render presentations. They watch a specific surface and rebuild when the active item changes.
+
+Outlets contain **zero business logic**. They just render what the engine tells them to show.
+
+<Tip>
+  Think of outlets as "slots" in your UI where presentations appear. The engine
+  controls what goes in the slot.
+</Tip>
+
+## Basic outlet
+
+The simplest outlet uses `PresentumOutlet`:
+
+```dart
+class HomeTopBannerOutlet extends StatelessWidget {
+  const HomeTopBannerOutlet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) {
+        return BannerWidget(
+          title: item.metadata['title'] as String,
+          onClose: () => context
+              .presentum<CampaignItem, AppSurface, CampaignVariant>()
+              .markDismissed(item),
+        );
+      },
+    );
+  }
+}
+```
+
+When no item is active for the surface, the outlet renders `SizedBox.shrink()` by default.
+
+## Custom placeholder
+
+Provide a custom widget when nothing is shown:
+
+```dart
+PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, item) => BannerWidget(item),
+  placeholderBuilder: (context) => const SizedBox(height: 60),
+)
+```
+
+## Composition outlets
+
+`PresentumOutlet$Composition` gives you access to both active and queued items:
+
+```dart
+PresentumOutlet$Composition<CampaignItem, AppSurface, CampaignVariant>(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, active, queue) {
+    return Column(
+      children: [
+        if (active != null)
+          ActiveBannerWidget(active),
+        ...queue.map((item) => QueuedBannerWidget(item)),
+      ],
+    );
+  },
+)
+```
+
+<Info>
+  Composition outlets are useful for showing "next up" indicators or carousels.
+</Info>
+
+## Multi-surface composition
+
+Combine items from multiple surfaces:
+
+```dart
+PresentumOutlet$Composition2<
+  CampaignItem,
+  TipItem,
+  AppSurface,
+  CampaignVariant,
+  TipVariant
+>(
+  surface1: AppSurface.homeTopBanner,
+  surface2: AppSurface.homeTip,
+  builder: (context, items1, items2) {
+    final allItems = [...items1, ...items2];
+    return ListView(
+      children: allItems.map((item) => ItemWidget(item)).toList(),
+    );
+  },
+)
+```
+
+## Popup hosts
+
+For dialogs and overlays, use a **popup host** that watches a surface and shows dialogs:
+
+```dart
+class CampaignPopupHost extends StatefulWidget {
+  const CampaignPopupHost({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<CampaignPopupHost> createState() => _CampaignPopupHostState();
+}
+
+class _CampaignPopupHostState extends State<CampaignPopupHost>
+    with PresentumPopupSurfaceStateMixin<
+      CampaignItem,
+      AppSurface,
+      CampaignVariant,
+      CampaignPopupHost
+    > {
+
+  @override
+  AppSurface get surface => AppSurface.popup;
+
+  @override
+  Future<void> markDismissed({required CampaignItem entry, bool pop = false}) async {
+    await context.campaigns.markDismissed(entry);
+    if (pop) {
+      await Navigator.maybePop(context, true);
+    }
+  }
+
+  @override
+  Future<void> present(CampaignItem entry) async {
+    if (!mounted) return;
+
+    // Record impression
+    await context.campaigns.markShown(entry);
+
+    if (!mounted) return;
+
+    final result = await showDialog<bool?>(
+      context: context,
+      builder: (context) => InheritedPresentum.value(
+        value: context.campaigns,
+        child: InheritedPresentumItem(
+          item: entry,
+          child: CampaignDialogWidget(entry),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    if (result == null || result == false) {
+      await markDismissed(entry: entry);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+[See production popup host ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart)
+
+<Tip>
+  Use the `PresentumPopupSurfaceStateMixin` for automatic dialog lifecycle
+  management. It handles showing, dismissing, and queueing popups automatically.
+</Tip>
+
+## Accessing Presentum
+
+Inside outlets, access the Presentum instance via context:
+
+```dart
+// Short form
+final presentum = context.presentum<CampaignItem, AppSurface, CampaignVariant>();
+
+// Long form
+final presentum = Presentum.of<CampaignItem, AppSurface, CampaignVariant>(context);
+
+// Mark events
+presentum.markShown(item);
+presentum.markDismissed(item);
+presentum.markConverted(item);
+```
+
+## Inherited widgets
+
+### InheritedPresentumItem
+
+Outlets automatically wrap builders with `InheritedPresentumItem`, giving child widgets access to the current item:
+
+```dart
+// Inside outlet builder
+widget.builder(context, item)
+
+// Wrapped automatically with:
+InheritedPresentumItem<TItem, S, V>(
+  item: item,
+  child: widget.builder(context, item),
+)
+```
+
+Access the item in descendants:
+
+```dart
+class MyCampaignButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // Get item from ancestor outlet
+    final item = context.presentumItem<CampaignItem, AppSurface, CampaignVariant>();
+
+    return ElevatedButton(
+      onPressed: () => context
+          .presentum<CampaignItem, AppSurface, CampaignVariant>()
+          .markConverted(item),
+      child: const Text('Learn More'),
+    );
+  }
+}
+```
+
+<Warning>
+If you create custom observer widgets (not using `PresentumOutlet`), wrap descendants with `InheritedPresentumItem` so they can access the item:
+
+```dart
+class MyCustomObserver extends StatefulWidget {
+  @override
+  Widget build(BuildContext context) {
+    final item = _getCurrentItem();
+
+    // Wrap child so descendants can access item
+    return InheritedPresentumItem(
+      item: item,
+      child: MyWidget(),
+    );
+  }
+}
+```
+
+Alternatively, pass the item down manually if you prefer explicit props.
+
+</Warning>
+
+## Outlet patterns
+
+### Conditional rendering
+
+```dart
+PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, item) {
+    return switch (item.variant) {
+      CampaignVariant.banner => BannerWidget(item),
+      CampaignVariant.inline => InlineWidget(item),
+      CampaignVariant.dialog => DialogWidget(item),
+    };
+  },
+)
+```
+
+### With animations
+
+```dart
+PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, item) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 300),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: BannerWidget(item),
+    );
+  },
+)
+```
+
+### Async loading
+
+```dart
+PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, item) {
+    final imageUrl = item.metadata['imageUrl'] as String?;
+
+    return FutureBuilder<ui.Image>(
+      future: _loadImage(imageUrl),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return BannerWithImage(item, snapshot.data!);
+        }
+        return const CircularProgressIndicator();
+      },
+    );
+  },
+)
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="No business logic in outlets">
+    Don't check eligibility, fetch data, or make decisions in outlets. That belongs in guards.
+    
+    **Bad:**
+    ```dart
+    builder: (context, item) {
+      if (userIsPremium) return SizedBox.shrink(); // ❌
+      return BannerWidget(item);
+    }
+    ```
+    
+    **Good:**
+    ```dart
+    // In guard
+    if (userIsPremium) return state; // Don't add item
+    
+    // In outlet
+    builder: (context, item) => BannerWidget(item); // ✅
+    ```
+  </Accordion>
+  
+  <Accordion title="Keep builders lightweight">
+    Outlets rebuild when state changes. Keep builders fast and simple.
+    
+    ```dart
+    // ✅ Good
+    builder: (context, item) => BannerWidget(item)
+    
+    // ❌ Bad
+    builder: (context, item) {
+      // Complex calculations, API calls, etc.
+      final data = await fetchMoreData(); // Don't do this
+      return ComplexWidget(data);
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Use InheritedPresentumItem for deep trees">
+    When you have complex widget hierarchies, use the inherited item instead of prop drilling:
+    
+    ```dart
+    builder: (context, item) {
+      return ComplexLayout(
+        header: Header(), // Can access item via context
+        body: Body(),     // Can access item via context
+        footer: Footer(), // Can access item via context
+      );
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common patterns
+
+### Banner outlet
+
+```dart
+class BannerOutlet extends StatelessWidget {
+  const BannerOutlet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+      surface: AppSurface.homeTopBanner,
+      builder: (context, item) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.purple, Colors.blue],
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.metadata['title'] as String,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.metadata['message'] as String,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => context
+                    .presentum<CampaignItem, AppSurface, CampaignVariant>()
+                    .markDismissed(item),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+```
+
+### Card outlet with actions
+
+```dart
+PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
+  surface: AppSurface.profileAlert,
+  builder: (context, item) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.metadata['title'] as String,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(item.metadata['description'] as String),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => context
+                      .presentum<CampaignItem, AppSurface, CampaignVariant>()
+                      .markDismissed(item),
+                  child: const Text('Dismiss'),
+                ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () => context
+                      .presentum<CampaignItem, AppSurface, CampaignVariant>()
+                      .markConverted(item),
+                  child: const Text('Take Action'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  },
+)
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Building outlets guide"
+    icon="tv"
+    href="/guides/building-outlets">
+    Step-by-step outlet creation
+  </Card>
+
+  <Card title="Popup hosts" icon="window-maximize" href="/advanced/popup-hosts">
+    Advanced dialog management
+  </Card>
+
+  <Card title="Auto-tracking" icon="eye" href="/features/auto-tracking">
+    Automatic impression tracking
+  </Card>
+
+  <Card
+    title="Production example"
+    icon="code"
+    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart">
+    See real popup host
+  </Card>
+</CardGroup>

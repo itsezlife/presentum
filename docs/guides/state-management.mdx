@@ -1,0 +1,43 @@
+---
+title: "State management"
+description: "Control presentation state through the Presentum API"
+---
+
+## Overview
+
+Presentum provides several ways to manage state. Guards are the primary tool, but you can also use direct state changes for immediate user actions.
+
+## Basic state change
+
+```dart
+context.presentum<CampaignItem, AppSurface, CampaignVariant>().setState((state) {
+  state.setActive(AppSurface.homeTopBanner, campaignItem);
+  state.enqueue(AppSurface.profileAlert, alertItem);
+  return state;
+});
+```
+
+## Declarative API
+
+You can do anything with state:
+
+```dart
+// Push to surface
+await presentum.pushSlot(AppSurface.homeTopBanner, item: campaignItem);
+
+// Mark events
+await presentum.markShown(item);
+await presentum.markDismissed(item);
+await presentum.markConverted(item);
+
+// Remove items
+await presentum.removeById('campaign-123');
+```
+
+<Info>
+  Guards should be your primary tool for scheduling presentations, removing
+  ineligible items, periodic refreshes, and complex eligibility rules. Use
+  direct state changes when you need explicit control.
+</Info>
+
+[Learn more about state structure ->](/core-concepts/slots-state)

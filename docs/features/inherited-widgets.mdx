@@ -1,0 +1,286 @@
+---
+title: "Inherited widgets"
+description: "Use InheritedPresentumItem to access items in widget trees"
+---
+
+## Overview
+
+Presentum provides `InheritedPresentumItem` to pass presentation items down the widget tree without prop drilling.
+
+Outlets automatically wrap your builder widgets with `InheritedPresentumItem`, giving all descendant widgets access to the current item.
+
+## Automatic wrapping
+
+When you create an outlet:
+
+```dart
+PresentumOutlet(
+  surface: AppSurface.homeTopBanner,
+  builder: (context, item) => MyCampaignWidget(),
+)
+```
+
+Presentum automatically wraps it:
+
+```dart
+InheritedPresentumItem(
+  item: item,
+  child: MyCampaignWidget(),
+)
+```
+
+## Accessing the item
+
+Descendants can access the item via context:
+
+```dart
+class CampaignActionButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // Get item from ancestor InheritedPresentumItem
+    final item = context.presentumItem<
+      CampaignItem,
+      AppSurface,
+      CampaignVariant
+    >();
+
+    return ElevatedButton(
+      onPressed: () => context
+          .presentum<CampaignItem, AppSurface, CampaignVariant>()
+          .markConverted(item),
+      child: Text(item.metadata['ctaText'] as String),
+    );
+  }
+}
+```
+
+<Tip>
+Use `context.presentumItem<T, S, V>()` to access the item. No need to pass it as a prop!
+</Tip>
+
+## Benefits
+
+### No prop drilling
+
+**Before (manual passing):**
+
+```dart
+PresentumOutlet(
+  builder: (context, item) {
+    return CampaignCard(
+      item: item,  // Pass down
+      child: CampaignContent(
+        item: item,  // Pass down again
+        child: CampaignButton(
+          item: item,  // And again...
+        ),
+      ),
+    );
+  },
+)
+```
+
+**After (inherited):**
+
+```dart
+PresentumOutlet(
+  builder: (context, item) {
+    return CampaignCard(
+      child: CampaignContent(
+        child: CampaignButton(), // No props needed!
+      ),
+    );
+  },
+)
+
+class CampaignButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final item = context.presentumItem<CampaignItem, AppSurface, CampaignVariant>();
+    // Use item...
+  }
+}
+```
+
+### Cleaner component APIs
+
+Components don't need to know about Presentum items:
+
+```dart
+// Clean, reusable button
+class ActionButton extends StatelessWidget {
+  const ActionButton({this.label, super.key});
+
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = context.presentumItem<CampaignItem, AppSurface, CampaignVariant>();
+    final text = label ?? item.metadata['ctaText'] as String;
+
+    return ElevatedButton(
+      onPressed: () => context
+          .presentum<CampaignItem, AppSurface, CampaignVariant>()
+          .markConverted(item),
+      child: Text(text),
+    );
+  }
+}
+```
+
+## Custom observer widgets
+
+If you build custom widgets that observe Presentum state (not using `PresentumOutlet`), you must wrap descendants manually:
+
+```dart
+class MyCustomObserver extends StatefulWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.presentum<Item, Surface, Variant>().state;
+    final item = state.slots[Surface.home]?.active;
+
+    if (item == null) return const SizedBox.shrink();
+
+    // ✅ Wrap so descendants can access item
+    return InheritedPresentumItem(
+      item: item,
+      child: MyWidget(),
+    );
+  }
+}
+```
+
+<Warning>
+**Forgetting to wrap?** Child widgets will throw when trying to access the item:
+
+```
+InheritedPresentumItem.of<CampaignItem, AppSurface, CampaignVariant>() 
+called with a context that does not contain a presentum item.
+```
+
+**Fix:** Wrap with `InheritedPresentumItem` or pass the item explicitly.
+</Warning>
+
+## Alternative: Explicit props
+
+If you prefer explicit props over inherited widgets, pass items manually:
+
+```dart
+// Instead of using inherited item
+class CampaignButton extends StatelessWidget {
+  const CampaignButton({required this.item, super.key});
+
+  final CampaignItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () => context
+          .presentum<CampaignItem, AppSurface, CampaignVariant>()
+          .markConverted(item),
+      child: Text(item.metadata['ctaText'] as String),
+    );
+  }
+}
+
+// Use in outlet
+PresentumOutlet(
+  builder: (context, item) {
+    return CampaignButton(item: item); // Explicit prop
+  },
+)
+```
+
+Both approaches work. Choose based on your preference.
+
+## InheritedPresentum vs InheritedPresentumItem
+
+Presentum provides two inherited widgets:
+
+<Tabs>
+  <Tab title="InheritedPresentum">
+    Provides the `Presentum` controller instance.
+
+    ```dart
+    // Automatically provided by engine.build()
+    presentum.config.engine.build(context, child);
+
+    // Access anywhere
+    final presentum = context.presentum<Item, Surface, Variant>();
+    
+    // Or
+    final presentum = Presentum.of<Item, Surface, Variant>(context);
+    ```
+
+    Used for: Calling `markShown`, `markDismissed`, `markConverted`, etc.
+  </Tab>
+  
+  <Tab title="InheritedPresentumItem">
+    Provides the current presentation item.
+
+    ```dart
+    // Automatically provided by PresentumOutlet
+    PresentumOutlet(
+      builder: (context, item) => InheritedPresentumItem(
+        item: item,
+        child: MyWidget(),
+      ),
+    )
+
+    // Access in descendants
+    final item = context.presentumItem<Item, Surface, Variant>();
+    ```
+
+    Used for: Accessing item data in nested widgets.
+  </Tab>
+</Tabs>
+
+## Extension methods
+
+Presentum provides convenient extension methods:
+
+```dart
+extension PresentumBuildContextX on BuildContext {
+  // Get Presentum controller
+  Presentum<TItem, S, V> presentum<TItem, S, V>() { /* ... */ }
+
+  // Get current item (listen: false)
+  TItem presentumItem<TItem, S, V>() { /* ... */ }
+
+  // Get current item (listen: true)
+  TItem watchPresentumItem<TItem, S, V>() { /* ... */ }
+}
+```
+
+Use `watchPresentumItem` to rebuild when the item changes:
+
+```dart
+@override
+Widget build(BuildContext context) {
+  // Rebuilds when item changes
+  final item = context.watchPresentumItem<CampaignItem, AppSurface, CampaignVariant>();
+
+  return Text(item.metadata['title'] as String);
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Outlets"
+    href="/core-concepts/outlets"
+    icon="tv"
+  >
+    Learn about outlet widgets
+  </Card>
+  
+  <Card
+    title="Build context extension"
+    href="/api-reference/presentum"
+    icon="code"
+  >
+    API reference
+  </Card>
+</CardGroup>
+

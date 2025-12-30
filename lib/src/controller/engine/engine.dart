@@ -14,6 +14,7 @@ import 'package:presentum/src/controller/transitions.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
 import 'package:presentum/src/utils/diff_util_helpers.dart';
+import 'package:presentum/src/utils/logs.dart';
 import 'package:presentum/src/widgets/inherited_presentum.dart';
 
 /// Presentum engine.
@@ -93,7 +94,6 @@ final class PresentumEngine$Impl<
     bool Function(TItem oldItem, TItem newItem)? customContentsComparison,
     void Function(int position, List<TItem> newItems)? inserted,
     void Function(int position, int count)? removed,
-    void Function(int fromPosition, int toPosition)? moved,
     void Function(int position, int count, TItem? payload)? changed,
   }) async {
     final mutableState = _observer.value.mutate()
@@ -103,7 +103,7 @@ final class PresentumEngine$Impl<
     final oldList = List<TItem>.from(_candidates);
     final updatedList = List<TItem>.from(_candidates);
 
-    DiffUtils.calculateListDiffOperations(
+    final diffOps = DiffUtils.calculateListDiffOperations(
       oldList,
       candidates,
       (item) {
@@ -162,7 +162,11 @@ final class PresentumEngine$Impl<
           }
         }
       },
-    ).clear();
+    );
+
+    fine('[setCandidatesWithDiff] Diff operations: $diffOps');
+
+    diffOps.clear();
 
     _candidates = updatedList;
     await setNewPresentationState(mutableState);
