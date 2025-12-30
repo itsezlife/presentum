@@ -23,16 +23,16 @@ import 'package:presentum/presentum.dart';
 /// have already been checked by earlier guards, so it adds overhead if used
 /// alongside guards that already do proper filtering.
 /// {@endtemplate}
-final class RemoveIneligibleCandidatesGuard<
+abstract base class IRemoveIneligibleCandidatesGuard<
   TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
     extends PresentumGuard<TItem, S, V> {
   /// {@macro remove_ineligible_candidates_guard}
-  RemoveIneligibleCandidatesGuard({required this.eligibility, super.refresh});
+  IRemoveIneligibleCandidatesGuard({required this.eligibility, super.refresh});
 
-  final EligibilityResolver<TItem> eligibility;
+  final EligibilityResolver<HasMetadata> eligibility;
 
   @override
   FutureOr<PresentumState<TItem, S, V>> call(
@@ -139,4 +139,13 @@ final class RemoveIneligibleCandidatesGuard<
 
     return state;
   }
+}
+
+final class RemoveIneligibleCandidatesGuard<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    extends IRemoveIneligibleCandidatesGuard<TItem, S, V> {
+  RemoveIneligibleCandidatesGuard({required super.eligibility, super.refresh});
 }

@@ -1,18 +1,17 @@
 import 'dart:async';
 
 import 'package:presentum/presentum.dart';
-import 'package:shared/shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-typedef PersistentPresentumStorageKey = (
-  String itemId,
-  AppSurface surface,
-  AppVariant variant,
-);
+typedef PersistentPresentumStorageKey<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> = (String itemId, S surface, V variant);
 
-extension type PersistentPresentumStorageKeys(
-  PersistentPresentumStorageKey key
-) {
+extension type PersistentPresentumStorageKeys<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>(PersistentPresentumStorageKey<S, V> key) {
   String get shownCount =>
       '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_count_key__';
   String get lastShown =>
@@ -33,8 +32,11 @@ extension type PersistentPresentumStorageKeys(
   ];
 }
 
-class PersistentPresentumStorage
-    implements PresentumStorage<AppSurface, AppVariant> {
+class PersistentPresentumStorage<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    implements PresentumStorage<S, V> {
   PersistentPresentumStorage({required SharedPreferencesWithCache prefs})
     : _prefs = prefs;
 
@@ -43,8 +45,8 @@ class PersistentPresentumStorage
   @override
   Future<void> clearItem(
     String itemId, {
-    required AppSurface surface,
-    required AppVariant variant,
+    required S surface,
+    required V variant,
   }) => Future.wait(
     PersistentPresentumStorageKeys((
       itemId,
@@ -56,8 +58,8 @@ class PersistentPresentumStorage
   @override
   FutureOr<DateTime?> getLastShown(
     String itemId, {
-    required AppSurface surface,
-    required AppVariant variant,
+    required S surface,
+    required V variant,
   }) async {
     final key = PersistentPresentumStorageKeys((
       itemId,
@@ -71,8 +73,8 @@ class PersistentPresentumStorage
   @override
   FutureOr<void> recordShown(
     String itemId, {
-    required AppSurface surface,
-    required AppVariant variant,
+    required S surface,
+    required V variant,
     required DateTime at,
   }) async {
     final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
@@ -95,8 +97,8 @@ class PersistentPresentumStorage
   FutureOr<int> getShownCount(
     String itemId, {
     required Duration period,
-    required AppSurface surface,
-    required AppVariant variant,
+    required S surface,
+    required V variant,
   }) async {
     final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
     final timestampsKey = keys.timestamps;
@@ -111,8 +113,8 @@ class PersistentPresentumStorage
   @override
   FutureOr<DateTime?> getDismissedAt(
     String itemId, {
-    required AppSurface surface,
-    required AppVariant variant,
+    required S surface,
+    required V variant,
   }) async {
     final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
     final timestampStr = _prefs.getString(keys.dismissedAt);
@@ -122,8 +124,8 @@ class PersistentPresentumStorage
   @override
   FutureOr<void> recordDismissed(
     String itemId, {
-    required AppSurface surface,
-    required AppVariant variant,
+    required S surface,
+    required V variant,
     required DateTime at,
   }) async {
     final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
@@ -133,8 +135,8 @@ class PersistentPresentumStorage
   @override
   FutureOr<void> recordConverted(
     String itemId, {
-    required AppSurface surface,
-    required AppVariant variant,
+    required S surface,
+    required V variant,
     required DateTime at,
   }) async {
     final keys = PersistentPresentumStorageKeys((itemId, surface, variant));

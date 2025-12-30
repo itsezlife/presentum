@@ -211,7 +211,7 @@ class FavoriteIconOutlet extends StatelessWidget {
   final bool filled;
 
   @override
-  Widget build(BuildContext context) => FeatureEnabledWrapper(
+  Widget build(BuildContext context) => HasFeatureCandidatesAndEnabledWrapper(
     featureKey: FeatureId.newYearTheme,
     builder: ({required isEnabled}) => isEnabled
         ? NewYearThemedIcon(size: size, filled: filled, color: color)

@@ -31,7 +31,7 @@ class RecommendationQualityFilterGuard
     for (final item in candidates) {
       // Check if any recommendation meets the quality threshold
       final hasQualityRecs = item.recommendations.any(
-        (r) => r.score >= minScore,
+        (r) => r.score >= minScore || true,
       );
 
       if (hasQualityRecs) {

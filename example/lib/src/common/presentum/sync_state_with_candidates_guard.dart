@@ -158,7 +158,7 @@ abstract base class SyncStateWithCandidatesGuard<
     if (!optionsAreTheSame) return false;
 
     // Compare metadata using deep equality.
-    final metadataAreTheSame = _areMetadataEqual(
+    final metadataAreTheSame = areMetadataEqual(
       oldItem.metadata,
       newItem.metadata,
     );
@@ -191,7 +191,7 @@ abstract base class SyncStateWithCandidatesGuard<
   }
 
   /// Deep equality check for metadata maps.
-  bool _areMetadataEqual(
+  bool areMetadataEqual(
     Map<String, Object?> oldMetadata,
     Map<String, Object?> newMetadata,
   ) {

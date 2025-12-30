@@ -39,17 +39,19 @@ mixin HomeTabsMixin<T extends StatefulWidget> on State<T> {
 
   int currentIndex = 0;
 
-  Widget buildTabs(BuildContext context) => OctopusTabs.lazy(
-    root: tab.root,
-    tabs: tab.tabs,
-    onBackButtonPressed: onBackButtonPressed,
-    tabBuilder: tabBuilder,
-    onTabChanged: onTabChanged,
-    builder: (context, child, currentIndex, innerOnTabPressed) => _Body(
-      currentIndex: currentIndex,
-      tabs: tab.bottomTabs,
-      onTap: (index) => onTabPressed(index, () => innerOnTabPressed(index)),
-      child: child,
+  Widget buildTabs(BuildContext context) => NoAnimationScope(
+    child: OctopusTabs.lazy(
+      root: tab.root,
+      tabs: tab.tabs,
+      onBackButtonPressed: onBackButtonPressed,
+      tabBuilder: tabBuilder,
+      onTabChanged: onTabChanged,
+      builder: (context, child, currentIndex, innerOnTabPressed) => _Body(
+        currentIndex: currentIndex,
+        tabs: tab.bottomTabs,
+        onTap: (index) => onTabPressed(index, () => innerOnTabPressed(index)),
+        child: child,
+      ),
     ),
   );
 }

@@ -3,6 +3,7 @@
 import 'package:example/src/app/router/route_tracker.dart';
 import 'package:example/src/app/router/routes.dart';
 import 'package:example/src/app/router/tabs.dart';
+import 'package:example/src/campaigns/campaigns_presentum.dart';
 import 'package:example/src/feature/feature_presentum.dart';
 import 'package:example/src/feature/widgets/snow_outlet.dart';
 import 'package:example/src/home/widgets/home_tabs_mixin.dart';
@@ -52,7 +53,11 @@ class HomeView extends StatelessWidget {
   Widget build(BuildContext context) => AppUpdatesPresentum(
     child: FeaturePresentum(
       child: RecommendationPresentum(
-        child: SnowOutlet(child: Builder(builder: (context) => const _Tabs())),
+        child: CampaignsPresentum(
+          child: SnowOutlet(
+            child: Builder(builder: (context) => const _Tabs()),
+          ),
+        ),
       ),
     ),
   );

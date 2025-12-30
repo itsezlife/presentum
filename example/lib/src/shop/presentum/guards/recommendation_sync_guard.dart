@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:developer' as dev;
 
+import 'package:collection/collection.dart';
 import 'package:example/src/common/presentum/sync_state_with_candidates_guard.dart';
 import 'package:example/src/shop/data/recommendation_store.dart';
+import 'package:example/src/shop/model/recommendation.dart';
 import 'package:example/src/shop/presentum/recommendation_payload.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
@@ -28,13 +30,7 @@ final class RecommendationSyncGuard
   final RecommendationStore store;
 
   @override
-  bool areContentsTheSame(
-    RecommendationItem oldItem,
-    RecommendationItem newItem,
-  ) {
-    // Check base item properties
-    if (!areItemsTheSame(oldItem, newItem)) return false;
-
+  bool areItemsTheSame(RecommendationItem oldItem, RecommendationItem newItem) {
     // Check if recommendation set has changed
     final oldSet = oldItem.payload.recommendationSet;
     final newSet = newItem.payload.recommendationSet;
@@ -43,19 +39,13 @@ final class RecommendationSyncGuard
     if (oldSet.generatedAt != newSet.generatedAt) return false;
 
     // Compare recommendation lists
-    if (oldSet.recommendations.length != newSet.recommendations.length) {
+    final recommendationsEqual = const ListEquality<RecommendationResult>()
+        .equals(oldSet.recommendations, newSet.recommendations);
+    if (!recommendationsEqual) {
       return false;
     }
 
-    for (var i = 0; i < oldSet.recommendations.length; i++) {
-      final oldRec = oldSet.recommendations[i];
-      final newRec = newSet.recommendations[i];
-
-      if (oldRec.productId != newRec.productId) return false;
-      if (oldRec.score != newRec.score) return false;
-    }
-
-    return true;
+    return super.areItemsTheSame(oldItem, newItem);
   }
 
   @override

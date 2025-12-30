@@ -57,7 +57,7 @@ class RecommendationAlgorithm {
     required UserInteractionHistory userHistory,
   }) async {
     // Delegate to appropriate strategy
-    final recommendations = await switch (request.strategy) {
+    var recommendations = await switch (request.strategy) {
       RecommendationStrategy.contentBased => _contentBasedRecommendations(
         request: request,
         allProducts: allProducts,
@@ -92,12 +92,24 @@ class RecommendationAlgorithm {
     };
 
     // Filter and sort
-    final filtered =
-        recommendations
-            .where((r) => !request.excludeProductIds.contains(r.productId))
-            .where((r) => r.quality.index <= request.minQuality.index)
-            .toList()
-          ..sort();
+    // var filtered =
+    //     recommendations
+    //         .where((r) => !request.excludeProductIds.contains(r.productId))
+    //         .where((r) => r.quality.index <= request.minQuality.index)
+    //         .toList()
+    //       ..sort();
+    var filtered = recommendations..sort();
+
+    // Fallback to more generous strategy if no recommendations found
+    // and override filtered list
+    if (recommendations.isEmpty) {
+      filtered = await _fallbackToGenerousStrategy(
+        originalStrategy: request.strategy,
+        request: request,
+        allProducts: allProducts,
+        userHistory: userHistory,
+      );
+    }
 
     // Take only requested limit
     final limited = filtered.take(request.limit).toList();
@@ -114,6 +126,9 @@ class RecommendationAlgorithm {
         'strategy': request.strategy.name,
         'total_candidates': recommendations.length,
         'filtered_count': filtered.length,
+        'fallback_used':
+            recommendations.isNotEmpty &&
+            recommendations.first.metadata.containsKey('fallback_strategy'),
       },
     );
   }
@@ -438,6 +453,102 @@ class RecommendationAlgorithm {
       allProducts: allProducts,
       userHistory: userHistory,
     );
+  }
+
+  /// Fallback to a more generous strategy when original returns empty results
+  Future<List<RecommendationResult>> _fallbackToGenerousStrategy({
+    required RecommendationStrategy originalStrategy,
+    required RecommendationRequest request,
+    required List<ProductEntity> allProducts,
+    required UserInteractionHistory userHistory,
+  }) async {
+    // Define fallback chain: try more generous strategies progressively
+    final fallbackChain = <RecommendationStrategy>[
+      if (originalStrategy != RecommendationStrategy.personalized)
+        RecommendationStrategy.personalized,
+      if (originalStrategy != RecommendationStrategy.hybrid)
+        RecommendationStrategy.hybrid,
+      if (originalStrategy != RecommendationStrategy.collaborative)
+        RecommendationStrategy.collaborative,
+      if (originalStrategy != RecommendationStrategy.trending)
+        RecommendationStrategy.trending,
+    ];
+
+    // Try each fallback strategy in order
+    for (final fallbackStrategy in fallbackChain) {
+      final recommendations = await switch (fallbackStrategy) {
+        RecommendationStrategy.contentBased => _contentBasedRecommendations(
+          request: request,
+          allProducts: allProducts,
+          userHistory: userHistory,
+        ),
+        RecommendationStrategy.collaborative => _collaborativeRecommendations(
+          request: request,
+          allProducts: allProducts,
+          userHistory: userHistory,
+        ),
+        RecommendationStrategy.hybrid => _hybridRecommendations(
+          request: request,
+          allProducts: allProducts,
+          userHistory: userHistory,
+        ),
+        RecommendationStrategy.trending => _trendingRecommendations(
+          request: request,
+          allProducts: allProducts,
+          userHistory: userHistory,
+        ),
+        RecommendationStrategy.personalized => _personalizedRecommendations(
+          request: request,
+          allProducts: allProducts,
+          userHistory: userHistory,
+        ),
+        RecommendationStrategy.frequentlyBoughtTogether =>
+          _frequentlyBoughtTogetherRecommendations(
+            request: request,
+            allProducts: allProducts,
+            userHistory: userHistory,
+          ),
+      };
+
+      if (recommendations.isNotEmpty) {
+        // Mark recommendations as coming from fallback strategy
+        return recommendations
+            .map(
+              (r) => RecommendationResult(
+                productId: r.productId,
+                score: r.score * 0.95, // Slight score penalty for fallback
+                strategy: r.strategy,
+                quality: r.quality,
+                reason: r.reason,
+                metadata: {
+                  ...r.metadata,
+                  'fallback_strategy': true,
+                  'original_strategy': originalStrategy.name,
+                },
+              ),
+            )
+            .toList();
+      }
+    }
+
+    // Last resort: use basic fallback recommendations
+    final fallback = _fallbackRecommendations(allProducts, userHistory);
+    return fallback
+        .map(
+          (r) => RecommendationResult(
+            productId: r.productId,
+            score: r.score,
+            strategy: r.strategy,
+            quality: r.quality,
+            reason: r.reason,
+            metadata: {
+              ...r.metadata,
+              'fallback_strategy': true,
+              'original_strategy': originalStrategy.name,
+            },
+          ),
+        )
+        .toList();
   }
 
   /// Fallback recommendations when no better options available

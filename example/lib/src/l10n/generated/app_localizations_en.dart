@@ -64,23 +64,23 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get resetFeaturePresentumItemsStorageTitle =>
-      'Reset feature presentum items storage';
+  String get resetPresentumItemsStorageTitle => 'Reset presentum items storage';
 
   @override
-  String get resetFeaturePresentumItemsStorageSubtitle =>
+  String get resetPresentumItemsStorageSubtitle =>
       'Tap to reset storage for specific item';
 
   @override
-  String resetFeaturePresentumItemSurfaceVariant(
-    String surface,
-    String variant,
-  ) {
+  String get resetAllPresentumItemsStorageTitle =>
+      'Reset all presentum items storage';
+
+  @override
+  String resetPresentumItemSurfaceVariant(String surface, String variant) {
     return 'Surface: $surface, Variant: $variant';
   }
 
   @override
-  String resetFeaturePresentumItemId(String id) {
+  String resetPresentumItemId(String id) {
     return 'ID: $id';
   }
 
@@ -152,4 +152,8 @@ class AppLocalizationsEn extends AppLocalizations {
     });
     return '$_temp0';
   }
+
+  @override
+  String get settingsCatalogFeatureNotDependentDescription =>
+      'Disabling this feature will only disable it from settings, but associated payload wouldn\'t be disabled';
 }

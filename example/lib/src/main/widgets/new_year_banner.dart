@@ -30,52 +30,11 @@ class _NewYearBannerContent extends StatefulWidget {
   State<_NewYearBannerContent> createState() => _NewYearBannerContentState();
 }
 
-class _NewYearBannerContentState extends State<_NewYearBannerContent>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _sizeAnimation;
-  late Animation<Offset> _slideAnimation;
+class _NewYearBannerContentState extends State<_NewYearBannerContent> {
   final ValueNotifier<bool> _showYearBadgeNotifier = ValueNotifier(true);
 
   @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1750),
-      vsync: this,
-    );
-
-    final curvedAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.decelerate,
-    );
-    _sizeAnimation = curvedAnimation;
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1),
-      end: Offset.zero,
-    ).animate(curvedAnimation);
-
-    // Check PageStorage for previous state
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final storage = PageStorage.of(context);
-      final wasVisible = storage.readState(context) as bool? ?? false;
-
-      if (wasVisible) {
-        _animationController.value = 1.0;
-      } else {
-        Future.delayed(const Duration(milliseconds: 250), () {
-          if (!mounted) return;
-          _animationController.forward();
-          if (!mounted) return;
-          storage.writeState(context, true);
-        });
-      }
-    });
-  }
-
-  @override
   void dispose() {
-    _animationController.dispose();
     _showYearBadgeNotifier.dispose();
     super.dispose();
   }
@@ -85,32 +44,25 @@ class _NewYearBannerContentState extends State<_NewYearBannerContent>
     final item = context.presentumItem<FeatureItem, AppSurface, AppVariant>();
     final isDismissible = item.option.isDismissible;
 
-    return SizeTransition(
-      sizeFactor: _sizeAnimation,
-      axisAlignment: -1,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: SizedBox(
-          height: 100,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: CustomBoxy(
-              delegate: _NewYearBannerDelegate(
-                showYearBadgeNotifier: _showYearBadgeNotifier,
-                isDismissible: isDismissible,
-              ),
-              children: [
-                const BoxyId(id: #background, child: _BannerBackground()),
-                BoxyId(
-                  id: #content,
-                  child: _BannerContent(showYearBadge: _showYearBadgeNotifier),
-                ),
-                const BoxyId(id: #yearBadge, child: _YearBadge()),
-                if (isDismissible)
-                  const BoxyId(id: #closeButton, child: _CloseButton()),
-              ],
-            ),
+    return SizedBox(
+      height: 100,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: CustomBoxy(
+          delegate: _NewYearBannerDelegate(
+            showYearBadgeNotifier: _showYearBadgeNotifier,
+            isDismissible: isDismissible,
           ),
+          children: [
+            const BoxyId(id: #background, child: _BannerBackground()),
+            BoxyId(
+              id: #content,
+              child: _BannerContent(showYearBadge: _showYearBadgeNotifier),
+            ),
+            const BoxyId(id: #yearBadge, child: _YearBadge()),
+            if (isDismissible)
+              const BoxyId(id: #closeButton, child: _CloseButton()),
+          ],
         ),
       ),
     );
@@ -257,32 +209,32 @@ class _BannerContent extends StatelessWidget {
         final showLargeSubtitle =
             constraints.maxWidth > _minWidthForLargeSubtitle;
 
-        return ValueListenableBuilder<bool>(
-          valueListenable: showYearBadge,
-          builder: (context, isYearBadgeVisible, _) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showIcon) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7DD3FC).withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.celebration,
-                    size: 32,
-                    color: Color(0xFF0284C7),
-                  ),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showIcon) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7DD3FC).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: AppSpacing.lg),
-              ],
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
+                child: const Icon(
+                  Icons.celebration,
+                  size: 32,
+                  color: Color(0xFF0284C7),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+            ],
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ValueListenableBuilder(
+                    valueListenable: showYearBadge,
+                    builder: (context, isYearBadgeVisible, child) => Text(
                       isYearBadgeVisible || year == null
                           ? l10n.newYearBannerTitle
                           : l10n.newYearBannerTitleWithYear(year),
@@ -294,23 +246,23 @@ class _BannerContent extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      showLargeSubtitle
-                          ? l10n.newYearBannerSubtitleLargeVersion
-                          : l10n.newYearBannerSubtitleSmallVersion,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                        height: 1.3,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    showLargeSubtitle
+                        ? l10n.newYearBannerSubtitleLargeVersion
+                        : l10n.newYearBannerSubtitleSmallVersion,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[600],
+                      height: 1.3,
                     ),
-                  ],
-                ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );

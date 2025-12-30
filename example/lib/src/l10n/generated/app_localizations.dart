@@ -149,32 +149,35 @@ abstract class AppLocalizations {
   /// **'Add or completely remove {featureName} feature from the settings and the app.'**
   String removeCatalogFeatureDescription(String featureName);
 
-  /// No description provided for @resetFeaturePresentumItemsStorageTitle.
+  /// No description provided for @resetPresentumItemsStorageTitle.
   ///
   /// In en, this message translates to:
-  /// **'Reset feature presentum items storage'**
-  String get resetFeaturePresentumItemsStorageTitle;
+  /// **'Reset presentum items storage'**
+  String get resetPresentumItemsStorageTitle;
 
-  /// No description provided for @resetFeaturePresentumItemsStorageSubtitle.
+  /// No description provided for @resetPresentumItemsStorageSubtitle.
   ///
   /// In en, this message translates to:
   /// **'Tap to reset storage for specific item'**
-  String get resetFeaturePresentumItemsStorageSubtitle;
+  String get resetPresentumItemsStorageSubtitle;
+
+  /// No description provided for @resetAllPresentumItemsStorageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all presentum items storage'**
+  String get resetAllPresentumItemsStorageTitle;
 
   /// The surface and variant information for a presentum item.
   ///
   /// In en, this message translates to:
   /// **'Surface: {surface}, Variant: {variant}'**
-  String resetFeaturePresentumItemSurfaceVariant(
-    String surface,
-    String variant,
-  );
+  String resetPresentumItemSurfaceVariant(String surface, String variant);
 
   /// The ID of the presentum item.
   ///
   /// In en, this message translates to:
   /// **'ID: {id}'**
-  String resetFeaturePresentumItemId(String id);
+  String resetPresentumItemId(String id);
 
   /// No description provided for @newYearBannerTitle.
   ///
@@ -289,6 +292,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{category, select, groceries{Fresh food and daily essentials} electronics{Tech gadgets and devices} fashion{Clothing and accessories} other{Miscellaneous items}}'**
   String categoryDescription(String category);
+
+  /// No description provided for @settingsCatalogFeatureNotDependentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabling this feature will only disable it from settings, but associated payload wouldn\'t be disabled'**
+  String get settingsCatalogFeatureNotDependentDescription;
 }
 
 class _AppLocalizationsDelegate

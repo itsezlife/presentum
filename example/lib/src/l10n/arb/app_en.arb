@@ -59,10 +59,11 @@
       }
     }
   },
-  "resetFeaturePresentumItemsStorageTitle": "Reset feature presentum items storage",
-  "resetFeaturePresentumItemsStorageSubtitle": "Tap to reset storage for specific item",
-  "resetFeaturePresentumItemSurfaceVariant": "Surface: {surface}, Variant: {variant}",
-  "@resetFeaturePresentumItemSurfaceVariant": {
+  "resetPresentumItemsStorageTitle": "Reset presentum items storage",
+  "resetPresentumItemsStorageSubtitle": "Tap to reset storage for specific item",
+  "resetAllPresentumItemsStorageTitle": "Reset all presentum items storage",
+  "resetPresentumItemSurfaceVariant": "Surface: {surface}, Variant: {variant}",
+  "@resetPresentumItemSurfaceVariant": {
     "description": "The surface and variant information for a presentum item.",
     "placeholders": {
       "surface": {
@@ -77,8 +78,8 @@
       }
     }
   },
-  "resetFeaturePresentumItemId": "ID: {id}",
-  "@resetFeaturePresentumItemId": {
+  "resetPresentumItemId": "ID: {id}",
+  "@resetPresentumItemId": {
     "description": "The ID of the presentum item.",
     "placeholders": {
       "id": {
@@ -126,5 +127,7 @@
         "description": "Category identifier."
       }
     }
-  }
+  },
+  "settingsCatalogFeatureNotDependentDescription": "Disabling this feature will only disable it from settings, but associated payload wouldn't be disabled"
+  
 }

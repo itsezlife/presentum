@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import 'package:example/src/updates/presentum/payload.dart';
 import 'package:flutter/widgets.dart';
 import 'package:presentum/presentum.dart';
-import 'package:shared/shared.dart';
 
 /// {@template app_lifecycle_guard}
 /// This guard runs when the app comes back to the foreground after being
@@ -21,8 +19,12 @@ import 'package:shared/shared.dart';
 /// avoid running checks too frequently if the user quickly switches
 /// between apps.
 /// {@endtemplate}
-class AppLifecycleGuard
-    extends PresentumGuard<AppUpdatesItem, AppSurface, AppVariant> {
+class AppLifecycleGuard<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    extends PresentumGuard<TItem, S, V> {
   /// {@macro app_lifecycle_guard}
   AppLifecycleGuard({super.refresh});
 }

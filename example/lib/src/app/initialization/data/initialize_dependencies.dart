@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:example/firebase_options.dart';
+import 'package:example/src/app/data/user_repository.dart';
 import 'package:example/src/app/initialization/data/platform/platform_initialization.dart';
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/feature/data/feature_catalog_repository.dart';
@@ -76,6 +77,14 @@ _initializationSteps = <String, _InitializationStep>{
       dependencies.sharedPreferences = await SharedPreferencesWithCache.create(
         cacheOptions: const SharedPreferencesWithCacheOptions(),
       ),
+  'Getting user': (dependencies) async {
+    final userRepository = UserRepository(
+      prefs: dependencies.sharedPreferences,
+    );
+    dependencies.userRepository = userRepository;
+
+    await userRepository.incrementAppOpenedCount();
+  },
   'Prepare shop controller': (dependencies) {
     final repository = ProductRepositoryImpl(
       sharedPreferences: dependencies.sharedPreferences,

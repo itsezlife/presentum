@@ -1,3 +1,4 @@
+import 'package:example/src/app/data/user_repository.dart';
 import 'package:example/src/app/initialization/widget/inherited_dependencies.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
@@ -19,6 +20,9 @@ class Dependencies {
   /// The state from the closest instance of this class.
   factory Dependencies.of(BuildContext context) =>
       InheritedDependencies.of(context);
+
+  /// Very simple dummy user repository just to get app opened count.
+  late final UserRepository userRepository;
 
   /// Shared preferences
   late final SharedPreferencesWithCache sharedPreferences;
