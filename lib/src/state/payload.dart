@@ -35,6 +35,17 @@ abstract class PresentumOption<
   /// Whether this presentation can be dismissed.
   abstract final bool isDismissible;
 
+  /// Serialize the option to a JSON map.
+  Map<String, Object?> toJson() => {
+    'surface': surface.name,
+    'variant': variant.name,
+    'is_dismissible': isDismissible,
+    'stage': ?stage,
+    'max_impressions': ?maxImpressions,
+    'cooldown_minutes': ?cooldownMinutes,
+    'always_on_if_eligible': alwaysOnIfEligible,
+  };
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -73,7 +84,8 @@ abstract class PresentumOption<
 abstract class PresentumPayload<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
-> {
+>
+    implements HasMetadata {
   /// {@macro presentum_payload}
   const PresentumPayload();
 
@@ -84,10 +96,19 @@ abstract class PresentumPayload<
   abstract final int priority;
 
   /// Arbitrary domain metadata.
+  @override
   abstract final Map<String, Object?> metadata;
 
   /// All possible presentation options for this item.
   abstract final List<PresentumOption<S, V>> options;
+
+  /// Serialize the payload to a JSON map.
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'priority': priority,
+    'metadata': metadata,
+    'options': options.map((option) => option.toJson()).toList(),
+  };
 
   @override
   bool operator ==(Object other) =>

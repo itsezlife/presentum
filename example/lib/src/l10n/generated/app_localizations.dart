@@ -110,13 +110,13 @@ abstract class AppLocalizations {
   /// The label for the bottom navigation bar tab.
   ///
   /// In en, this message translates to:
-  /// **'{tab, select, main{Home} settings{Settings} other{Other}}'**
+  /// **'{tab, select, main{Home} catalog{Catalog} favorites{Favorites} settings{Settings} other{Other}}'**
   String bottomNavBarTabLabel(String tab);
 
   /// The name of the feature.
   ///
   /// In en, this message translates to:
-  /// **'{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} other{Unknown Feature}}'**
+  /// **'{featureKey, select, newYearTheme{New Year Theme} newYearBanner{New Year Banner} catalogCategoriesSection{Catalog Categories Section} catalogRecentlyViewedProductsSection{Catalog Recently Viewed Products Section} other{Unknown Feature}}'**
   String featureName(String featureKey);
 
   /// The description for the feature enabled button.
@@ -149,32 +149,35 @@ abstract class AppLocalizations {
   /// **'Add or completely remove {featureName} feature from the settings and the app.'**
   String removeCatalogFeatureDescription(String featureName);
 
-  /// No description provided for @resetFeaturePresentumItemsStorageTitle.
+  /// No description provided for @resetPresentumItemsStorageTitle.
   ///
   /// In en, this message translates to:
-  /// **'Reset feature presentum items storage'**
-  String get resetFeaturePresentumItemsStorageTitle;
+  /// **'Reset presentum items storage'**
+  String get resetPresentumItemsStorageTitle;
 
-  /// No description provided for @resetFeaturePresentumItemsStorageSubtitle.
+  /// No description provided for @resetPresentumItemsStorageSubtitle.
   ///
   /// In en, this message translates to:
   /// **'Tap to reset storage for specific item'**
-  String get resetFeaturePresentumItemsStorageSubtitle;
+  String get resetPresentumItemsStorageSubtitle;
+
+  /// No description provided for @resetAllPresentumItemsStorageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all presentum items storage'**
+  String get resetAllPresentumItemsStorageTitle;
 
   /// The surface and variant information for a presentum item.
   ///
   /// In en, this message translates to:
   /// **'Surface: {surface}, Variant: {variant}'**
-  String resetFeaturePresentumItemSurfaceVariant(
-    String surface,
-    String variant,
-  );
+  String resetPresentumItemSurfaceVariant(String surface, String variant);
 
   /// The ID of the presentum item.
   ///
   /// In en, this message translates to:
   /// **'ID: {id}'**
-  String resetFeaturePresentumItemId(String id);
+  String resetPresentumItemId(String id);
 
   /// No description provided for @newYearBannerTitle.
   ///
@@ -199,6 +202,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wishing you a year full of wins ✨'**
   String get newYearBannerSubtitleLargeVersion;
+
+  /// No description provided for @maintenanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Under maintenance'**
+  String get maintenanceTitle;
+
+  /// No description provided for @maintenanceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'re currently performing maintenance to improve your experience.'**
+  String get maintenanceDescription;
+
+  /// No description provided for @maintenanceEstimatedTimeRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated time remaining:'**
+  String get maintenanceEstimatedTimeRemaining;
+
+  /// No description provided for @maintenanceComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance complete!'**
+  String get maintenanceComplete;
+
+  /// No description provided for @maintenanceRestartApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart App'**
+  String get maintenanceRestartApp;
+
+  /// No description provided for @maintenancePleaseCheckBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check back soon.'**
+  String get maintenancePleaseCheckBack;
+
+  /// No description provided for @restartingApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Restarting App'**
+  String get restartingApp;
+
+  /// No description provided for @restartNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'Please tap here to open the app again.'**
+  String get restartNotification;
+
+  /// No description provided for @copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copied;
+
+  /// No description provided for @aboutDialogNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get aboutDialogNameTitle;
+
+  /// No description provided for @aboutDialogVersionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get aboutDialogVersionTitle;
+
+  /// No description provided for @aboutDialogDescriptionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get aboutDialogDescriptionTitle;
+
+  /// No description provided for @aboutDialogHomepageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Homepage'**
+  String get aboutDialogHomepageTitle;
+
+  /// No description provided for @aboutDialogRepositoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get aboutDialogRepositoryTitle;
+
+  /// Short description for product categories.
+  ///
+  /// In en, this message translates to:
+  /// **'{category, select, groceries{Fresh food and daily essentials} electronics{Tech gadgets and devices} fashion{Clothing and accessories} other{Miscellaneous items}}'**
+  String categoryDescription(String category);
+
+  /// No description provided for @settingsCatalogFeatureNotDependentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabling this feature will only disable it from settings, but associated payload wouldn\'t be disabled'**
+  String get settingsCatalogFeatureNotDependentDescription;
 }
 
 class _AppLocalizationsDelegate

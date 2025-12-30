@@ -1,3 +1,4 @@
+import 'package:example/src/common/presentum/remove_ineligible_candidates_guard.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
 import 'package:example/src/feature/presentum/payload.dart';
@@ -5,8 +6,27 @@ import 'package:flutter/foundation.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 
+/// {@template feature_scheduling_guard}
+/// This guard rebuilds the entire feature state from scratch by filtering
+/// candidates and repopulating all slots. It clears existing state and
+/// rebuilds based on current feature catalog, preferences, and eligibility.
+///
+/// This approach differs from incremental guards (like [RemoveIneligibleCandidatesGuard])
+/// that preserve existing state structure and only remove ineligible items.
+///
+/// This guard is useful when:
+/// - You need complete state rebuilds based on external data changes
+/// - Feature catalog or preferences have changed significantly
+/// - You want deterministic ordering and fresh state on each evaluation
+/// - The cost of full rebuild is acceptable for your use case
+///
+/// Performance consideration: This does full eligibility checks on all
+/// candidates and rebuilds all slots from scratch, which can be more expensive
+/// than incremental updates but ensures consistency with current data sources.
+/// {@endtemplate}
 final class FeatureSchedulingGuard
     extends PresentumGuard<FeatureItem, AppSurface, AppVariant> {
+  /// {@macro feature_scheduling_guard}
   FeatureSchedulingGuard({
     required this.catalog,
     required this.prefs,
@@ -31,13 +51,21 @@ final class FeatureSchedulingGuard
     // 1) Filter: if feature is gone, disabled, ineligible, or dismissed,
     // exclude it from UI.
     final filtered = <FeatureItem>[];
-    final eligibilityContext = _buildEligibilityContext(context);
 
     for (final item in candidates) {
       final key = item.payload.featureKey;
 
-      // Check if feature exists in catalog
-      if (!catalog.exists(key)) continue;
+      final isDependentFeature = item.payload.dependsOnFeatureKey != null;
+
+      /// Only check against catalog if the feature is dependent
+      ///
+      /// Meaning if the dependsOnFeatureKey is null and payload in the
+      /// provider exists, even when the feature does not in the exists,
+      /// the payload will be shown only if eligible AND enabled.
+      if (isDependentFeature) {
+        // Check if feature exists in catalog
+        if (!catalog.exists(key)) continue;
+      }
 
       // Check if feature is enabled (except settings toggles)
       if (!_enabled(key) && !item.id.startsWith('settings_toggle:')) {
@@ -45,10 +73,7 @@ final class FeatureSchedulingGuard
       }
 
       // Check eligibility (time ranges, segments, etc.)
-      final isEligible = await eligibilityResolver.isEligible(
-        item,
-        eligibilityContext,
-      );
+      final isEligible = await eligibilityResolver.isEligible(item, context);
       if (!isEligible) continue;
 
       // Check if feature is dismissed
@@ -99,17 +124,4 @@ final class FeatureSchedulingGuard
 
     return state;
   }
-
-  /// Builds the eligibility evaluation context.
-  ///
-  /// This context is passed to the eligibility resolver to evaluate conditions
-  /// like time ranges, user segments, etc.
-  Map<String, dynamic> _buildEligibilityContext(
-    Map<String, dynamic> guardContext,
-  ) => {
-    'now': DateTime.now(),
-    'catalog': catalog,
-    'prefs': prefs,
-    ...guardContext,
-  };
 }

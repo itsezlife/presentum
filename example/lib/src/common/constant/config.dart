@@ -19,6 +19,11 @@ abstract final class Config {
     defaultValue: 'https://api.domain.tld',
   );
 
+  static const String websiteUrl = String.fromEnvironment(
+    'WEBSITE_URL',
+    defaultValue: 'https://example.presentum.dev',
+  );
+
   // --- AUTHENTICATION --- //
 
   /// Minimum length of password.
@@ -41,6 +46,25 @@ abstract final class Config {
   static const int maxScreenLayoutWidth = int.fromEnvironment(
     'MAX_LAYOUT_WIDTH',
     defaultValue: 768,
+  );
+
+  /// --- CURRENCY --- //
+
+  /// Currency symbol.
+  static const currencySymbol = r'$';
+
+  /// --- RECOMMENDATION --- //
+
+  /// Maximum age of recommendations in seconds.
+  static const int recommendationMaxAgeSeconds = int.fromEnvironment(
+    'RECOMMENDATION_MAX_AGE',
+    defaultValue: 60,
+  );
+
+  /// Maximum age of recommendation set in seconds.
+  static const int recommendationSetExpirationSeconds = int.fromEnvironment(
+    'RECOMMENDATION_SET_EXPIRATION',
+    defaultValue: 60,
   );
 }
 

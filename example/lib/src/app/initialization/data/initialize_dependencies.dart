@@ -1,16 +1,29 @@
 import 'dart:async';
 import 'dart:developer' as dev;
 
+import 'package:example/firebase_options.dart';
+import 'package:example/src/app/data/user_repository.dart';
 import 'package:example/src/app/initialization/data/platform/platform_initialization.dart';
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/feature/data/feature_catalog_repository.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_repository.dart';
 import 'package:example/src/feature/data/feature_store.dart';
+import 'package:example/src/maintenance/data/maintenance_store.dart';
+import 'package:example/src/shop/controller/favorite_controller.dart';
+import 'package:example/src/shop/controller/shop_controller.dart';
+import 'package:example/src/shop/data/product_repository.dart';
+import 'package:example/src/shop/data/recently_viewed_repository.dart';
+import 'package:example/src/shop/data/recently_viewed_store.dart';
+import 'package:example/src/shop/data/recommendation_algorithm.dart';
+import 'package:example/src/shop/data/recommendation_repository.dart';
+import 'package:example/src/shop/data/recommendation_store.dart';
+import 'package:example/src/updates/data/updates_store.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_remote_config_client/firebase_remote_config_client.dart';
 import 'package:remote_config_repository/remote_config_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 /// Initializes the app and returns a [Dependencies] object
 Future<Dependencies> $initializeDependencies({
@@ -45,63 +58,131 @@ Future<Dependencies> $initializeDependencies({
 
 typedef _InitializationStep =
     FutureOr<void> Function(Dependencies dependencies);
-final Map<String, _InitializationStep> _initializationSteps =
-    <String, _InitializationStep>{
-      'Platform pre-initialization': (_) => $platformInitialization(),
-      'Creating app metadata': (_) {},
-      'Observer state managment': (_) {},
-      'Initializing analytics': (_) {},
-      'Log app open': (_) {},
-      'Get remote config': (_) {},
-      'Restore settings': (_) {},
-      'Initialize shared preferences': (dependencies) async =>
-          dependencies.sharedPreferences =
-              await SharedPreferencesWithCache.create(
-                cacheOptions: const SharedPreferencesWithCacheOptions(),
-              ),
-      'Initialize Firebase core': (dependencies) async {
-        await Firebase.initializeApp(
-          // options: DefaultFirebaseOptions.currentPlatform,
-        );
-      },
-      'Initialize Firebase remote config': (dependencies) async {
-        final firebaseRemoteConfig = FirebaseRemoteConfig.instance;
-        dependencies.firebaseRemoteConfig = firebaseRemoteConfig;
-      },
-      'Initialize remote config': (dependencies) async {
-        final remoteConfigClient = FirebaseRemoteConfigClient(
-          firebaseRemoteConfig: dependencies.firebaseRemoteConfig,
-        );
-        final remoteConfigRepository = RemoteConfigRepository(
-          remoteConfigClient: remoteConfigClient,
-        );
+final Map<String, _InitializationStep>
+_initializationSteps = <String, _InitializationStep>{
+  'Platform pre-initialization': (_) => $platformInitialization(),
+  'Creating app metadata': (_) {},
+  'Observer state managment': (_) {},
+  'Initializing analytics': (_) {},
+  'Log app open': (_) {},
+  'Restore settings': (_) {},
+  'Get Shorebird updater': (dependencies) async {
+    final updater = ShorebirdUpdater();
+    final store = ShorebirdUpdatesStore(updater: updater);
+    dependencies.shorebirdUpdatesStore = store;
 
-        await remoteConfigRepository.activate();
-        dependencies.remoteConfigRepository = remoteConfigRepository;
-      },
-      'Initialize feature preferences': (dependencies) async {
-        final prefs = await SharedPreferencesWithCache.create(
-          cacheOptions: const SharedPreferencesWithCacheOptions(),
-        );
+    await store.checkForUpdate();
+  },
+  'Initialize shared preferences': (dependencies) async =>
+      dependencies.sharedPreferences = await SharedPreferencesWithCache.create(
+        cacheOptions: const SharedPreferencesWithCacheOptions(),
+      ),
+  'Getting user': (dependencies) async {
+    final userRepository = UserRepository(
+      prefs: dependencies.sharedPreferences,
+    );
+    dependencies.userRepository = userRepository;
 
-        // await prefs.clear();
+    await userRepository.incrementAppOpenedCount();
+  },
+  'Prepare shop controller': (dependencies) {
+    final repository = ProductRepositoryImpl(
+      sharedPreferences: dependencies.sharedPreferences,
+    );
 
-        final repo = FeaturePreferencesRepositoryImpl(prefs: prefs);
-        final preferencesStore = FeaturePreferencesStore(repo: repo);
-        await preferencesStore.init();
-        dependencies.featurePreferences = preferencesStore;
+    // Shop controller
+    final controller = ShopController(repository: repository)..fetch();
+    dependencies.shopController = controller;
 
-        final catalogRepo = FeatureCatalogRepositoryImpl(prefs: prefs);
+    const maxRecentlyViewedProducts = 10;
+    final recentlyViewedRepository = RecentlyViewedRepositoryImpl(
+      prefs: dependencies.sharedPreferences,
+      count: maxRecentlyViewedProducts,
+    );
 
-        final catalogStore = FeatureCatalogStore(
-          repository: catalogRepo,
-          remoteConfigRepository: dependencies.remoteConfigRepository,
-        );
-        await catalogStore.init();
-        dependencies.featureCatalog = catalogStore;
-      },
-      'Initialize localization': (_) {},
-      'Migrate app from previous version': (_) {},
-      'Collect logs': (_) {},
-      'Log app initialized': (_) {},
-    };
+    // Recently viewed store
+    // ignore: cascade_invocations
+    dependencies.recentlyViewedStore = RecentlyViewedStore(
+      getProductById: controller.getProductById,
+      repository: recentlyViewedRepository,
+    );
+
+    // Favorite controller
+    // ignore: cascade_invocations
+    dependencies.favoriteController = FavoriteController(repository: repository)
+      ..fetch();
+  },
+  'Getting recommendations': (dependencies) async {
+    final repository = RecommendationRepositoryImpl(
+      prefs: dependencies.sharedPreferences,
+    );
+
+    const algorithm = RecommendationAlgorithm();
+
+    final shopController = dependencies.shopController;
+    final favoriteController = dependencies.favoriteController;
+    final recentlyViewedStore = dependencies.recentlyViewedStore;
+
+    final recommendationStore = RecommendationStore(
+      repository: repository,
+      algorithm: algorithm,
+      getAllProducts: () => shopController.state.products,
+      getFavoriteProducts: () => favoriteController.state.products,
+      getRecentlyViewedProducts: () =>
+          recentlyViewedStore.value.map((e) => e.id).toList(),
+    );
+    dependencies.recommendationStore = recommendationStore;
+  },
+  'Initialize Firebase core': (dependencies) async {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  },
+  'Initialize Firebase remote config': (dependencies) async {
+    final firebaseRemoteConfig = FirebaseRemoteConfig.instance;
+    dependencies.firebaseRemoteConfig = firebaseRemoteConfig;
+  },
+  'Initialize remote config': (dependencies) async {
+    final remoteConfigClient = FirebaseRemoteConfigClient(
+      firebaseRemoteConfig: dependencies.firebaseRemoteConfig,
+    );
+    final remoteConfigRepository = RemoteConfigRepository(
+      remoteConfigClient: remoteConfigClient,
+    );
+
+    await remoteConfigRepository.activate();
+    dependencies.remoteConfigRepository = remoteConfigRepository;
+  },
+  'Initialize feature preferences': (dependencies) async {
+    final prefs = await SharedPreferencesWithCache.create(
+      cacheOptions: const SharedPreferencesWithCacheOptions(),
+    );
+
+    // await prefs.clear();
+
+    final repo = FeaturePreferencesRepositoryImpl(prefs: prefs);
+    final preferencesStore = FeaturePreferencesStore(repo: repo);
+    await preferencesStore.init();
+    dependencies.featurePreferences = preferencesStore;
+
+    final catalogRepo = FeatureCatalogRepositoryImpl(prefs: prefs);
+
+    final catalogStore = FeatureCatalogStore(
+      repository: catalogRepo,
+      remoteConfigRepository: dependencies.remoteConfigRepository,
+    );
+    await catalogStore.init();
+    dependencies.featureCatalog = catalogStore;
+  },
+  'Setting up maintenance': (dependencies) async {
+    final maintenanceStore = MaintenanceStore(
+      remoteConfigRepository: dependencies.remoteConfigRepository,
+    );
+    await maintenanceStore.initialize();
+    dependencies.maintenanceStore = maintenanceStore;
+  },
+  'Initialize localization': (_) {},
+  'Migrate app from previous version': (_) {},
+  'Collect logs': (_) {},
+  'Log app initialized': (_) {},
+};

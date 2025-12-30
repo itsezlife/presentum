@@ -6,6 +6,8 @@ import 'package:example/src/app/initialization/widget/inherited_dependencies.dar
     deferred as inherited_dependencies;
 import 'package:example/src/app/view/app_error.dart' deferred as app_error;
 import 'package:example/src/app/view/app_view.dart' deferred as app;
+import 'package:example/src/maintenance/presentum/maintenance_presentum.dart'
+    deferred as maintenance;
 import 'package:flutter/widgets.dart';
 import 'package:shared/shared.dart';
 
@@ -21,6 +23,7 @@ void main() => runZonedGuarded<void>(
     await initialization.loadLibrary();
     await inherited_dependencies.loadLibrary();
     await app.loadLibrary();
+    await maintenance.loadLibrary();
     initialization
         .$initializeApp(
           onProgress: (progress, message) => initializationProgress.value = (
@@ -30,12 +33,12 @@ void main() => runZonedGuarded<void>(
           onSuccess: (dependencies) => runApp(
             inherited_dependencies.InheritedDependencies(
               dependencies: dependencies,
-              child: app.AppView(),
+              child: maintenance.MaintenancePresentum(child: app.AppView()),
             ),
           ),
           onError: (error, stackTrace) async {
             await app_error.loadLibrary();
-            runApp(app_error.AppError(error: error));
+            runApp(app_error.AppError(error: error, stackTrace: stackTrace));
             ErrorUtil.logError(error, stackTrace).ignore();
           },
         )

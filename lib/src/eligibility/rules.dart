@@ -354,6 +354,77 @@ final class ConstantRule implements EligibilityRule<ConstantEligibility> {
   ) async => eligibility.value;
 }
 
+/// Evaluates [RecurringTimePatternEligibility] conditions.
+///
+/// Checks if current **local time** matches the recurring pattern.
+///
+/// Critical implementation notes:
+/// - Uses local time (not UTC) for intuitive user experience
+/// - Handles midnight crossover (e.g., 10pm-2am)
+/// - Empty daysOfWeek means "all days"
+final class RecurringTimePatternRule
+    implements EligibilityRule<RecurringTimePatternEligibility> {
+  /// {@macro recurring_time_pattern_rule}
+  const RecurringTimePatternRule({this.timeProvider});
+
+  /// Optional custom time provider (useful for testing).
+  /// Defaults to DateTime.now() (local time).
+  final DateTime Function()? timeProvider;
+
+  @override
+  bool supports(Eligibility eligibility) =>
+      eligibility is RecurringTimePatternEligibility;
+
+  @override
+  Future<bool> evaluate(
+    RecurringTimePatternEligibility eligibility,
+    Map<String, dynamic> context,
+  ) async {
+    final now = (timeProvider ?? DateTime.now)();
+
+    // Check day of week (if specified)
+    if (eligibility.daysOfWeek.isNotEmpty) {
+      final currentDay = DayOfWeek.values.firstWhere(
+        (d) => d.value == now.weekday,
+      );
+
+      if (!eligibility.daysOfWeek.contains(currentDay)) {
+        return false;
+      }
+    }
+
+    // Check time of day
+    final currentTime = TimeOfDay(hour: now.hour, minute: now.minute);
+
+    final isEligible = _isTimeInRange(
+      currentTime,
+      eligibility.timeStart,
+      eligibility.timeEnd,
+      eligibility.crossesMidnight,
+    );
+
+    return isEligible;
+  }
+
+  /// Check if time falls within range, handling midnight crossover.
+  bool _isTimeInRange(
+    TimeOfDay current,
+    TimeOfDay start,
+    TimeOfDay end,
+    bool crossesMidnight,
+  ) {
+    if (crossesMidnight) {
+      // Pattern like 22:00-02:00
+      // Eligible if: time >= 22:00 OR time < 02:00
+      return !current.isBefore(start) || current.isBefore(end);
+    } else {
+      // Normal case: 09:00-17:00
+      // Eligible if: time >= 09:00 AND time < 17:00
+      return !current.isBefore(start) && current.isBefore(end);
+    }
+  }
+}
+
 /// Convenience function to create a standard rule set with all built-in rules.
 ///
 /// Includes composite rules (AllOf, AnyOf, Not) which recursively use the same
@@ -362,6 +433,7 @@ List<EligibilityRule> createStandardRules() {
   // Create base rules first
   final baseRules = <EligibilityRule>[
     const TimeRangeRule(),
+    const RecurringTimePatternRule(),
     const SetMembershipRule(),
     const AnySegmentRule(),
     const BooleanFlagRule(),

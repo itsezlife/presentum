@@ -33,7 +33,11 @@ enum PopupPresentResult {
 }
 
 /// {@template presentum_popup_surface_state_mixin}
-/// Watches the popup surface and presents dialogs/fullscreen widgets.
+/// Manages popup presentation (dialogs/fullscreen widgets) for a surface.
+///
+/// Internally uses [PresentumActiveSurfaceItemObserverMixin] to observe active
+/// items and adds popup-specific behavior: duplicate detection, conflict
+/// resolution, and queuing.
 /// {@endtemplate}
 mixin PresentumPopupSurfaceStateMixin<
   TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
@@ -41,15 +45,16 @@ mixin PresentumPopupSurfaceStateMixin<
   V extends PresentumVisualVariant,
   T extends StatefulWidget
 >
-    on State<T> {
-  late final PresentumStateObserver<TItem, S, V> _observer;
-  TItem? _lastEntry;
+    on State<T>
+    implements PresentumActiveSurfaceItemObserverMixin<TItem, S, V, T> {
   bool _showing = false;
+  TItem? _lastShownEntry;
   DateTime? _lastShownAt;
   final List<TItem> _queuedEntries = [];
 
-  /// The surface to watch.
-  PresentumSurface get surface;
+  // Observer mixin state - we implement the mixin interface directly
+  late final PresentumStateObserver<TItem, S, V> _observer;
+  TItem? _currentActiveItem;
 
   /// Ignore duplicate entries shown within [duplicateThreshold].
   /// Set to false to allow duplicates (default).
@@ -63,60 +68,93 @@ mixin PresentumPopupSurfaceStateMixin<
   /// Strategy for handling conflicts when a new popup activates while showing.
   PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.ignore;
 
+  // Implement observer mixin interface
+  @override
+  TItem? get currentActiveItem => _currentActiveItem;
+
+  @override
+  PresentumStateObserver<TItem, S, V> get observer => _observer;
+
+  @override
+  bool get handleInitialState => true;
+
   @override
   void initState() {
     super.initState();
     _observer = context.presentum<TItem, S, V>().observer;
 
-    /// Handle initial state evaluation.
-    _onStateChange();
+    if (handleInitialState) {
+      _evaluateInitialState();
+    }
 
-    _observer.addListener(_onStateChange);
+    _observer.addListener(_onObserverStateChange);
   }
 
   @override
   void dispose() {
-    _observer.removeListener(_onStateChange);
+    _observer.removeListener(_onObserverStateChange);
     _queuedEntries.clear();
     super.dispose();
   }
 
-  void _onStateChange() {
-    final state = _observer.value;
-    final slot = state.slots[surface];
+  void _evaluateInitialState() {
+    final slot = _observer.value.slots[surface];
+    final initialActive = slot?.active;
 
-    /// There is an active entry, but the slot became inactive, so
-    /// we need to pop the dialog and mark the entry as dismissed.
-    if (_lastEntry case final entry? when _showing && slot?.active == null) {
-      fine('Entry became inactive while showing: ${entry.id}');
-      _dismissAndPop(entry);
+    if (initialActive != null) {
+      _currentActiveItem = initialActive;
+      onActiveItemChanged(current: initialActive, previous: null);
+    }
+  }
+
+  void _onObserverStateChange() {
+    final slot = _observer.value.slots[surface];
+    final newActiveItem = slot?.active;
+
+    // Only notify if the active item actually changed
+    if (newActiveItem?.id != _currentActiveItem?.id) {
+      final previous = _currentActiveItem;
+      _currentActiveItem = newActiveItem;
+      onActiveItemChanged(current: newActiveItem, previous: previous);
+    }
+  }
+
+  @override
+  void onActiveItemChanged({
+    required TItem? current,
+    required TItem? previous,
+  }) {
+    // Case 1: Active item became inactive while we're showing it
+    if (previous case final previous? when current == null && _showing) {
+      fine('Entry ${previous.id} became inactive while showing');
+      _dismissAndPop(previous);
       return;
     }
 
-    /// Present the new entry if it differs from the last one.
-    if (slot?.active case final entry? when entry.id != _lastEntry?.id) {
-      /// Check for duplicates if enabled.
-      if (ignoreDuplicates && _isDuplicate(entry)) {
+    // Case 2: New item became active
+    if (current != null) {
+      // Check for duplicates if enabled
+      if (ignoreDuplicates && _isDuplicate(current)) {
         fine(
-          'Ignoring duplicate entry: ${entry.id} '
+          'Ignoring duplicate entry: ${current.id} '
           '(last shown ${DateTime.now().difference(_lastShownAt!).inSeconds}s '
           'ago)',
         );
         return;
       }
 
-      /// Handle conflict if already showing.
+      // Handle conflict if already showing
       if (_showing) {
-        _handleConflict(entry);
+        _handleConflict(current);
         return;
       }
 
-      _presentEntry(entry);
+      _presentEntry(current);
     }
   }
 
   bool _isDuplicate(TItem entry) {
-    if (_lastEntry?.id != entry.id) return false;
+    if (_lastShownEntry?.id != entry.id) return false;
 
     final lastShown = _lastShownAt;
     if (lastShown == null) return false;
@@ -129,8 +167,9 @@ mixin PresentumPopupSurfaceStateMixin<
   }
 
   void _handleConflict(TItem entry) {
+    final currentEntry = currentActiveItem;
     fine(
-      'Conflict: new entry ${entry.id} while showing ${_lastEntry?.id} '
+      'Conflict: new entry ${entry.id} while showing ${currentEntry?.id} '
       '(strategy: $conflictStrategy)',
     );
 
@@ -141,8 +180,8 @@ mixin PresentumPopupSurfaceStateMixin<
 
       case PopupConflictStrategy.replace:
         // Dismiss current and show new immediately
-        if (_lastEntry case final lastEntry?) {
-          _dismissAndPop(lastEntry);
+        if (currentEntry != null) {
+          _dismissAndPop(currentEntry);
         }
         _presentEntry(entry);
 
@@ -158,7 +197,7 @@ mixin PresentumPopupSurfaceStateMixin<
   }
 
   void _presentEntry(TItem entry) {
-    _lastEntry = entry;
+    _lastShownEntry = entry;
     scheduleMicrotask(() async {
       try {
         if (!mounted) return;
@@ -213,7 +252,7 @@ mixin PresentumPopupSurfaceStateMixin<
   /// Override to customize pop behavior (e.g., custom navigator).
   void pop() {
     if (mounted) {
-      Navigator.maybePop(context, PopupPresentResult.userDismissed);
+      Navigator.maybePop(context, true);
     }
   }
 

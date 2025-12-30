@@ -5,13 +5,25 @@ import 'package:flutter/foundation.dart';
 /// {@endtemplate}
 extension type FeatureId(String value) {
   /// New Year theme feature id.
-  static const String newYearTheme = 'newYearTheme';
+  static const newYearTheme = 'newYearTheme';
 
   /// New Year banner feature id.
-  static const String newYearBanner = 'newYearBanner';
+  static const newYearBanner = 'newYearBanner';
+
+  /// Catalog categories section feature id.
+  static const catalogCategoriesSection = 'catalogCategoriesSection';
+
+  /// Catalog recently viewed products section feature id.
+  static const catalogRecentlyViewedProductsSection =
+      'catalogRecentlyViewedProductsSection';
 
   /// All feature ids.
-  static const List<String> all = [newYearTheme, newYearBanner];
+  static const List<String> all = [
+    newYearTheme,
+    newYearBanner,
+    catalogCategoriesSection,
+    catalogRecentlyViewedProductsSection,
+  ];
 }
 
 /// {@template feature_definition}
