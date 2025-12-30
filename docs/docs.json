@@ -80,6 +80,11 @@
           "anchor": "pub.dev",
           "icon": "box",
           "href": "https://pub.dev/packages/presentum"
+        },
+        {
+          "anchor": "Ultimate production-ready example",
+          "icon": "rocket",
+          "href": "https://example.presentum.dev"
         }
       ]
     }

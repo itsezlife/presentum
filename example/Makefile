@@ -107,7 +107,7 @@ coverage: test ## generate coverage report
 	@lcov --list coverage/lcov.info
 
 .PHONY: build
-build: get ## build the application
+build: gen ## build the application
 	$(call print-target)
 	@fvm flutter build web --release --source-maps --pwa-strategy none --base-href / --dart-define VERSION=0.0.0 --dart-define-from-file=config/production.json
 
@@ -134,14 +134,14 @@ release-android-apk: ## create shorebird release for android (apk artifact)
 	shorebird release android --target ./lib/main.dart --dart-define-from-file=config/$$FLAVOR.json --artifact apk --target-platform android-arm64 --split-debug-info=build/debug-info
 
 .PHONY: patch
-patch: ## create shorebird patch for platform
+patch: gen ## create shorebird patch for platform
 	$(call print-target)
 	FLAVOR=$${FLAVOR:-development}; \
 	PLATFORM=$${PLATFORM:-android}; \
 	shorebird patch $$PLATFORM --release-version latest --target ./lib/main.dart --dart-define-from-file=config/$$FLAVOR.json
 
 .PHONY: patch-android
-patch-android: ## create shorebird patch for android
+patch-android: gen ## create shorebird patch for android
 	$(call print-target)
 	FLAVOR=$${FLAVOR:-development}; \
 	shorebird patch android --release-version latest --target ./lib/main.dart --dart-define-from-file=config/$$FLAVOR.json --split-debug-info=build/debug-info
