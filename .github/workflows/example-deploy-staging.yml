@@ -43,7 +43,7 @@ jobs:
 
       - name: 📤 Restore Pub modules
         id: cache-pub-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: |
             $HOME/.pub-cache
@@ -68,7 +68,7 @@ jobs:
 
       - name: 📥 Save Pub modules
         id: cache-pub-save
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             $HOME/.pub-cache
