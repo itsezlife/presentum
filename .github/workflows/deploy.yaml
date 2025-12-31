@@ -18,7 +18,7 @@ jobs:
     steps:
       # Checkout repository
       - name: 🚂 Get latest code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 🗄️ Export pub cache directory
         run: |
