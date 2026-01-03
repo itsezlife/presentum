@@ -261,7 +261,7 @@ class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
 }
 ```
 
-[Example: Production campaign payload with JSON serialization](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+[Example: Production campaign payload with JSON serialization](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/payload.dart)
 
 ### [Options](https://docs.presentum.dev/core-concepts/payloads-options-items)
 
@@ -313,7 +313,7 @@ class MyOutlet extends StatelessWidget {
 }
 ```
 
-[Example: Popup host for dialog presentations](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart)
+[Example: Popup host for dialog presentations](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/widgets/campaign_popup_host.dart)
 
 ## [How to present](https://docs.presentum.dev/guides/state-management)
 
@@ -343,9 +343,9 @@ For example, you can check user preferences, storage, history, impression limits
 
 **Examples:**
 
-1. [Scheduling guard with priority and sequencing](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
-2. [Remove ineligible campaigns guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/remove_ineligible_campaigns_guard.dart)
-3. [Sync state with candidates guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/sync_state_with_candidates_guard.dart)
+1. [Scheduling guard with priority and sequencing](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/guards/scheduling_guard.dart)
+2. [Remove ineligible campaigns guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/remove_ineligible_candidates_guard.dart)
+3. [Sync state with candidates guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/sync_state_with_candidates_guard.dart)
 
 ## [Eligibility system](https://docs.presentum.dev/features/eligibility-system)
 
