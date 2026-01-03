@@ -1,10 +1,8 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
-import 'package:presentum/src/controller/observer.dart';
-import 'package:presentum/src/state/payload.dart';
-import 'package:presentum/src/state/state.dart';
-import 'package:presentum/src/widgets/build_context_extension.dart';
-import 'package:presentum/src/widgets/presentum_context.dart';
+import 'package:presentum/presentum.dart';
 
 /// Builder function that receives the [BuildContext] and the [TItem] item.
 typedef PresentumOutletBuilder<T> =
@@ -257,6 +255,7 @@ class PresentumOutlet$Composition2<
     this.surfaceMode2 = OutletGroupMode.single,
     this.resolver1,
     this.resolver2,
+    this.debounceDuration = _defaultDebounceDuration,
     this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
   }) : assert(
@@ -291,6 +290,9 @@ class PresentumOutlet$Composition2<
   /// Builder that receives the list of items from the two presentums combined.
   final PresentumOutletBuilder<List<PresentumItem>>? builder;
 
+  /// The duration to debounce the state change.
+  final Duration debounceDuration;
+
   /// Builder that receives the [BuildContext] and the list of items from the
   /// two presentums combined and takes the responsibility of rendering them
   /// and hanlding an empty state.
@@ -314,6 +316,8 @@ class PresentumOutlet$Composition2<
   static Widget _defaultPlaceholderBuilder(BuildContext context) =>
       const SizedBox.shrink();
 
+  static const _defaultDebounceDuration = Duration(milliseconds: 16);
+
   @override
   State<PresentumOutlet$Composition2<TItem1, TItem2, S1, V1, S2, V2>>
   createState() =>
@@ -330,15 +334,20 @@ class _PresentumOutlet$Composition2State<
 >
     extends State<PresentumOutlet$Composition2<TItem1, TItem2, S1, V1, S2, V2>>
     with PresentumOutlet$CompositionMixin {
+  late final Presentum<TItem1, S1, V1> _presentum1;
+  late final Presentum<TItem2, S2, V2> _presentum2;
   late final PresentumStateObserver<TItem1, S1, V1> _observer1;
   late final PresentumStateObserver<TItem2, S2, V2> _observer2;
   List<PresentumItem> _items = [];
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    _observer1 = context.presentum<TItem1, S1, V1>().observer;
-    _observer2 = context.presentum<TItem2, S2, V2>().observer;
+    _presentum1 = context.presentum<TItem1, S1, V1>();
+    _presentum2 = context.presentum<TItem2, S2, V2>();
+    _observer1 = _presentum1.observer;
+    _observer2 = _presentum2.observer;
 
     _onStateChange();
     _observer1.addListener(_onStateChange);
@@ -346,6 +355,11 @@ class _PresentumOutlet$Composition2State<
   }
 
   void _onStateChange() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(widget.debounceDuration, _processStateChange);
+  }
+
+  Future<void> _processStateChange() async {
     final items1 = collectItemsForSlot<TItem1, S1, V1>(
       widget.surface1,
       _observer1,
@@ -379,6 +393,7 @@ class _PresentumOutlet$Composition2State<
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _observer1.removeListener(_onStateChange);
     _observer2.removeListener(_onStateChange);
     super.dispose();
@@ -434,6 +449,7 @@ class PresentumOutlet$Composition3<
     this.builder,
     this.compositeBuilder,
     this.buildWhen,
+    this.debounceDuration = _defaultDebounceDuration,
     this.placeholderBuilder = _defaultPlaceholderBuilder,
     super.key,
   }) : assert(
@@ -487,6 +503,9 @@ class PresentumOutlet$Composition3<
   /// presentums combined.
   final PresentumOutletBuilder<List<PresentumItem>>? compositeBuilder;
 
+  /// The duration to debounce the state change.
+  final Duration debounceDuration;
+
   /// Function that decides whether to rebuild the widget when the items change.
   final bool Function(
     List<PresentumItem> previousItems,
@@ -500,6 +519,8 @@ class PresentumOutlet$Composition3<
 
   static Widget _defaultPlaceholderBuilder(BuildContext context) =>
       const SizedBox.shrink();
+
+  static const _defaultDebounceDuration = Duration(milliseconds: 16);
 
   @override
   State<
@@ -549,6 +570,7 @@ class _PresentumOutlet$Composition3State<
   late final PresentumStateObserver<TItem2, S2, V2> _observer2;
   late final PresentumStateObserver<TItem3, S3, V3> _observer3;
   List<PresentumItem> _items = [];
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -564,6 +586,11 @@ class _PresentumOutlet$Composition3State<
   }
 
   void _onStateChange() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(widget.debounceDuration, _processStateChange);
+  }
+
+  Future<void> _processStateChange() async {
     final items1 = collectItemsForSlot<TItem1, S1, V1>(
       widget.surface1,
       _observer1,
@@ -603,6 +630,7 @@ class _PresentumOutlet$Composition3State<
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _observer1.removeListener(_onStateChange);
     _observer2.removeListener(_onStateChange);
     _observer3.removeListener(_onStateChange);

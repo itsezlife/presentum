@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:example/src/campaigns/camapigns.dart';
+import 'package:example/src/common/constant/config.dart';
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/l10n/l10n.dart';
@@ -99,7 +100,7 @@ class _ResetFeaturePresentumItemsStorageState
     return ExpansionTile(
       title: Text(l10n.resetPresentumItemsStorageTitle),
       subtitle: Text(l10n.resetPresentumItemsStorageSubtitle),
-      initiallyExpanded: false,
+      initiallyExpanded: Config.environment.isDevelopment,
       children: [
         ListTile(
           title: Text(l10n.resetAllPresentumItemsStorageTitle),

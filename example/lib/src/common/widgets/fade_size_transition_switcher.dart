@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 class FadeSizeTransitionSwitcher extends StatelessWidget {
   const FadeSizeTransitionSwitcher({
     required this.child,
-    this.duration = _duration,
-    this.reverseDuration,
+    this.sizeDuration = _duration,
+    this.fadeDuration = _duration,
+    this.reverseSizeDuration,
+    this.reverseFadeDuration,
     this.isForwardMove = true,
     super.key,
   });
@@ -16,10 +18,16 @@ class FadeSizeTransitionSwitcher extends StatelessWidget {
   final Widget child;
 
   /// The duration of the transition.
-  final Duration duration;
+  final Duration sizeDuration;
 
-  /// The duration of the reverse transition.
-  final Duration? reverseDuration;
+  /// The duration of the fade transition.
+  final Duration fadeDuration;
+
+  /// The duration of the reverse size transition.
+  final Duration? reverseSizeDuration;
+
+  /// The duration of the reverse fade transition.
+  final Duration? reverseFadeDuration;
 
   /// Whether the transition is forward or backward.
   final bool isForwardMove;
@@ -42,11 +50,12 @@ class FadeSizeTransitionSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedSize(
     alignment: Alignment.topLeft,
-    duration: _duration,
-    reverseDuration: reverseDuration,
+    duration: sizeDuration,
+    reverseDuration: reverseSizeDuration,
     curve: _sizeCurve,
     child: AnimatedSwitcher(
-      duration: _duration,
+      duration: fadeDuration,
+      reverseDuration: fadeDuration,
       layoutBuilder: (currentChild, previousChildren) => Stack(
         clipBehavior: Clip.none,
         children: [
