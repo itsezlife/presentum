@@ -1,5 +1,6 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:example/src/campaigns/camapigns.dart';
+import 'package:example/src/common/constant/config.dart';
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/common/widgets/scaffold_padding.dart';
 import 'package:example/src/settings/widgets/about_app_list_tile.dart';
@@ -31,16 +32,19 @@ class SettingsView extends StatelessWidget {
               padding: ScaffoldPadding.of(context, horizontalPadding: 0),
               sliver: SliverList.list(
                 children: [
+                  if (Config.environment.isDevelopment)
+                    const ResetFeaturePresentumItemsStorage(),
                   SettingsFeatureTogglesOutlet(catalog: catalog, prefs: prefs),
-                  const Padding(
+                  const CampaignOutlet(
+                    surface: CampaignSurface.menuTile,
                     padding: EdgeInsets.all(AppSpacing.lg),
-                    child: CampaignOutlet(surface: CampaignSurface.menuTile),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   const EnabledCatalogFeatures(),
                   const SizedBox(height: AppSpacing.lg),
-                  const ResetFeaturePresentumItemsStorage(),
                   const SizedBox(height: AppSpacing.lg),
+                  if (!Config.environment.isDevelopment)
+                    const ResetFeaturePresentumItemsStorage(),
                   const AboutAppListTile(),
                 ],
               ),

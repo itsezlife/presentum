@@ -8,15 +8,20 @@ import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 
 class NewYearBanner extends StatelessWidget {
-  const NewYearBanner({super.key});
+  const NewYearBanner({super.key, this.padding});
+
+  final EdgeInsets? padding;
 
   @override
   Widget build(BuildContext context) =>
       PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
         surface: AppSurface.homeHeader,
-        builder: (context, item) => const RepaintBoundary(
-          child: _NewYearBannerContent(key: PageStorageKey('new_year_banner')),
-        ),
+        builder: (context, item) {
+          const child = RepaintBoundary(child: _NewYearBannerContent());
+          if (padding case final padding?)
+            return Padding(padding: padding, child: child);
+          return child;
+        },
       );
 }
 

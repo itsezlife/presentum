@@ -1,3 +1,16 @@
+## 0.3.6
+
+- **Feat**: Added debouncing to `PresentumOutlet$Composition2` and `PresentumOutlet$Composition3` (default 16ms)
+  - Prevents clunky and jumping transitions when multiple presentums initializes and evaluates value
+    simultaniously
+  - Batches rapid state changes into single render cycles for smooth animations
+  - Configurable via `debounceDuration` parameter
+- **Example**: Improved transition smoothness in composition outlets
+  - Added separate `sizeDuration` and `fadeDuration` to `FadeSizeTransitionSwitcher`
+  - Added `ValueKey` to widgets in `BannerOutlet` for stable transition identity
+  - Added `padding` parameter to `NewYearBanner` for flexible layout
+  - Reorganized settings view with environment-aware debug controls
+
 ## 0.3.5
 
 - **Feat**: Added pattern matching to `SlotChange` with `map()`, `maybeMap()`, and `mapOrNull()` methods

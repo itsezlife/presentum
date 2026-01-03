@@ -39,15 +39,16 @@ class BannerOutlet extends StatelessWidget {
         compositeBuilder: (context, items) => FadeSizeTransitionSwitcher(
           isForwardMove: true,
           child: switch (items.firstOrNull) {
-            CampaignPresentumItem(:final surface) => Padding(
+            CampaignPresentumItem(:final surface) => CampaignOutlet(
+              key: ValueKey('campaign_banner_$surface'),
+              surface: surface,
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: CampaignOutlet(surface: surface),
             ),
-            FeatureItem() => const Padding(
+            FeatureItem() => const NewYearBanner(
+              key: ValueKey('new_year_banner'),
               padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: NewYearBanner(),
             ),
-            _ => const SizedBox.shrink(),
+            _ => const SizedBox.shrink(key: ValueKey('empty_banner')),
           },
         ),
       );
