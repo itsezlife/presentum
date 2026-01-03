@@ -77,12 +77,11 @@ jobs:
 
   # Deploy web on production
   web-deploy:
-    name: "Deploy web on production"
+    name: "Deploy web to production"
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      checks: write
     #defaults:
     #  run:
     #    working-directory: ./example
@@ -97,11 +96,16 @@ jobs:
         run: |
           tree
 
-      - name: 🔥 Deploy to Firebase production
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}"
-          entryPoint: example/
-          target: production
-          projectId: flutter-presentum-example
+          node-version: "20"
+
+      - name: 🔥 Deploy to Firebase production
+        working-directory: example
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}' > ${{ runner.temp }}/gcp-key.json
+          npm install -g firebase-tools
+          firebase deploy --only hosting:production --project flutter-presentum-example

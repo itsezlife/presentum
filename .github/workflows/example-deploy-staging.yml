@@ -89,13 +89,11 @@ jobs:
 
   # Deploy web on staging
   web-deploy:
-    name: "Deploy web on staging"
+    name: "Deploy web to staging"
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      checks: write
-      pull-requests: write
     #defaults:
     #  run:
     #    working-directory: ./example
@@ -110,11 +108,16 @@ jobs:
         run: |
           tree
 
-      - name: 🔥 Deploy to Firebase staging
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}"
-          entryPoint: example/
-          target: staging
-          projectId: flutter-presentum-example
+          node-version: "20"
+
+      - name: 🔥 Deploy to Firebase staging
+        working-directory: example
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}' > ${{ runner.temp }}/gcp-key.json
+          npm install -g firebase-tools
+          firebase deploy --only hosting:staging --project flutter-presentum-example
