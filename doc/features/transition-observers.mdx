@@ -275,42 +275,7 @@ class MaintenanceTransitionObserver
     }
   }
 
-  void _startUpdateChecks() {
-    updatesStore.checkForUpdate();
-    _scheduleProgressiveUpdateCheck();
-  }
-
-  void _stopUpdateChecks() {
-    _updatesCheckTimer?.cancel();
-    _checkInterval = 5;
-  }
-
-  void _scheduleProgressiveUpdateCheck() {
-    _updatesCheckTimer?.cancel();
-    _updatesCheckTimer = Timer(Duration(seconds: _checkInterval), () async {
-      final status = updatesStore.status;
-
-      switch (status) {
-        case UpdateStatus.unavailable:
-        case UpdateStatus.restartRequired:
-          _updatesCheckTimer?.cancel();
-          return;
-        case UpdateStatus.upToDate:
-          await updatesStore.checkForUpdate();
-        case UpdateStatus.outdated:
-        case null:
-          break;
-      }
-
-      // Progressive backoff: 5s → 10s → 20s → 40s → 60s (cap)
-      _checkInterval = (_checkInterval * 2).clamp(5, 60);
-      _scheduleProgressiveUpdateCheck();
-    });
-  }
-
-  void dispose() {
-    _updatesCheckTimer?.cancel();
-  }
+  ... callbacks implementations
 }
 ```
 
