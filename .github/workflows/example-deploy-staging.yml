@@ -92,6 +92,10 @@ jobs:
     name: "Deploy web on preview channel"
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     #defaults:
     #  run:
     #    working-directory: ./example

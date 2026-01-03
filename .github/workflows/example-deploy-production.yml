@@ -80,6 +80,9 @@ jobs:
     name: "Deploy web on live channel"
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     #defaults:
     #  run:
     #    working-directory: ./example
