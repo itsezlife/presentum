@@ -106,7 +106,8 @@ jobs:
 
       - name: 📥 List web artifact
         run: |
-          tree
+          ls -la
+          ls -la example/ || echo "example/ not found"
 
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
@@ -114,10 +115,10 @@ jobs:
           node-version: "20"
 
       - name: 🔥 Deploy to Firebase staging
-        working-directory: example
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}' > ${{ runner.temp }}/gcp-key.json
           npm install -g firebase-tools
+          cd example
           firebase deploy --only hosting:staging --project flutter-presentum-example
