@@ -1,4 +1,4 @@
-name: Example - deploy web on live channel
+name: Example - deploy web to production
 
 on:
   workflow_dispatch:
@@ -75,9 +75,9 @@ jobs:
             example/firebase.json
             firebase.json
 
-  # Deploy web on production / live channel
+  # Deploy web on production
   web-deploy:
-    name: "Deploy web on live channel"
+    name: "Deploy web on production"
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -97,11 +97,11 @@ jobs:
         run: |
           tree
 
-      - name: 🔥 Deploy to Firebase live channel
+      - name: 🔥 Deploy to Firebase production
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}"
           entryPoint: example/
-          channelId: live
+          target: production
           projectId: flutter-presentum-example

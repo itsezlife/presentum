@@ -1,4 +1,4 @@
-name: Example - deploy web on preview channel
+name: Example - deploy web to staging
 
 on:
   pull_request:
@@ -87,9 +87,9 @@ jobs:
             example/firebase.json
             firebase.json
 
-  # Deploy web on preview / staging channel
+  # Deploy web on staging
   web-deploy:
-    name: "Deploy web on preview channel"
+    name: "Deploy web on staging"
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -110,12 +110,11 @@ jobs:
         run: |
           tree
 
-      - name: 🔥 Deploy to Firebase preview channel
+      - name: 🔥 Deploy to Firebase staging
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}"
-          expires: 7d
           entryPoint: example/
-          channelId: stage
+          target: staging
           projectId: flutter-presentum-example
