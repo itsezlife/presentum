@@ -441,16 +441,28 @@ class CampaignDialog extends StatelessWidget {
 
 ## Integration
 
-Wrap your app or a subtree with the popup host:
+Initialize the presentum and wrap your app with the popup host:
 
 ```dart
-class MyApp extends StatelessWidget {
+class CampaignsPresentum extends StatefulWidget {
+  const CampaignsPresentum({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<CampaignsPresentum> createState() => _CampaignsPresentumState();
+}
+
+class _CampaignsPresentumState extends State<CampaignsPresentum>
+    with CampaignsPresentumStateMixin {
   @override
   Widget build(BuildContext context) {
-    return PresentumBuilder<CampaignItem, CampaignSurface, CampaignVariant>(
-      builder: (context) => CampaignPopupHost(
-        child: MaterialApp(
-          home: HomeScreen(),
+    return campaignsPresentum.config.engine.build(
+      context,
+      CampaignsProviderScope(
+        provider: provider,
+        child: CampaignPopupHost(
+          child: widget.child,
         ),
       ),
     );
@@ -458,7 +470,28 @@ class MyApp extends StatelessWidget {
 }
 ```
 
+Then use it in your app:
+
+```dart
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return CampaignsPresentum(
+      child: MaterialApp(
+        home: HomeScreen(),
+      ),
+    );
+  }
+}
+```
+
 The host watches for popup surface changes and shows dialogs automatically.
+
+<Info>
+  This pattern initializes the presentum engine, wraps the child with the
+  provider scope for context access, and adds the popup host for automatic
+  dialog management.
+</Info>
 
 ## Best practices
 
@@ -584,13 +617,17 @@ Use `PresentumPopupSurfaceStateMixin` when you need:
     Modal dialogs that require user interaction
   </Card>
 
-  <Card title="Fullscreen pages" icon="expand">
-    Fullscreen promotional content or onboarding flows
-  </Card>
+{" "}
 
-  <Card title="Bottom sheets" icon="rectangle-vertical">
-    Modal bottom sheets with actions
-  </Card>
+<Card title="Fullscreen pages" icon="expand">
+  Fullscreen promotional content or onboarding flows
+</Card>
+
+{" "}
+
+<Card title="Bottom sheets" icon="rectangle-vertical">
+  Modal bottom sheets with actions
+</Card>
 
   <Card title="Conflict resolution" icon="shuffle">
     Smart handling of overlapping popups with queueing
@@ -610,19 +647,23 @@ Use `PresentumPopupSurfaceStateMixin` when you need:
     Learn about the underlying observer mixin
   </Card>
 
-  <Card
-    title="Inherited widgets"
-    icon="sitemap"
-    href="/features/inherited-widgets">
-    Using InheritedPresentumItem in dialogs
-  </Card>
+{" "}
 
-  <Card
-    title="Production example"
-    icon="code"
-    href="https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/widgets/campaign_popup_host.dart">
-    Complete popup host implementation
-  </Card>
+<Card
+  title="Inherited widgets"
+  icon="sitemap"
+  href="/features/inherited-widgets">
+  Using InheritedPresentumItem in dialogs
+</Card>
+
+{" "}
+
+<Card
+  title="Production example"
+  icon="code"
+  href="https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/widgets/campaign_popup_host.dart">
+  Complete popup host implementation
+</Card>
 
   <Card
     title="Example app"
