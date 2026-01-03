@@ -30,7 +30,7 @@ jobs:
     steps:
       - name: 🚂 Get latest code
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github
@@ -96,7 +96,7 @@ jobs:
             --dart-define-from-file=config/staging.json
 
       - name: 📁 Upload web build result
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: web-preview
           retention-days: 1
@@ -118,7 +118,7 @@ jobs:
     needs: build
     steps:
       - name: 📦 Download result for web build job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: web-preview
 
