@@ -3,6 +3,7 @@ import 'package:example/src/common/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/common/presentum/remove_ineligible_candidates_guard.dart';
 import 'package:example/src/maintenance/presentum/guards/maintenance_scheduling_guard.dart';
 import 'package:example/src/maintenance/presentum/guards/sync_maintenance_state_guard.dart';
+import 'package:example/src/maintenance/presentum/maintenance_transition_observer.dart';
 import 'package:example/src/maintenance/presentum/payload.dart';
 import 'package:example/src/maintenance/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
@@ -15,6 +16,7 @@ mixin MaintaincePresentumStateMixin<T extends StatefulWidget> on State<T> {
   maintenancePresentum;
   late final PresentumStorage<AppSurface, AppVariant> _storage;
   late final MaintenanceProvider provider;
+  late final MaintenanceTransitionObserver _maintenanceObserver;
 
   late final ValueNotifier<List<({Object error, StackTrace stackTrace})>>
   _errorsObserver;
@@ -65,6 +67,11 @@ mixin MaintaincePresentumStateMixin<T extends StatefulWidget> on State<T> {
       ],
     );
 
+    // Create transition observer for handling update checks
+    _maintenanceObserver = MaintenanceTransitionObserver(
+      deps.shorebirdUpdatesStore,
+    );
+
     // Create Presentum instance
     maintenancePresentum = Presentum<MaintenanceItem, AppSurface, AppVariant>(
       storage: _storage,
@@ -79,6 +86,7 @@ mixin MaintaincePresentumStateMixin<T extends StatefulWidget> on State<T> {
           AppVariant
         >(eligibility: eligibilityResolver),
       ],
+      transitionObservers: [_maintenanceObserver],
       onError: _onError,
     );
 
@@ -93,6 +101,7 @@ mixin MaintaincePresentumStateMixin<T extends StatefulWidget> on State<T> {
 
   @override
   void dispose() {
+    _maintenanceObserver.dispose();
     provider.dispose();
     _errorsObserver.dispose();
     super.dispose();

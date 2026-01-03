@@ -191,101 +191,21 @@ class _AppUpdatesPopupHostState extends State<AppUpdatesPopupHost>
 This observer doesn't need popup-specific features like duplicate detection or conflict resolution - it simply shows/hides a snackbar based on state.
 </Info>
 
-## Advanced example: Maintenance mode observer
+## When NOT to use surface observers
 
-This observer demonstrates complex logic - watching for maintenance mode changes and triggering app update checks:
+<Warning>
+Do **not** use surface observers for side effects or business logic that doesn't involve UI rendering.
 
-```dart
-class MaintenanceSurfaceObserver extends StatefulWidget {
-  const MaintenanceSurfaceObserver({required this.child, super.key});
+If your observer's `build()` method just returns `widget.child` with no UI changes, you're using the wrong tool. Use [Transition observers](/features/transition-observers) instead.
+</Warning>
 
-  final Widget child;
+**Examples of incorrect usage:**
+- Triggering API calls when surface state changes
+- Starting/stopping timers based on state
+- Logging or analytics
+- BLoC/Provider integration
 
-  @override
-  State<MaintenanceSurfaceObserver> createState() =>
-      _MaintenanceSurfaceObserverState();
-}
-
-class _MaintenanceSurfaceObserverState extends State<MaintenanceSurfaceObserver>
-    with
-        PresentumActiveSurfaceItemObserverMixin<
-          MaintenanceItem,
-          AppSurface,
-          AppVariant,
-          MaintenanceSurfaceObserver
-        > {
-  late final ShorebirdUpdatesStore _updatesStore;
-  Timer? _updatesCheckTimer;
-  int _checkInterval = 5;
-
-  @override
-  void initState() {
-    super.initState();
-    _updatesStore = Dependencies.of(context).shorebirdUpdatesStore;
-  }
-
-  @override
-  void dispose() {
-    _updatesCheckTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  PresentumSurface get surface => AppSurface.maintenanceView;
-
-  @override
-  void onActiveItemChanged({
-    required MaintenanceItem? current,
-    required MaintenanceItem? previous,
-  }) {
-    // When maintenance ends, start checking for updates
-    if (previous case final _? when current == null) {
-      _updatesStore.checkForUpdate();
-      _scheduleProgressiveUpdateCheck();
-      return;
-    }
-
-    // When maintenance starts, stop checking for updates
-    if (current case final _? when previous == null) {
-      _updatesCheckTimer?.cancel();
-      _checkInterval = 5;
-    }
-  }
-
-  void _scheduleProgressiveUpdateCheck() {
-    _updatesCheckTimer?.cancel();
-    _updatesCheckTimer = Timer(Duration(seconds: _checkInterval), () async {
-      final status = _updatesStore.status;
-      
-      switch (status) {
-        case UpdateStatus.unavailable:
-        case UpdateStatus.restartRequired:
-          _updatesCheckTimer?.cancel();
-          return;
-        case UpdateStatus.upToDate:
-          await _updatesStore.checkForUpdate();
-        case UpdateStatus.outdated:
-          // Continue checking
-          break;
-        case null:
-          break;
-      }
-
-      _checkInterval = (_checkInterval * 2).clamp(5, 60);
-      if (mounted) _scheduleProgressiveUpdateCheck();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
-}
-```
-
-[See full source →](https://github.com/itsezlife/presentum/blob/master/example/lib/src/maintenance/presentum/maintenance_surface_observer.dart)
-
-<Note>
-This observer uses the mixin's state tracking to implement sophisticated business logic - progressive update checking that starts when maintenance mode ends.
-</Note>
+These are side effects and belong in transition observers, not widget-based observers.
 
 ## Optional configuration
 
@@ -322,28 +242,31 @@ final currentState = observer.value;
 
 ## When to use surface observers
 
-Use `PresentumActiveSurfaceItemObserverMixin` when you need to:
+Use `PresentumActiveSurfaceItemObserverMixin` **only** when you need to render UI based on surface state:
 
 <CardGroup cols={2}>
-  <Card title="Non-dialog UI" icon="bell">
-    Snackbars, banners, toasts, badges - UI that doesn't require dialog management
+  <Card title="Snackbars & Banners" icon="bell">
+    Show/hide snackbars, banners, toasts, or badges based on surface state
   </Card>
   
-  <Card title="Side effects" icon="wand-magic-sparkles">
-    Trigger actions like analytics, logging, or API calls when surface state changes
+  <Card title="Visual Overlays" icon="layer-group">
+    Display non-modal overlays or floating UI elements
   </Card>
   
-  <Card title="Animations" icon="sparkles">
-    Start/stop animations based on surface state
+  <Card title="UI Animations" icon="sparkles">
+    Trigger widget animations tied to surface state changes
   </Card>
   
-  <Card title="Custom logic" icon="code">
-    Complex business logic that reacts to surface changes (like the maintenance example)
+  <Card title="Dynamic Widgets" icon="wand-magic-sparkles">
+    Render or update widgets based on active items
   </Card>
 </CardGroup>
 
+**Key indicator:** Your `build()` method returns actual UI or your widget manages visible elements.
+
 <Warning>
-Don't use surface observers for dialogs or modals. Use [`PresentumPopupSurfaceStateMixin`](/advanced/popup-hosts) instead, which builds on the observer mixin to add popup-specific features.
+- For **dialogs/modals**, use [`PresentumPopupSurfaceStateMixin`](/advanced/popup-hosts) instead
+- For **side effects/business logic**, use [Transition observers](/features/transition-observers) instead
 </Warning>
 
 ## Best practices

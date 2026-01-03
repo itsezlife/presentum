@@ -26,8 +26,8 @@ class StateChangeObserver
     final diff = transition.diff;
 
     log('State changed at ${transition.timestamp}');
-    log('Activated: ${diff.activated.length}');
-    log('Deactivated: ${diff.deactivated.length}');
+    log('Activated: ${diff.itemsActivated.length}');
+    log('Deactivated: ${diff.itemsDeactivated.length}');
   }
 }
 ```
@@ -54,29 +54,29 @@ Every transition includes:
 
 ## Diff information
 
-The `diff` property provides:
+The `diff` property provides convenient access to what changed:
 
 ```dart
 final diff = transition.diff;
 
 // Items that became active
-for (final change in diff.activated) {
-  print('${change.item.id} activated on ${change.surface}');
+for (final item in diff.itemsActivated) {
+  print('${item.id} activated');
 }
 
 // Items that became inactive
-for (final change in diff.deactivated) {
-  print('${change.item.id} deactivated from ${change.surface}');
+for (final item in diff.itemsDeactivated) {
+  print('${item.id} deactivated');
 }
 
 // Items added to queues
-for (final change in diff.queued) {
-  print('${change.item.id} queued on ${change.surface}');
+for (final item in diff.itemsQueued) {
+  print('${item.id} queued');
 }
 
 // Items removed from queues
-for (final change in diff.dequeued) {
-  print('${change.item.id} dequeued from ${change.surface}');
+for (final item in diff.itemsDequeued) {
+  print('${item.id} dequeued');
 }
 
 // New surfaces that appeared
@@ -90,9 +90,41 @@ for (final surface in diff.surfacesRemoved) {
 }
 ```
 
+For detailed change information including which surface each change occurred on, use pattern matching:
+
+```dart
+// Pattern matching for granular changes
+for (final change in diff.changes) {
+  change.map(
+    activated: (c) => print('${c.item.id} activated on ${c.surface}'),
+    deactivated: (c) => print('${c.item.id} deactivated from ${c.surface}'),
+    queued: (c) => print('${c.item.id} queued on ${c.surface}'),
+    dequeued: (c) => print('${c.item.id} dequeued from ${c.surface}'),
+  );
+}
+
+// Or handle only specific change types
+for (final change in diff.changes) {
+  change.maybeMap(
+    orElse: () {},
+    activated: (c) {
+      print('Activated: ${c.item.id} on ${c.surface}');
+      if (c.previousActive != null) {
+        print('  (replaced ${c.previousActive!.id})');
+      }
+    },
+  );
+}
+
+// Quick type checks
+if (change.isActivated) {
+  print('This is an activation change');
+}
+```
+
 ## Integrating with BLoC
 
-Fire events to your business logic layer:
+Fire events to your business logic layer using pattern matching:
 
 ```dart
 class BlocTransitionObserver
@@ -103,37 +135,61 @@ class BlocTransitionObserver
 
   @override
   FutureOr<void> call(PresentumStateTransition transition) {
-    final diff = transition.diff;
+    // Use pattern matching for clean, exhaustive handling
+    for (final change in transition.diff.changes) {
+      change.map(
+        activated: (c) => campaignBloc.add(
+          PresentationActivated(
+            itemId: c.item.id,
+            surface: c.surface,
+            previousId: c.previousActive?.id,
+          ),
+        ),
+        deactivated: (c) => campaignBloc.add(
+          PresentationDeactivated(
+            itemId: c.item.id,
+            surface: c.surface,
+          ),
+        ),
+        queued: (c) => campaignBloc.add(
+          PresentationQueued(
+            itemId: c.item.id,
+            surface: c.surface,
+          ),
+        ),
+        dequeued: (c) => campaignBloc.add(
+          PresentationDequeued(
+            itemId: c.item.id,
+            surface: c.surface,
+          ),
+        ),
+      );
+    }
+  }
+}
+```
 
-    // Fire BLoC events for state changes
-    for (final change in diff.activated) {
-      campaignBloc.add(
+Or handle only specific change types with `maybeMap`:
+
+```dart
+@override
+FutureOr<void> call(PresentumStateTransition transition) {
+  for (final change in transition.diff.changes) {
+    change.maybeMap(
+      orElse: () {}, // Ignore other change types
+      activated: (c) => campaignBloc.add(
         PresentationActivated(
-          itemId: change.item.id,
-          surface: change.surface,
+          itemId: c.item.id,
+          surface: c.surface,
         ),
-      );
-    }
-
-    for (final change in diff.deactivated) {
-      campaignBloc.add(
+      ),
+      deactivated: (c) => campaignBloc.add(
         PresentationDeactivated(
-          itemId: change.item.id,
-          surface: change.surface,
+          itemId: c.item.id,
+          surface: c.surface,
         ),
-      );
-    }
-
-    for (final change in diff.queued) {
-      campaignBloc.add(
-        PresentationQueued(
-          itemId: change.item.id,
-          surface: change.surface,
-          queuePosition: transition.newState.slots[change.surface]!.queue
-              .indexWhere((item) => item.id == change.item.id),
-        ),
-      );
-    }
+      ),
+    );
   }
 }
 ```
@@ -166,10 +222,10 @@ class DataFetchObserver
 
   @override
   FutureOr<void> call(PresentumStateTransition transition) async {
-    for (final change in transition.diff.activated) {
-      // Fetch product details when product promo becomes active
-      if (change.item.metadata['type'] == 'product_promo') {
-        final productId = change.item.metadata['product_id'] as String;
+    // Simple case: just check activated items
+    for (final item in transition.diff.itemsActivated) {
+      if (item.metadata['type'] == 'product_promo') {
+        final productId = item.metadata['product_id'] as String;
         await dataService.prefetchProductDetails(productId);
       }
     }
@@ -177,9 +233,110 @@ class DataFetchObserver
 }
 ```
 
+## Production example: Maintenance mode observer
+
+This real-world observer from the example app manages app update checks based on maintenance mode:
+
+```dart
+class MaintenanceTransitionObserver
+    implements IPresentumTransitionObserver<
+      MaintenanceItem,
+      AppSurface,
+      AppVariant
+    > {
+
+  MaintenanceTransitionObserver(this.updatesStore);
+
+  final ShorebirdUpdatesStore updatesStore;
+  Timer? _updatesCheckTimer;
+  int _checkInterval = 5; // Start with 5 seconds
+
+  @override
+  FutureOr<void> call(PresentumStateTransition transition) {
+    final diff = transition.diff;
+
+    // Check if maintenance surface was deactivated
+    final maintenanceDeactivated = diff.itemsDeactivated.any(
+      (change) => change.surface == AppSurface.maintenanceView,
+    );
+
+    if (maintenanceDeactivated) {
+      _startUpdateChecks();
+      return;
+    }
+
+    // Check if maintenance surface was activated
+    final maintenanceActivated = diff.itemsActivated.any(
+      (change) => change.surface == AppSurface.maintenanceView,
+    );
+
+    if (maintenanceActivated) {
+      _stopUpdateChecks();
+    }
+  }
+
+  void _startUpdateChecks() {
+    updatesStore.checkForUpdate();
+    _scheduleProgressiveUpdateCheck();
+  }
+
+  void _stopUpdateChecks() {
+    _updatesCheckTimer?.cancel();
+    _checkInterval = 5;
+  }
+
+  void _scheduleProgressiveUpdateCheck() {
+    _updatesCheckTimer?.cancel();
+    _updatesCheckTimer = Timer(Duration(seconds: _checkInterval), () async {
+      final status = updatesStore.status;
+
+      switch (status) {
+        case UpdateStatus.unavailable:
+        case UpdateStatus.restartRequired:
+          _updatesCheckTimer?.cancel();
+          return;
+        case UpdateStatus.upToDate:
+          await updatesStore.checkForUpdate();
+        case UpdateStatus.outdated:
+        case null:
+          break;
+      }
+
+      // Progressive backoff: 5s → 10s → 20s → 40s → 60s (cap)
+      _checkInterval = (_checkInterval * 2).clamp(5, 60);
+      _scheduleProgressiveUpdateCheck();
+    });
+  }
+
+  void dispose() {
+    _updatesCheckTimer?.cancel();
+  }
+}
+```
+
+Register it when creating the Presentum instance:
+
+```dart
+maintenancePresentum = Presentum(
+  storage: storage,
+  guards: guards,
+  transitionObservers: [
+    MaintenanceTransitionObserver(updatesStore),
+  ],
+);
+```
+
+[See full source →](https://github.com/itsezlife/presentum/blob/master/example/lib/src/maintenance/presentum/maintenance_transition_observer.dart)
+
+<Info>
+  This observer implements complex business logic (progressive timer backoff,
+  update status management) without any widget overhead. It's pure side effects
+  - exactly what transition observers are designed for.
+</Info>
+
 ## Debug logging
 
-Track state flow in development:
+Track state flow in development with pattern matching:
 
 ```dart
 class DebugLoggingObserver
@@ -189,41 +346,79 @@ class DebugLoggingObserver
   FutureOr<void> call(PresentumStateTransition transition) {
     final diff = transition.diff;
 
-    if (diff.activated.isEmpty &&
-        diff.deactivated.isEmpty &&
-        diff.queued.isEmpty) {
-      return; // No meaningful changes
-    }
+    if (diff.isEmpty) return;
 
     log('═' * 50);
     log('State transition at ${transition.timestamp}');
     log('─' * 50);
 
-    if (diff.activated.isNotEmpty) {
-      log('✓ Activated:');
-      for (final change in diff.activated) {
-        log('  • ${change.item.id} on ${change.surface}');
-      }
+    // Use pattern matching for detailed logging
+    for (final change in diff.changes) {
+      final emoji = change.map(
+        activated: (_) => '✓',
+        deactivated: (_) => '✗',
+        queued: (_) => '⋯',
+        dequeued: (_) => '↺',
+      );
+
+      final action = change.map(
+        activated: (c) => 'activated${c.previousActive != null ? " (replaced ${c.previousActive!.id})" : ""}',
+        deactivated: (_) => 'deactivated',
+        queued: (_) => 'queued',
+        dequeued: (_) => 'dequeued',
+      );
+
+      log('$emoji [${change.surface}] ${change.item.id} $action');
     }
 
-    if (diff.deactivated.isNotEmpty) {
-      log('✗ Deactivated:');
-      for (final change in diff.deactivated) {
-        log('  • ${change.item.id} from ${change.surface}');
-      }
-    }
-
-    if (diff.queued.isNotEmpty) {
-      log('⋯ Queued:');
-      for (final change in diff.queued) {
-        log('  • ${change.item.id} on ${change.surface}');
-      }
-    }
-
+    log('─' * 50);
+    log('Summary: ${diff.itemsActivated.length} activated, '
+        '${diff.itemsDeactivated.length} deactivated, '
+        '${diff.itemsQueued.length} queued, '
+        '${diff.itemsDequeued.length} dequeued');
     log('═' * 50);
   }
 }
 ```
+
+Simpler version using convenience getters:
+
+```dart
+@override
+FutureOr<void> call(PresentumStateTransition transition) {
+  for (final change in transition.diff.changes) {
+    if (change.isActivated) {
+      log('✓ Activated: ${change.item.id} on ${change.surface}');
+    } else if (change.isDeactivated) {
+      log('✗ Deactivated: ${change.item.id} from ${change.surface}');
+    }
+  }
+}
+```
+
+## Transition observers vs Surface observers
+
+<AccordionGroup>
+  <Accordion title="When to use Transition Observers">
+    Use transition observers for **side effects and business logic**: -
+    Analytics tracking - API calls or data fetching - BLoC/Provider/Cubit
+    integration - Logging and monitoring - Starting/stopping timers - Any logic
+    that doesn't render UI **Key indicator:** No widget rendering, pure logic
+  </Accordion>
+
+  <Accordion title="When to use Surface Observers">
+    Use [surface observers](/advanced/surface-observers) for **UI rendering**: -
+    Showing/hiding snackbars or banners - Triggering widget animations -
+    Rendering overlays or floating UI - Any visual element that responds to
+    state **Key indicator:** Your code renders or manages widgets
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  If your observer would be a widget with `build()` returning just
+  `widget.child`, use a transition observer instead. You're adding unnecessary
+  widget overhead for non-UI concerns.
+</Tip>
 
 ## Important notes
 
@@ -262,9 +457,11 @@ If an observer throws, the state transition continues. Other observers still run
     Handle user interaction events
   </Card>
 
-  <Card title="Guards" icon="shield" href="/core-concepts/guards">
-    Control what gets shown
-  </Card>
+{" "}
+
+<Card title="Guards" icon="shield" href="/core-concepts/guards">
+  Control what gets shown
+</Card>
 
   <Card
     title="State structure"

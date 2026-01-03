@@ -434,6 +434,15 @@ final class SlotDiff<
       'activeChanged: $activeChanged, queueChanged: $queueChanged)';
 }
 
+/// Signature for slot change pattern matching callbacks.
+typedef SlotChangeMatch<
+  R,
+  T extends SlotChange<TItem, S, V>,
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> = R Function(T value);
+
 /// Base class for all slot changes.
 @immutable
 sealed class SlotChange<
@@ -449,6 +458,70 @@ sealed class SlotChange<
 
   /// The item involved in the change.
   final TItem item;
+
+  /// Pattern matching for [SlotChange].
+  ///
+  /// Exhaustively matches all change types. All callbacks are required.
+  R map<R>({
+    required SlotChangeMatch<R, ItemActivatedChange<TItem, S, V>, TItem, S, V>
+    activated,
+    required SlotChangeMatch<R, ItemDeactivatedChange<TItem, S, V>, TItem, S, V>
+    deactivated,
+    required SlotChangeMatch<R, ItemQueuedChange<TItem, S, V>, TItem, S, V>
+    queued,
+    required SlotChangeMatch<R, ItemDequeuedChange<TItem, S, V>, TItem, S, V>
+    dequeued,
+  }) => switch (this) {
+    ItemActivatedChange<TItem, S, V> c => activated(c),
+    ItemDeactivatedChange<TItem, S, V> c => deactivated(c),
+    ItemQueuedChange<TItem, S, V> c => queued(c),
+    ItemDequeuedChange<TItem, S, V> c => dequeued(c),
+  };
+
+  /// Pattern matching for [SlotChange] with optional handlers.
+  ///
+  /// Unhandled cases fall back to [orElse].
+  R maybeMap<R>({
+    required R Function() orElse,
+    SlotChangeMatch<R, ItemActivatedChange<TItem, S, V>, TItem, S, V>?
+    activated,
+    SlotChangeMatch<R, ItemDeactivatedChange<TItem, S, V>, TItem, S, V>?
+    deactivated,
+    SlotChangeMatch<R, ItemQueuedChange<TItem, S, V>, TItem, S, V>? queued,
+    SlotChangeMatch<R, ItemDequeuedChange<TItem, S, V>, TItem, S, V>? dequeued,
+  }) => map<R>(
+    activated: activated ?? (_) => orElse(),
+    deactivated: deactivated ?? (_) => orElse(),
+    queued: queued ?? (_) => orElse(),
+    dequeued: dequeued ?? (_) => orElse(),
+  );
+
+  /// Pattern matching for [SlotChange] returning null for unhandled cases.
+  R? mapOrNull<R>({
+    SlotChangeMatch<R, ItemActivatedChange<TItem, S, V>, TItem, S, V>?
+    activated,
+    SlotChangeMatch<R, ItemDeactivatedChange<TItem, S, V>, TItem, S, V>?
+    deactivated,
+    SlotChangeMatch<R, ItemQueuedChange<TItem, S, V>, TItem, S, V>? queued,
+    SlotChangeMatch<R, ItemDequeuedChange<TItem, S, V>, TItem, S, V>? dequeued,
+  }) => map<R?>(
+    activated: activated ?? (_) => null,
+    deactivated: deactivated ?? (_) => null,
+    queued: queued ?? (_) => null,
+    dequeued: dequeued ?? (_) => null,
+  );
+
+  /// Convenience getter to check if this is an activation change.
+  bool get isActivated => this is ItemActivatedChange<TItem, S, V>;
+
+  /// Convenience getter to check if this is a deactivation change.
+  bool get isDeactivated => this is ItemDeactivatedChange<TItem, S, V>;
+
+  /// Convenience getter to check if this is a queued change.
+  bool get isQueued => this is ItemQueuedChange<TItem, S, V>;
+
+  /// Convenience getter to check if this is a dequeued change.
+  bool get isDequeued => this is ItemDequeuedChange<TItem, S, V>;
 
   @override
   String toString() => 'SlotChange($surface, ${item.id})';

@@ -1,13 +1,16 @@
 import 'package:example/src/maintenance/presentum/inherited_provider.dart';
-import 'package:example/src/maintenance/presentum/maintenance_surface_observer.dart';
+import 'package:example/src/maintenance/presentum/maintenance_transition_observer.dart'
+    show MaintenanceTransitionObserver;
 import 'package:example/src/maintenance/presentum/presentum_state_mixin.dart';
 import 'package:flutter/material.dart';
-import 'package:presentum/presentum.dart' show InheritedPresentum;
 
 /// {@template maintenance_presentum}
 /// MaintenancePresentum widget that initializes the maintenance presentum
-/// and wraps the child widget with the [InheritedPresentum] and
-/// [MaintenanceProviderScope] widgets.
+/// and wraps the child widget with the [MaintenanceProviderScope].
+///
+/// The [MaintenanceTransitionObserver] is registered when creating the
+/// Presentum instance (see [MaintaincePresentumStateMixin]) to handle
+/// app update checks based on maintenance mode state changes.
 /// {@endtemplate}
 class MaintenancePresentum extends StatefulWidget {
   const MaintenancePresentum({required this.child, super.key});
@@ -24,9 +27,6 @@ class _MaintenancePresentumState extends State<MaintenancePresentum>
   Widget build(BuildContext context) =>
       maintenancePresentum.config.engine.build(
         context,
-        MaintenanceProviderScope(
-          provider: provider,
-          child: MaintenanceSurfaceObserver(child: widget.child),
-        ),
+        MaintenanceProviderScope(provider: provider, child: widget.child),
       );
 }
