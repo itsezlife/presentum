@@ -16,6 +16,12 @@ class CampaignPopupHost extends StatefulWidget {
 
 class _CampaignPopupHostState extends State<CampaignPopupHost>
     with
+        PresentumActiveSurfaceItemObserverMixin<
+          CampaignPresentumItem,
+          CampaignSurface,
+          CampaignVariant,
+          CampaignPopupHost 
+        >,
         PresentumPopupSurfaceStateMixin<
           CampaignPresentumItem,
           CampaignSurface,
@@ -27,12 +33,6 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
 
   @override
   bool get ignoreDuplicates => true; // for simplicity, we ignore duplicates
-
-  @override
-  Future<void> markDismissed({required CampaignPresentumItem entry}) async {
-    final campaigns = context.campaignsPresentum;
-    await campaigns.markDismissed(entry);
-  }
 
   @override
   Widget build(BuildContext context) => widget.child;

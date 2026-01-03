@@ -1,3 +1,9 @@
+## 0.3.4
+
+- **BREAKING**: `PresentumPopupSurfaceStateMixin` now requires `PresentumActiveSurfaceItemObserverMixin` as a mixin (changed from `implements` to `on`)
+- **Feat**: Added default implementation for `markDismissed()` method
+- **Refactor**: Removed duplicate observer state management and lifecycle methods
+
 ## 0.3.3
 
 - **BREAKING**: Refactored `PresentumPopupSurfaceStateMixin.present()` to return `PopupPresentResult` enum instead of `bool?`

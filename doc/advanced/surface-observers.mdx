@@ -1,0 +1,444 @@
+---
+title: "Surface observers"
+description: "Reactive surface state observation with PresentumActiveSurfaceItemObserverMixin"
+---
+
+## What are surface observers?
+
+Surface observers are widgets that watch a specific surface slot and react to active item changes. They provide a simple, reactive way to build custom UI that responds to Presentum state without the overhead of popup-specific features.
+
+The `PresentumActiveSurfaceItemObserverMixin` handles all the complexity of:
+
+1. **Subscribing to surface state** - Automatically observes the correct slot
+2. **Tracking active item changes** - Detects when items activate or deactivate
+3. **Managing lifecycle** - Cleans up observers when widget disposes
+4. **Handling initial state** - Optionally processes the initial active item
+
+<Tip>
+Use surface observers for snackbars, banners, overlays, animations, or any UI that needs to react to surface state changes without showing dialogs.
+</Tip>
+
+## Basic usage
+
+Here's a minimal surface observer:
+
+```dart
+class CustomSurfaceHost extends StatefulWidget {
+  const CustomSurfaceHost({required this.child, super.key});
+  final Widget child;
+
+  @override
+  State<CustomSurfaceHost> createState() => _CustomSurfaceHostState();
+}
+
+class _CustomSurfaceHostState extends State<CustomSurfaceHost>
+    with PresentumActiveSurfaceItemObserverMixin<
+      CampaignItem,
+      AppSurface,
+      CampaignVariant,
+      CustomSurfaceHost
+    > {
+
+  @override
+  AppSurface get surface => AppSurface.banner;
+
+  @override
+  void onActiveItemChanged({
+    required CampaignItem? current,
+    required CampaignItem? previous,
+  }) {
+    // React to state changes
+    if (current != null) {
+      // New item became active
+      print('Showing: ${current.id}');
+    } else if (previous != null) {
+      // Active item became inactive
+      print('Hiding: ${previous.id}');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+## Required implementations
+
+You must implement two members:
+
+```dart
+@override
+PresentumSurface get surface; // Which surface to observe
+
+@override
+void onActiveItemChanged({
+  required TItem? current,
+  required TItem? previous,
+}); // React to changes
+```
+
+## Understanding state transitions
+
+The `onActiveItemChanged` callback receives both current and previous items, enabling you to handle all state transitions:
+
+<AccordionGroup>
+  <Accordion title="Item activation (previous: null, current: Item)">
+    A new item became active on an empty surface:
+    
+    ```dart
+    @override
+    void onActiveItemChanged({
+      required CampaignItem? current,
+      required CampaignItem? previous,
+    }) {
+      if (current case final item? when previous == null) {
+        // Show UI for new item
+        showBanner(item);
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Item deactivation (previous: Item, current: null)">
+    The active item became inactive:
+    
+    ```dart
+    @override
+    void onActiveItemChanged({
+      required CampaignItem? current,
+      required CampaignItem? previous,
+    }) {
+      if (previous case final item? when current == null) {
+        // Hide UI for deactivated item
+        hideBanner();
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Item replacement (previous: Item1, current: Item2)">
+    The active item was replaced by another:
+    
+    ```dart
+    @override
+    void onActiveItemChanged({
+      required CampaignItem? current,
+      required CampaignItem? previous,
+    }) {
+      if (current case final newItem? when previous != null) {
+        // Replace old item with new one
+        updateBanner(from: previous, to: newItem);
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production example: Update snackbar
+
+This observer shows a snackbar when app updates are available:
+
+```dart
+class AppUpdatesPopupHost extends StatefulWidget {
+  const AppUpdatesPopupHost({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<AppUpdatesPopupHost> createState() => _AppUpdatesPopupHostState();
+}
+
+class _AppUpdatesPopupHostState extends State<AppUpdatesPopupHost>
+    with
+        PresentumActiveSurfaceItemObserverMixin<
+          AppUpdatesItem,
+          AppSurface,
+          AppVariant,
+          AppUpdatesPopupHost
+        > {
+  late final UpdateSnackbar _updateSnackbar;
+
+  @override
+  void initState() {
+    _updateSnackbar = UpdateSnackbar();
+    super.initState();
+  }
+
+  @override
+  AppSurface get surface => AppSurface.updateSnackbar;
+
+  @override
+  void onActiveItemChanged({
+    required AppUpdatesItem? current,
+    required AppUpdatesItem? previous,
+  }) {
+    if (current case final _? when previous == null) {
+      _updateSnackbar.show(context);
+    }
+    if (previous case final _? when current == null) {
+      _updateSnackbar.hide();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+[See full source →](https://github.com/itsezlife/presentum/blob/master/example/lib/src/updates/widgets/updates_popup_host.dart)
+
+<Info>
+This observer doesn't need popup-specific features like duplicate detection or conflict resolution - it simply shows/hides a snackbar based on state.
+</Info>
+
+## Advanced example: Maintenance mode observer
+
+This observer demonstrates complex logic - watching for maintenance mode changes and triggering app update checks:
+
+```dart
+class MaintenanceSurfaceObserver extends StatefulWidget {
+  const MaintenanceSurfaceObserver({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<MaintenanceSurfaceObserver> createState() =>
+      _MaintenanceSurfaceObserverState();
+}
+
+class _MaintenanceSurfaceObserverState extends State<MaintenanceSurfaceObserver>
+    with
+        PresentumActiveSurfaceItemObserverMixin<
+          MaintenanceItem,
+          AppSurface,
+          AppVariant,
+          MaintenanceSurfaceObserver
+        > {
+  late final ShorebirdUpdatesStore _updatesStore;
+  Timer? _updatesCheckTimer;
+  int _checkInterval = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _updatesStore = Dependencies.of(context).shorebirdUpdatesStore;
+  }
+
+  @override
+  void dispose() {
+    _updatesCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  PresentumSurface get surface => AppSurface.maintenanceView;
+
+  @override
+  void onActiveItemChanged({
+    required MaintenanceItem? current,
+    required MaintenanceItem? previous,
+  }) {
+    // When maintenance ends, start checking for updates
+    if (previous case final _? when current == null) {
+      _updatesStore.checkForUpdate();
+      _scheduleProgressiveUpdateCheck();
+      return;
+    }
+
+    // When maintenance starts, stop checking for updates
+    if (current case final _? when previous == null) {
+      _updatesCheckTimer?.cancel();
+      _checkInterval = 5;
+    }
+  }
+
+  void _scheduleProgressiveUpdateCheck() {
+    _updatesCheckTimer?.cancel();
+    _updatesCheckTimer = Timer(Duration(seconds: _checkInterval), () async {
+      final status = _updatesStore.status;
+      
+      switch (status) {
+        case UpdateStatus.unavailable:
+        case UpdateStatus.restartRequired:
+          _updatesCheckTimer?.cancel();
+          return;
+        case UpdateStatus.upToDate:
+          await _updatesStore.checkForUpdate();
+        case UpdateStatus.outdated:
+          // Continue checking
+          break;
+        case null:
+          break;
+      }
+
+      _checkInterval = (_checkInterval * 2).clamp(5, 60);
+      if (mounted) _scheduleProgressiveUpdateCheck();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+[See full source →](https://github.com/itsezlife/presentum/blob/master/example/lib/src/maintenance/presentum/maintenance_surface_observer.dart)
+
+<Note>
+This observer uses the mixin's state tracking to implement sophisticated business logic - progressive update checking that starts when maintenance mode ends.
+</Note>
+
+## Optional configuration
+
+### Handle initial state
+
+Control whether to process the initial active item in `initState`:
+
+```dart
+@override
+bool get handleInitialState => true; // default
+```
+
+Set to `false` if you only want to react to changes, not the initial state.
+
+### Access current active item
+
+You can access the current active item at any time:
+
+```dart
+final activeItem = currentActiveItem;
+if (activeItem != null) {
+  // Do something with the active item
+}
+```
+
+### Access the observer
+
+For advanced use cases, you can access the underlying observer:
+
+```dart
+final observer = this.observer; // PresentumStateObserver<TItem, S, V>
+final currentState = observer.value;
+```
+
+## When to use surface observers
+
+Use `PresentumActiveSurfaceItemObserverMixin` when you need to:
+
+<CardGroup cols={2}>
+  <Card title="Non-dialog UI" icon="bell">
+    Snackbars, banners, toasts, badges - UI that doesn't require dialog management
+  </Card>
+  
+  <Card title="Side effects" icon="wand-magic-sparkles">
+    Trigger actions like analytics, logging, or API calls when surface state changes
+  </Card>
+  
+  <Card title="Animations" icon="sparkles">
+    Start/stop animations based on surface state
+  </Card>
+  
+  <Card title="Custom logic" icon="code">
+    Complex business logic that reacts to surface changes (like the maintenance example)
+  </Card>
+</CardGroup>
+
+<Warning>
+Don't use surface observers for dialogs or modals. Use [`PresentumPopupSurfaceStateMixin`](/advanced/popup-hosts) instead, which builds on the observer mixin to add popup-specific features.
+</Warning>
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Use pattern matching for clarity">
+    Leverage Dart 3 pattern matching to make state transitions explicit:
+    
+    ```dart
+    // ✅ Good - clear intent
+    if (current case final item? when previous == null) {
+      // Handle activation
+    }
+    
+    // ❌ Less clear
+    if (current != null && previous == null) {
+      // Handle activation
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Clean up resources in dispose">
+    Always cancel timers, subscriptions, or animations:
+    
+    ```dart
+    @override
+    void dispose() {
+      _timer?.cancel();
+      _animationController.dispose();
+      super.dispose();
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle all transition cases">
+    Consider all possible state transitions:
+    
+    ```dart
+    @override
+    void onActiveItemChanged({
+      required Item? current,
+      required Item? previous,
+    }) {
+      // Activation: null -> Item
+      if (current case final item? when previous == null) {
+        handleActivation(item);
+      }
+      
+      // Deactivation: Item -> null
+      if (previous case final item? when current == null) {
+        handleDeactivation(item);
+      }
+      
+      // Replacement: Item1 -> Item2
+      if (current case final newItem? when previous != null) {
+        handleReplacement(from: previous, to: newItem);
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Keep onActiveItemChanged lightweight">
+    Avoid heavy computation in the callback. Use `scheduleMicrotask` or `Future` for async work:
+    
+    ```dart
+    @override
+    void onActiveItemChanged({
+      required Item? current,
+      required Item? previous,
+    }) {
+      if (current == null) return;
+      
+      // ✅ Good - async work scheduled separately
+      scheduleMicrotask(() => _performHeavyWork(current));
+      
+      // ❌ Bad - blocks the callback
+      // _performHeavyWork(current);
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Popup hosts" icon="window" href="/advanced/popup-hosts">
+    Learn about popup surface management with dialogs
+  </Card>
+  
+  <Card title="Surfaces" icon="layer-group" href="/core-concepts/surfaces">
+    Understand surfaces and slots
+  </Card>
+  
+  <Card title="Production examples" icon="code" href="https://github.com/itsezlife/presentum/tree/master/example/lib/src">
+    Explore the complete example app
+  </Card>
+</CardGroup>
+
