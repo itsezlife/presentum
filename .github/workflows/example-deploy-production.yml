@@ -1,4 +1,4 @@
-name: Example - deploy web to production
+name: Example - deploy web on live channel
 
 on:
   workflow_dispatch:
@@ -75,13 +75,14 @@ jobs:
             example/firebase.json
             firebase.json
 
-  # Deploy web on production
+  # Deploy web on production / live channel
   web-deploy:
-    name: "Deploy web to production"
+    name: "Deploy web on live channel"
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: write
     #defaults:
     #  run:
     #    working-directory: ./example
@@ -94,19 +95,13 @@ jobs:
 
       - name: 📥 List web artifact
         run: |
-          ls -la
-          ls -la example/ || echo "example/ not found"
+          tree
 
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
+      - name: 🔥 Deploy to Firebase live channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          node-version: "20"
-
-      - name: 🔥 Deploy to Firebase production
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
-        run: |
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}' > ${{ runner.temp }}/gcp-key.json
-          npm install -g firebase-tools
-          cd example
-          firebase deploy --only hosting:production --project flutter-presentum-example
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}"
+          entryPoint: example/
+          channelId: live
+          projectId: flutter-presentum-example

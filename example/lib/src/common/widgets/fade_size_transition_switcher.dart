@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 /// A widget that transitions between two children using a fade and animated
 /// size animation.
-class FadeScaleTransitionSwitcher extends StatelessWidget {
-  const FadeScaleTransitionSwitcher({
+class FadeSizeTransitionSwitcher extends StatelessWidget {
+  const FadeSizeTransitionSwitcher({
     required this.child,
     this.duration = _duration,
     this.reverseDuration,

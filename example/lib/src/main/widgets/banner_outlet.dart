@@ -1,6 +1,6 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:example/src/campaigns/camapigns.dart';
-import 'package:example/src/common/widgets/fade_scale_transition_switcher.dart';
+import 'package:example/src/common/widgets/fade_size_transition_switcher.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/main/widgets/new_year_banner.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +36,7 @@ class BannerOutlet extends StatelessWidget {
 
           return [allItems.first];
         },
-        compositeBuilder: (context, items) => FadeScaleTransitionSwitcher(
+        compositeBuilder: (context, items) => FadeSizeTransitionSwitcher(
           isForwardMove: true,
           child: switch (items.firstOrNull) {
             CampaignPresentumItem(:final surface) => Padding(
