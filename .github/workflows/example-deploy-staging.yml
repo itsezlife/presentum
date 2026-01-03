@@ -121,4 +121,5 @@ jobs:
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}' > ${{ runner.temp }}/gcp-key.json
           npm install -g firebase-tools
           cd example
+          firebase target:apply hosting staging flutter-presentum-example-staging --project flutter-presentum-example
           firebase deploy --only hosting:staging --project flutter-presentum-example
