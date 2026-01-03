@@ -20,7 +20,7 @@ class _CampaignPopupHostState extends State<CampaignPopupHost>
           CampaignPresentumItem,
           CampaignSurface,
           CampaignVariant,
-          CampaignPopupHost 
+          CampaignPopupHost
         >,
         PresentumPopupSurfaceStateMixin<
           CampaignPresentumItem,
