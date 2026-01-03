@@ -1,3 +1,18 @@
+## 0.3.5
+
+- **Feat**: Added pattern matching to `SlotChange` with `map()`, `maybeMap()`, and `mapOrNull()` methods
+- **Feat**: Added convenience getters `isActivated`, `isDeactivated`, `isQueued`, `isDequeued` to `SlotChange`
+- **Docs**: Split advanced documentation into separate guides for surface observers and popup hosts
+- **Docs**: Updated transition observers documentation with pattern matching examples and production examples
+- **Docs**: Clarified when to use transition observers vs surface observers
+- **Example**: Refactored `MaintenanceSurfaceObserver` from widget-based to `MaintenanceTransitionObserver` for proper separation of concerns
+
+## 0.3.4
+
+- **BREAKING**: `PresentumPopupSurfaceStateMixin` now requires `PresentumActiveSurfaceItemObserverMixin` as a mixin (changed from `implements` to `on`)
+- **Feat**: Added default implementation for `markDismissed()` method
+- **Refactor**: Removed duplicate observer state management and lifecycle methods
+
 ## 0.3.3
 
 - **BREAKING**: Refactored `PresentumPopupSurfaceStateMixin.present()` to return `PopupPresentResult` enum instead of `bool?`

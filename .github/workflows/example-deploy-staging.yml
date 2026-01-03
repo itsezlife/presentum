@@ -1,4 +1,4 @@
-name: Example - deploy web on preview channel
+name: Example - deploy web to staging
 
 on:
   pull_request:
@@ -20,9 +20,6 @@ jobs:
     #if: '${{ github.event.pull_request.head.repo.full_name == github.repository }}'
     name: "Build"
     runs-on: ubuntu-latest
-    container:
-      image: itsezlife/flutter:stable-web
-      options: --user root
     timeout-minutes: 30
     env:
       pub-cache-name: pub
@@ -30,7 +27,7 @@ jobs:
     steps:
       - name: 🚂 Get latest code
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github
@@ -41,21 +38,12 @@ jobs:
             CHANGELOG.md
             example
 
-      - name: 📤 Restore Pub modules
-        id: cache-pub-restore
-        uses: actions/cache/restore@v4
+      - name: 📱 Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          path: |
-            $HOME/.pub-cache
-          key: ${{ runner.os }}-${{ env.pub-cache-name }}-${{ hashFiles('**/pubspec.yaml') }}
-
-      - name: 🗄️ Export Pub cache directory
-        id: export-pub-cache
-        timeout-minutes: 1
-        run: |
-          export PUB_CACHE=$PWD/.pub_cache/
-          export PATH="$PATH":"$HOME/.pub-cache/bin"
-          echo "${HOME}/.pub-cache/bin" >> $GITHUB_PATH
+          flutter-version: "3.35.x"
+          channel: "stable"
+          cache: true
 
       - name: 👷 Install Dependencies
         id: install-dependencies
@@ -65,14 +53,6 @@ jobs:
           flutter pub get
           dart pub global activate intl_utils
           dart pub global run intl_utils:generate
-
-      - name: 📥 Save Pub modules
-        id: cache-pub-save
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            $HOME/.pub-cache
-          key: ${{ runner.os }}-${{ env.pub-cache-name }}-${{ hashFiles('**/pubspec.yaml') }}
 
       - name: 🖼️ Move images from assets to web
         working-directory: ${{ env.working-directory }}
@@ -96,7 +76,7 @@ jobs:
             --dart-define-from-file=config/staging.json
 
       - name: 📁 Upload web build result
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: web-preview
           retention-days: 1
@@ -107,18 +87,22 @@ jobs:
             example/firebase.json
             firebase.json
 
-  # Deploy web on preview / staging channel
+  # Deploy web on staging
   web-deploy:
-    name: "Deploy web on preview channel"
+    name: "Deploy web on staging"
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     #defaults:
     #  run:
     #    working-directory: ./example
     needs: build
     steps:
       - name: 📦 Download result for web build job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: web-preview
 
@@ -126,12 +110,11 @@ jobs:
         run: |
           tree
 
-      - name: 🔥 Deploy to Firebase preview channel
+      - name: 🔥 Deploy to Firebase staging
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLUTTER_PRESENTUM_EXAMPLE }}"
-          expires: 7d
           entryPoint: example/
-          channelId: stage
+          target: staging
           projectId: flutter-presentum-example

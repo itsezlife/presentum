@@ -738,7 +738,7 @@ class _ProductPhotosListViewState extends State<_ProductPhotosListView> {
   ImageProvider<Object> _getImageProvider(String path) =>
       (!kIsWeb || Config.environment.isDevelopment
               ? AssetImage(path)
-              : NetworkImage('/assets/$path'))
+              : NetworkImage('/$path'))
           as ImageProvider<Object>;
 
   @override

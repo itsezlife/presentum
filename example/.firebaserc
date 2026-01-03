@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "flutter-presentum-example"
+  },
+  "targets": {
+    "flutter-presentum-example": {
+      "hosting": {
+        "production": [
+          "flutter-presentum-example"
+        ],
+        "staging": [
+          "flutter-presentum-example-staging"
+        ]
+      }
+    }
   }
 }

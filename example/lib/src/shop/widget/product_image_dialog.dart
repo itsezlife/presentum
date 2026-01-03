@@ -46,7 +46,7 @@ class ProductImageDialog extends StatelessWidget {
     final image =
         (!kIsWeb || Config.environment.isDevelopment
                 ? AssetImage(product.images[index])
-                : NetworkImage('/assets/${product.images[index]}'))
+                : NetworkImage('/${product.images[index]}'))
             as ImageProvider<Object>;
 
     return Dialog(

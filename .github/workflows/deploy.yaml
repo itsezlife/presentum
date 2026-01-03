@@ -12,32 +12,17 @@ jobs:
     permissions:
       id-token: write # Required for authentication using OIDC
     runs-on: ubuntu-latest
-    container:
-      image: itsezlife/flutter:stable
-      options: --user root
     steps:
       # Checkout repository
       - name: 🚂 Get latest code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: 🗄️ Export pub cache directory
-        run: |
-          git config --global --add safe.directory /opt/flutter
-          export PUB_CACHE=$PWD/.pub_cache/
-
-      - name: 🚃 Cache pub modules
-        id: cache-pub-modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-pub-modules
+      - name: 📱 Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          key: ${{ runner.os }}-pub-${{ env.cache-name }}
-          path: |
-            $PWD/.pub_cache/
-            $PWD/.dart_tool/
-            $PWD/.flutter-plugins
-            $PWD/.flutter-plugins-dependencies
-            $PWD/.packages
+          flutter-version: "3.35.x"
+          channel: "stable"
+          cache: true
 
       - name: 👷 Get dependencies
         run: |

@@ -130,7 +130,7 @@ class ProductCardImage extends StatelessWidget {
   ImageProvider<Object> get _imageProvider =>
       (!kIsWeb || Config.environment.isDevelopment
               ? AssetImage(product.thumbnail)
-              : NetworkImage('/assets/${product.thumbnail}'))
+              : NetworkImage('/${product.thumbnail}'))
           as ImageProvider<Object>;
 
   @override

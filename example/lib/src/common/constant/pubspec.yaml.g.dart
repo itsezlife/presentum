@@ -92,13 +92,13 @@ sealed class Pubspec {
   static const PubspecVersion version = (
     /// Non-canonical string representation of the version as provided
     /// in the pubspec.yaml file.
-    representation: r'2.0.0',
+    representation: r'2.0.1',
 
     /// Returns a 'canonicalized' representation
     /// of the application version.
     /// This represents the version string in accordance with
     /// Semantic Versioning (SemVer) standards.
-    canonical: r'2.0.0',
+    canonical: r'2.0.1',
 
     /// MAJOR version when you make incompatible API changes.
     /// The major version number: 1 in "1.2.3".
@@ -111,7 +111,7 @@ sealed class Pubspec {
 
     /// PATCH version when you make backward compatible bug fixes.
     /// The patch version number: 3 in "1.2.3".
-    patch: 0,
+    patch: 1,
 
     /// The pre-release identifier: "foo" in "1.2.3-foo".
     preRelease: <String>[],
@@ -122,14 +122,14 @@ sealed class Pubspec {
 
   /// Build date and time (UTC)
   static final DateTime timestamp = DateTime.utc(
-    2025,
-    12,
-    30,
-    20,
-    12,
-    33,
-    641,
-    135,
+    2026,
+    1,
+    3,
+    16,
+    0,
+    11,
+    157,
+    885,
   );
 
   /// Name

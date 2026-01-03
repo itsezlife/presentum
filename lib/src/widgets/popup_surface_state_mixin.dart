@@ -45,16 +45,11 @@ mixin PresentumPopupSurfaceStateMixin<
   V extends PresentumVisualVariant,
   T extends StatefulWidget
 >
-    on State<T>
-    implements PresentumActiveSurfaceItemObserverMixin<TItem, S, V, T> {
+    on State<T>, PresentumActiveSurfaceItemObserverMixin<TItem, S, V, T> {
   bool _showing = false;
   TItem? _lastShownEntry;
   DateTime? _lastShownAt;
   final List<TItem> _queuedEntries = [];
-
-  // Observer mixin state - we implement the mixin interface directly
-  late final PresentumStateObserver<TItem, S, V> _observer;
-  TItem? _currentActiveItem;
 
   /// Ignore duplicate entries shown within [duplicateThreshold].
   /// Set to false to allow duplicates (default).
@@ -68,55 +63,13 @@ mixin PresentumPopupSurfaceStateMixin<
   /// Strategy for handling conflicts when a new popup activates while showing.
   PopupConflictStrategy get conflictStrategy => PopupConflictStrategy.ignore;
 
-  // Implement observer mixin interface
-  @override
-  TItem? get currentActiveItem => _currentActiveItem;
-
-  @override
-  PresentumStateObserver<TItem, S, V> get observer => _observer;
-
   @override
   bool get handleInitialState => true;
 
   @override
-  void initState() {
-    super.initState();
-    _observer = context.presentum<TItem, S, V>().observer;
-
-    if (handleInitialState) {
-      _evaluateInitialState();
-    }
-
-    _observer.addListener(_onObserverStateChange);
-  }
-
-  @override
   void dispose() {
-    _observer.removeListener(_onObserverStateChange);
     _queuedEntries.clear();
     super.dispose();
-  }
-
-  void _evaluateInitialState() {
-    final slot = _observer.value.slots[surface];
-    final initialActive = slot?.active;
-
-    if (initialActive != null) {
-      _currentActiveItem = initialActive;
-      onActiveItemChanged(current: initialActive, previous: null);
-    }
-  }
-
-  void _onObserverStateChange() {
-    final slot = _observer.value.slots[surface];
-    final newActiveItem = slot?.active;
-
-    // Only notify if the active item actually changed
-    if (newActiveItem?.id != _currentActiveItem?.id) {
-      final previous = _currentActiveItem;
-      _currentActiveItem = newActiveItem;
-      onActiveItemChanged(current: newActiveItem, previous: previous);
-    }
   }
 
   @override
@@ -258,7 +211,8 @@ mixin PresentumPopupSurfaceStateMixin<
 
   /// Mark the entry as dismissed.
   /// Called when the entry is no longer active or manually dismissed.
-  Future<void> markDismissed({required TItem entry});
+  Future<void> markDismissed({required TItem entry}) =>
+      context.presentum<TItem, S, V>().markDismissed(entry);
 
   /// Present the entry.
   ///

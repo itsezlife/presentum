@@ -23,11 +23,8 @@ class CampaignOutlet extends StatelessWidget {
           final factory = campaignsPresentationWidgetFactory;
           final child = switch (surface) {
             CampaignSurface.popup => factory.buildPopup(context, entry),
-            CampaignSurface.homeTopBanner ||
-            CampaignSurface.homeFooterBanner => factory.buildBanner(
-              context,
-              entry,
-            ),
+            CampaignSurface.homeTopBanner || CampaignSurface.homeFooterBanner =>
+              factory.buildBanner(context, entry),
             CampaignSurface.menuTile => factory.buildMenuTile(context, entry),
           };
 
