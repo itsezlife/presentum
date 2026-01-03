@@ -64,7 +64,7 @@ jobs:
             --dart-define-from-file=config/production.json
 
       - name: 📁 Upload web build result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: web-live
           retention-days: 1
