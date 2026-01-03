@@ -63,7 +63,7 @@
           },
           {
             "group": "Advanced",
-            "pages": ["advanced/popup-hosts"]
+            "pages": ["advanced/surface-observers", "advanced/popup-hosts"]
           }
         ]
       }
