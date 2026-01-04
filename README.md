@@ -14,7 +14,7 @@ Instead of spreading show/hide logic across your widgets, you describe **what** 
 
 ## The problem
 
-Managing presentations imperatively with scattered show/hide logic creates boilerplate and doesn't scale:
+Managing presentations imperatively with repetitive show/hide logic creates boilerplate and doesn't scale:
 
 ```dart
 // ❌ Imperative approach: scattered logic, repetitive patterns, hard to test
