@@ -7,13 +7,14 @@ import 'package:shared/shared.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 /// {@template app_updates_guard}
-/// This guard uses [EligibilitySchedulingGuard] to filter update items based on
+/// This guard uses [IEligibilitySchedulingGuard] to filter update items based on
 /// eligibility and evaluates the value of the update status and passes it down
 /// to the context, that will be used by the [eligibilityResolver] resolver to
 /// determine if the update is eligible.
 /// {@endtemplate}
 final class AppUpdatesGuard
-    extends EligibilitySchedulingGuard<AppUpdatesItem, AppSurface, AppVariant> {
+    extends
+        IEligibilitySchedulingGuard<AppUpdatesItem, AppSurface, AppVariant> {
   /// {@macro app_updates_guard}
   AppUpdatesGuard({
     required super.eligibilityResolver,

@@ -3,14 +3,14 @@ import 'package:example/src/maintenance/presentum/payload.dart';
 import 'package:shared/shared.dart';
 
 /// {@template maintenance_scheduling_guard}
-/// This guard extends the [EligibilitySchedulingGuard] to filter maintenance
+/// This guard extends the [IEligibilitySchedulingGuard] to filter maintenance
 /// items based on eligibility and adds them as active.
 ///
-/// - See [EligibilitySchedulingGuard] for more details.
+/// - See [IEligibilitySchedulingGuard] for more details.
 /// {@endtemplate}
 final class MaintenanceSchedulingGuard
     extends
-        EligibilitySchedulingGuard<MaintenanceItem, AppSurface, AppVariant> {
+        IEligibilitySchedulingGuard<MaintenanceItem, AppSurface, AppVariant> {
   /// {@macro maintenance_scheduling_guard}
   MaintenanceSchedulingGuard({required super.eligibilityResolver});
 }

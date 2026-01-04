@@ -4,11 +4,11 @@ import 'package:example/src/common/presentum/sync_state_with_candidates_guard.da
 /// {@template sync_campaigns_state_with_candidates_guard}
 /// Syncs the current state slots with the latest candidates.
 ///
-/// - See [SyncStateWithCandidatesGuard] for more details.
+/// - See [ISyncStateWithCandidatesGuard] for more details.
 /// {@endtemplate}
 final class SyncCampaignsStateWithCandidatesGuard
     extends
-        SyncStateWithCandidatesGuard<
+        ISyncStateWithCandidatesGuard<
           CampaignPresentumItem,
           CampaignSurface,
           CampaignVariant

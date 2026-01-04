@@ -19,7 +19,7 @@ import 'package:shared/shared.dart';
 /// {@endtemplate}
 final class RecommendationSyncGuard
     extends
-        SyncStateWithCandidatesGuard<
+        ISyncStateWithCandidatesGuard<
           RecommendationItem,
           AppSurface,
           AppVariant

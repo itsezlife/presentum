@@ -9,14 +9,14 @@ import 'package:presentum/presentum.dart';
 ///
 /// - See [PresentumGuard] for more details.
 /// {@endtemplate}
-abstract base class EligibilitySchedulingGuard<
+abstract base class IEligibilitySchedulingGuard<
   TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
     extends PresentumGuard<TItem, S, V> {
   /// {@macro eligibility_scheduling_guard}
-  EligibilitySchedulingGuard({
+  IEligibilitySchedulingGuard({
     required this.eligibilityResolver,
     super.refresh,
   });
@@ -49,4 +49,21 @@ abstract base class EligibilitySchedulingGuard<
 
     return state;
   }
+}
+
+/// Guard that schedules items based on eligibility.
+///
+/// - See [IEligibilitySchedulingGuard] for more details.
+/// {@macro eligibility_scheduling_guard}
+final class EligibilitySchedulingGuard<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    extends IEligibilitySchedulingGuard<TItem, S, V> {
+  /// {@macro eligibility_scheduling_guard}
+  EligibilitySchedulingGuard({
+    required super.eligibilityResolver,
+    super.refresh,
+  });
 }

@@ -102,7 +102,7 @@ class CampaignPayload extends PresentumPayload<CampaignSurface, CampaignVariant>
 }
 ```
 
-[See full payload implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+[See full payload implementation ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/payload.dart)
 
 ## Options
 
@@ -284,7 +284,7 @@ class MyGuard extends CampaignGuard {
 }
 ```
 
-[See production typedefs ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/typedefs.dart)
+[See production typedefs ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/typedefs.dart)
 
 ## Metadata patterns
 
@@ -298,12 +298,16 @@ metadata: {
   'ctaText': 'Shop Now',
   'ctaUrl': '/shop/black-friday',
   'backgroundColor': '#1E293B',
-  'time_range': {
-    'start': '2025-11-29T00:00:00Z',
-    'end': '2025-12-02T23:59:59Z',
-  },
   'required_segments': ['active_users'],
-  'is_active': true,
+  'any_of': [
+    {
+      'time_range': {
+        'start': '2025-11-29T00:00:00Z',
+        'end': '2025-12-02T23:59:59Z',
+      },
+    },
+    {'is_active': true}
+  ],
 }
 ```
 
@@ -335,30 +339,6 @@ metadata: {
 ## Best practices
 
 <AccordionGroup>
-  <Accordion title="Keep metadata flat when possible">
-    Flat metadata is easier to work with in eligibility extractors:
-    
-    **Good:**
-    ```dart
-    metadata: {
-      'title': 'Sale',
-      'discount': '50%',
-      'start_date': '2025-11-29',
-    }
-    ```
-    
-    **Acceptable:**
-    ```dart
-    metadata: {
-      'title': 'Sale',
-      'time_range': {
-        'start': '2025-11-29',
-        'end': '2025-12-02',
-      },
-    }
-    ```
-  </Accordion>
-  
   <Accordion title="Use priority ranges">
     Establish priority ranges for different types:
     
@@ -395,15 +375,8 @@ metadata: {
   </Card>
 
   <Card
-    title="Creating payloads guide"
-    href="/guides/creating-payloads"
-    icon="wrench">
-    Step-by-step payload building
-  </Card>
-
-  <Card
     title="Production example"
-    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart"
+    href="https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/payload.dart"
     icon="code">
     Real-world payload implementation
   </Card>

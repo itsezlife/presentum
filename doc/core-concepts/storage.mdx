@@ -13,6 +13,13 @@ Storage is the persistence layer for tracking presentation events. It records:
 
 Guards and the engine use storage to make decisions about what to show.
 
+<Warning>
+**Storage is optional but highly recommended.** If not provided, Presentum uses `NoOpPresentumStorage` which does nothing and logs warnings (only visible when `presentum.logs` is enabled via `--dart-define=presentum.logs=true`). Without storage, impression tracking, cooldowns, and dismissal states won't persist.
+
+Always provide a storage implementation in production.
+
+</Warning>
+
 ## Storage interface
 
 Implement `PresentumStorage<S, V>`:
@@ -22,8 +29,12 @@ abstract interface class PresentumStorage<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 > {
-  Future<void> init();
-  Future<void> clear();
+  // Clears specific item by [itemId] on [surface] with [variant] style.
+  FutureOr<void> clearItem(
+    String itemId, {
+    required S surface,
+    required V variant,
+  });
 
   // Shown tracking
   FutureOr<void> recordShown(
@@ -72,135 +83,158 @@ abstract interface class PresentumStorage<
 
 ## SharedPreferences implementation
 
-Production implementation using SharedPreferences:
+Generic production implementation using SharedPreferences, that can be used for any
+presentum:
 
 ```dart
-class CampaignStorage
-    implements PresentumStorage<CampaignSurface, CampaignVariant> {
+import 'dart:async';
 
-  late SharedPreferencesWithCache _prefs;
+import 'package:presentum/presentum.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+typedef PersistentPresentumStorageKey<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> = (String itemId, S surface, V variant);
+
+extension type PersistentPresentumStorageKeys<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>(PersistentPresentumStorageKey<S, V> key) {
+  String get shownCount =>
+      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_count_key__';
+  String get lastShown =>
+      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_last_shown_key__';
+  String get timestamps =>
+      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_timestamps_key__';
+  String get dismissedAt =>
+      '__dismissed_${key.$1}_${key.$2.name}_${key.$3.name}_at_key__';
+  String get convertedAt =>
+      '__converted_${key.$1}_${key.$2.name}_${key.$3.name}_at_key__';
+
+  List<String> get allKeys => [
+    shownCount,
+    lastShown,
+    timestamps,
+    dismissedAt,
+    convertedAt,
+  ];
+}
+
+class PersistentPresentumStorage<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    implements PresentumStorage<S, V> {
+  PersistentPresentumStorage({required SharedPreferencesWithCache prefs})
+    : _prefs = prefs;
+
+  final SharedPreferencesWithCache _prefs;
 
   @override
-  Future<void> init() async {
-    _prefs = await SharedPreferencesWithCache.create(
-      cacheOptions: const SharedPreferencesWithCacheOptions(),
-    );
+  Future<void> clearItem(
+    String itemId, {
+    required S surface,
+    required V variant,
+  }) => Future.wait(
+    PersistentPresentumStorageKeys((
+      itemId,
+      surface,
+      variant,
+    )).allKeys.map(_prefs.remove),
+  );
+
+  @override
+  FutureOr<DateTime?> getLastShown(
+    String itemId, {
+    required S surface,
+    required V variant,
+  }) async {
+    final key = PersistentPresentumStorageKeys((
+      itemId,
+      surface,
+      variant,
+    )).lastShown;
+    final timestampStr = _prefs.getString(key);
+    return timestampStr != null ? DateTime.parse(timestampStr) : null;
   }
 
   @override
-  Future<void> clear() => _prefs.clear();
-
-  @override
-  Future<void> recordShown(
+  FutureOr<void> recordShown(
     String itemId, {
-    required CampaignSurface surface,
-    required CampaignVariant variant,
+    required S surface,
+    required V variant,
     required DateTime at,
   }) async {
-    final key = _makeKey(itemId, surface, variant);
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    final countKey = keys.shownCount;
+    final lastShownKey = keys.lastShown;
+    final timestampsKey = keys.timestamps;
 
-    // Update count
-    final countKey = '${key}_count';
     final currentCount = _prefs.getInt(countKey) ?? 0;
+    final currentTimestamps = _prefs.getStringList(timestampsKey) ?? [];
+
     await _prefs.setInt(countKey, currentCount + 1);
-
-    // Update last shown
-    final lastShownKey = '${key}_last_shown';
     await _prefs.setString(lastShownKey, at.toIso8601String());
-
-    // Append to timestamps list
-    final timestampsKey = '${key}_timestamps';
-    final timestamps = _prefs.getStringList(timestampsKey) ?? [];
     await _prefs.setStringList(timestampsKey, [
-      ...timestamps,
+      ...currentTimestamps,
       at.toIso8601String(),
     ]);
   }
 
   @override
-  Future<DateTime?> getLastShown(
-    String itemId, {
-    required CampaignSurface surface,
-    required CampaignVariant variant,
-  }) async {
-    final key = _makeKey(itemId, surface, variant);
-    final timestampStr = _prefs.getString('${key}_last_shown');
-    return timestampStr != null ? DateTime.parse(timestampStr) : null;
-  }
-
-  @override
-  Future<int> getShownCount(
+  FutureOr<int> getShownCount(
     String itemId, {
     required Duration period,
-    required CampaignSurface surface,
-    required CampaignVariant variant,
+    required S surface,
+    required V variant,
   }) async {
-    final key = _makeKey(itemId, surface, variant);
-    final timestamps = _prefs.getStringList('${key}_timestamps') ?? [];
-
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    final timestampsKey = keys.timestamps;
+    final timestampStrings = _prefs.getStringList(timestampsKey) ?? [];
+    final timestamps = timestampStrings.map(DateTime.parse).toList();
     final cutoff = DateTime.now().subtract(period);
-    final recent = timestamps
-        .map(DateTime.parse)
-        .where((t) => t.isAfter(cutoff))
-        .length;
+    final count = timestamps.where((t) => t.isAfter(cutoff)).length;
 
-    return recent;
+    return count;
   }
 
   @override
-  Future<void> recordDismissed(
+  FutureOr<DateTime?> getDismissedAt(
     String itemId, {
-    required CampaignSurface surface,
-    required CampaignVariant variant,
-    required DateTime at,
+    required S surface,
+    required V variant,
   }) async {
-    final key = _makeKey(itemId, surface, variant);
-    await _prefs.setString('${key}_dismissed_at', at.toIso8601String());
-  }
-
-  @override
-  Future<DateTime?> getDismissedAt(
-    String itemId, {
-    required CampaignSurface surface,
-    required CampaignVariant variant,
-  }) async {
-    final key = _makeKey(itemId, surface, variant);
-    final timestampStr = _prefs.getString('${key}_dismissed_at');
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    final timestampStr = _prefs.getString(keys.dismissedAt);
     return timestampStr != null ? DateTime.parse(timestampStr) : null;
   }
 
   @override
-  Future<void> recordConverted(
+  FutureOr<void> recordDismissed(
     String itemId, {
-    required CampaignSurface surface,
-    required CampaignVariant variant,
+    required S surface,
+    required V variant,
     required DateTime at,
   }) async {
-    final key = _makeKey(itemId, surface, variant);
-    await _prefs.setString('${key}_converted_at', at.toIso8601String());
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    await _prefs.setString(keys.dismissedAt, at.toIso8601String());
   }
 
-  String _makeKey(String itemId, Enum surface, Enum variant) =>
-      '${itemId}::${surface.name}::${variant.name}';
+  @override
+  FutureOr<void> recordConverted(
+    String itemId, {
+    required S surface,
+    required V variant,
+    required DateTime at,
+  }) async {
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    await _prefs.setString(keys.convertedAt, at.toIso8601String());
+  }
 }
 ```
 
-[See full production storage ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_storage.dart)
-
-## Storage key structure
-
-Use compound keys for granular tracking:
-
-```
-Format: {itemId}::{surface}::{variant}_{field}
-
-Examples:
-- black_friday_2025::popup::fullscreenDialog_count
-- black_friday_2025::popup::fullscreenDialog_last_shown
-- black_friday_2025::popup::fullscreenDialog_timestamps
-- black_friday_2025::popup::dialog_dismissed_at
-- black_friday_2025::watchlistHeader::banner_converted_at
-```
+[See full production storage ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/persistent_presentum_storage.dart)
 
 <Info>
   Per-surface-variant tracking lets the same campaign appear differently on
@@ -209,65 +243,7 @@ Examples:
 
 ## In-memory implementation
 
-For testing or session-only tracking:
-
-```dart
-class InMemoryStorage implements PresentumStorage<AppSurface, CampaignVariant> {
-  final Map<String, DateTime> _lastShown = {};
-  final Map<String, int> _shownCount = {};
-  final Map<String, DateTime> _dismissedAt = {};
-  final Map<String, DateTime> _convertedAt = {};
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> clear() async {
-    _lastShown.clear();
-    _shownCount.clear();
-    _dismissedAt.clear();
-    _convertedAt.clear();
-  }
-
-  @override
-  FutureOr<void> recordShown(
-    String itemId, {
-    required AppSurface surface,
-    required CampaignVariant variant,
-    required DateTime at,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    _lastShown[key] = at;
-    _shownCount[key] = (_shownCount[key] ?? 0) + 1;
-  }
-
-  @override
-  FutureOr<DateTime?> getLastShown(
-    String itemId, {
-    required AppSurface surface,
-    required CampaignVariant variant,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    return _lastShown[key];
-  }
-
-  @override
-  FutureOr<int> getShownCount(
-    String itemId, {
-    required Duration period,
-    required AppSurface surface,
-    required CampaignVariant variant,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    return _shownCount[key] ?? 0;
-  }
-
-  // Implement other methods...
-
-  String _makeKey(String itemId, Enum surface, Enum variant) =>
-      '$itemId::${surface.name}::${variant.name}';
-}
-```
+For testing or session-only tracking, use built-in [InMemoryPresentumStorage](https://github.com/itsezlife/presentum/blob/748390c7f925a6121dd46447fbfe823dd0bc8a97/lib/src/controller/storage.dart#L70)
 
 ## Backend API implementation
 
@@ -317,13 +293,39 @@ class ApiStorage implements PresentumStorage<AppSurface, CampaignVariant> {
 }
 ```
 
+## No-op storage (default)
+
+If you don't provide a storage implementation, Presentum uses `NoOpPresentumStorage`:
+
+```dart
+// ⚠️ Without storage - uses NoOpPresentumStorage internally
+presentum = Presentum(
+  guards: guards,
+);
+// Logs warnings when storage methods are called
+// (only visible with --dart-define=presentum.logs=true)
+```
+
+`NoOpPresentumStorage` does nothing and returns default values:
+
+- `getLastShown()` → `null`
+- `getShownCount()` → `0`
+- `getDismissedAt()` → `null`
+- All `record*()` methods → no-op with warning log
+
+<Warning>
+  **Don't rely on NoOpPresentumStorage in production.** Without storage, your
+  guards can't check impression counts, cooldowns, or dismissal states. Always
+  provide a real storage implementation.
+</Warning>
+
 ## Storage event handler
 
 Use `PresentumStorageEventHandler` to automatically record events:
 
 ```dart
 presentum = Presentum(
-  storage: storage,
+  storage: storage, // ✅ Provide storage
   eventHandlers: [
     PresentumStorageEventHandler(storage: storage),
     // This handler calls storage.recordShown/Dismissed/Converted automatically
@@ -337,30 +339,51 @@ presentum = Presentum(
 ## Best practices
 
 <AccordionGroup>
-  <Accordion title="Use compound keys">
-    Include item ID, surface, and variant in keys for granular tracking:
+  <Accordion title="Always provide storage in production">
+    Don't rely on `NoOpPresentumStorage`. Always pass a real storage implementation:
     
     ```dart
-    String _makeKey(String itemId, Enum surface, Enum variant) => 
-        '$itemId::${surface.name}::${variant.name}';
+    // ❌ Bad - uses NoOpPresentumStorage
+    presentum = Presentum(guards: guards);
+    
+    // ✅ Good - explicit storage
+    presentum = Presentum(
+      storage: PersistentPresentumStorage(prefs: prefs),
+      guards: guards,
+    );
     ```
   </Accordion>
 
-  <Accordion title="Handle period-based counts">
-    `getShownCount` receives a `period` parameter. Only count impressions within that timeframe:
+{" "}
+
+<Accordion title="Handle period-based counts">
+  `getShownCount` receives a `period` parameter. Only count impressions within
+  that timeframe: ```dart final cutoff = DateTime.now().subtract(period); final
+  recentCount = timestamps.where((t) => t.isAfter(cutoff)).length; ```
+</Accordion>
+
+  <Accordion title="Initialize storage synchronously">
+    Avoid async initialization in `initState`. Use `SharedPreferencesWithCache` for synchronous access:
     
     ```dart
-    final cutoff = DateTime.now().subtract(period);
-    final recentCount = timestamps.where((t) => t.isAfter(cutoff)).length;
+    @override
+    void initState() {
+      super.initState();
+      // ✅ Synchronous - no await needed
+      _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
+      presentum = Presentum(storage: _storage);
+    }
     ```
   </Accordion>
 
-  <Accordion title="Initialize storage before Presentum">
-    ```dart
-    final storage = MyStorage();
-    await storage.init(); // ✅ Initialize first
-    final presentum = Presentum(storage: storage);
+  <Accordion title="Enable logs during development">
+    Use `--dart-define=presentum.logs=true` to see NoOpPresentumStorage warnings and other logs:
+    
+    ```bash
+    flutter run --dart-define=presentum.logs=true
     ```
+    
+    This helps catch missing storage implementations during development.
   </Accordion>
 </AccordionGroup>
 
@@ -371,9 +394,11 @@ presentum = Presentum(
     Use storage in guards
   </Card>
 
-  <Card title="Event system" href="/features/events" icon="bolt">
-    Handle events with storage
-  </Card>
+{" "}
+
+<Card title="Event system" href="/features/events" icon="bolt">
+  Handle events with storage
+</Card>
 
   <Card
     title="Implementation guide"

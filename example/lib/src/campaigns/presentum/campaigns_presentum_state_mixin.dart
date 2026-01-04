@@ -21,16 +21,6 @@ mixin CampaignsPresentumStateMixin<T extends StatefulWidget> on State<T> {
   late final ValueNotifier<List<({Object error, StackTrace stackTrace})>>
   _errorsObserver;
 
-  static const _eligibilityRules = <EligibilityRule>[
-    TimeRangeRule(),
-    ConstantRule(),
-  ];
-
-  static const _eligibilityExtractors = <EligibilityExtractor<HasMetadata>>[
-    TimeRangeExtractor(),
-    ConstantExtractor(metadataKey: 'is_active'),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -54,9 +44,18 @@ mixin CampaignsPresentumStateMixin<T extends StatefulWidget> on State<T> {
 
     _storage = CampaignPersistentStorage(prefs: deps.sharedPreferences);
 
-    _eligibility = const DefaultEligibilityResolver<HasMetadata>(
-      rules: _eligibilityRules,
-      extractors: _eligibilityExtractors,
+    _eligibility = DefaultEligibilityResolver<HasMetadata>(
+      rules: [...createStandardRules()],
+      extractors: const [
+        TimeRangeExtractor(),
+        ConstantExtractor(metadataKey: 'is_active'),
+        AnyOfExtractor(
+          nestedExtractors: [
+            TimeRangeExtractor(),
+            ConstantExtractor(metadataKey: 'is_active'),
+          ],
+        ),
+      ],
     );
 
     campaignPresentum =

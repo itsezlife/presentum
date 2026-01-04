@@ -80,59 +80,117 @@ class CampaignGuard
 This guard from a production app handles priority, sequencing, impression limits, and cooldowns:
 
 ```dart
-class CampaignSchedulingGuard extends CampaignGuard {
-  CampaignSchedulingGuard(this._eligibility);
+final class CampaignSchedulingGuard extends CampaignGuard {
+  CampaignSchedulingGuard({required this.eligibility});
 
-  final EligibilityResolver<CampaignPayload> _eligibility;
+  final EligibilityResolver<HasMetadata> eligibility;
 
   @override
   FutureOr<CampaignPresentumState> call(
-    storage, history, state, candidates, context,
+    PresentumStorage storage,
+    List<CampaignPresentumHistoryEntry> history,
+    CampaignPresentumState$Mutable state,
+    List<CampaignPresentumItem> candidates,
+    Map<String, Object?> context,
   ) async {
-    // 1) Filter eligible campaigns
-    final eligiblePayloadIds = <String>{};
-    final campaigns = candidates.map((e) => e.payload).toSet();
-
-    for (final campaign in campaigns) {
-      if (eligiblePayloadIds.contains(campaign.id)) continue;
-      final isEligible = await _eligibility.isEligible(campaign, context);
-      if (isEligible) eligiblePayloadIds.add(campaign.id);
+    // 1) eligibility filter per campaign id.
+    final eligibleEntries = <CampaignPresentumItem>[];
+    for (final entry in candidates) {
+      final isEligible = await eligibility.isEligible(entry.payload, context);
+      if (isEligible) eligibleEntries.add(entry);
     }
 
-    if (eligiblePayloadIds.isEmpty) return state;
+    if (eligibleEntries.isEmpty) return state;
 
-    // 2) Sort by priority and stage
-    final eligibleEntries = candidates
-        .where((e) => eligiblePayloadIds.contains(e.payload.id))
-        .toList()
-      ..sort((a, b) {
-        final p = b.payload.priority.compareTo(a.payload.priority);
-        if (p != 0) return p;
-        final sa = a.stage ?? 0;
-        final sb = b.stage ?? 0;
-        return sa.compareTo(sb);
-      });
+    // Highest priority first (per campaign), then by stage.
+    eligibleEntries.sort((a, b) {
+      final p = b.priority.compareTo(a.priority);
+      if (p != 0) return p;
+      final sa = a.stage ?? 0;
+      final sb = b.stage ?? 0;
+      return sa.compareTo(sb);
+    });
 
-    // 3) Handle always-on banners/inline presentations
+    // Compute header-dismissed flag per campaign for sequencing logic.
+    var hasHeader = true;
+    var headerDismissed = false;
+    if (eligibleEntries.any(
+      (entry) => entry.surface == CampaignSurface.homeTopBanner,
+    )) {
+      for (final entry in eligibleEntries) {
+        if (entry.surface != CampaignSurface.homeTopBanner) continue;
+        final dismissedAt = await storage.getDismissedAt(
+          entry.id,
+          surface: entry.surface,
+          variant: entry.variant,
+        );
+        if (dismissedAt != null && entry.option.isDismissible) {
+          headerDismissed = true;
+          break;
+        }
+
+        final cooldownMinutes = entry.option.cooldownMinutes;
+        final until = dismissedAt != null && cooldownMinutes != null
+            ? dismissedAt.add(Duration(minutes: cooldownMinutes))
+            : null;
+        headerDismissed = until != null && until.isAfter(DateTime.now());
+      }
+    } else {
+      hasHeader = false;
+    }
+
+    // 2) always-on inline/banner per surface with header/footer sequencing.
     for (final entry in eligibleEntries) {
-      if (!entry.option.alwaysOnIfEligible) continue;
+      final p = entry.option;
+      if (!p.alwaysOnIfEligible) continue;
 
+      final isHeaderDismissed = headerDismissed;
+
+      // Header: show only until dismissed.
+      if (entry.surface == CampaignSurface.homeTopBanner &&
+          hasHeader &&
+          isHeaderDismissed) {
+        continue;
+      }
+
+      // Footer: enable only after header has been dismissed.
+      if (entry.surface == CampaignSurface.homeFooterBanner &&
+          !isHeaderDismissed &&
+          hasHeader) {
+        continue;
+      }
+
+      // Do not override higher-priority already set item.
       final slot = state.slots[entry.surface];
-      if (slot?.active != null) continue; // Don't override
-
+      if (slot?.active != null) continue;
       state.setActive(entry.surface, entry);
     }
 
-    // 4) Schedule popup with impression/cooldown checks
+    // If we had an active watchlist header in the history, don't show a popup.
+    final hadAnActiveHomeTopBanner =
+        history.isNotEmpty &&
+        history.any(
+          (entry) => entry.state.slots.values.any(
+            (value) =>
+                value.active?.option.surface == CampaignSurface.homeTopBanner,
+          ),
+        );
+    if (hadAnActiveHomeTopBanner) return state;
+
+    // 3) popup scheduling: determine order and set active + queue.
     final popupCandidates = await _popupCandidates(
       storage,
       eligibleEntries,
+      state,
       context,
+      headerDismissed || !hasHeader,
     );
-
     if (popupCandidates.isEmpty) return state;
 
-    state.setActive(CampaignSurface.popup, popupCandidates.first);
+    // First candidate becomes active, rest form the queue.
+    final active = popupCandidates.first;
+
+    state.setActive(CampaignSurface.popup, active);
     if (popupCandidates.length > 1) {
       state.setQueue(CampaignSurface.popup, popupCandidates.sublist(1));
     }
@@ -140,105 +198,143 @@ class CampaignSchedulingGuard extends CampaignGuard {
     return state;
   }
 
-  Future<List<CampaignItem>> _popupCandidates(
-    storage, items, context,
+  /// Returns popup-eligible entries in display order.
+  Future<List<CampaignPresentumItem>> _popupCandidates(
+    PresentumStorage storage,
+    List<CampaignPresentumItem> items,
+    PresentumState$Mutable<
+      CampaignPresentumItem,
+      CampaignSurface,
+      CampaignVariant
+    >
+    state,
+    Map<String, Object?> context,
+    bool headerDismissed,
   ) async {
-    final result = <CampaignItem>[];
-    final now = DateTime.now();
-
-    for (final entry in items) {
-      if (entry.surface != CampaignSurface.popup) continue;
-
-      // Check cooldown
-      final lastShown = await storage.getLastShown(
-        entry.id,
-        surface: entry.surface,
-        variant: entry.variant,
-      );
-
-      if (lastShown case final last?) {
-        final minutesSince = now.difference(last).inMinutes;
-        final cooldown = entry.option.cooldownMinutes ?? 0;
-        if (minutesSince < cooldown) continue;
-      }
-
-      // Check impression cap
-      if (entry.option.maxImpressions case final cap? when cap >= 0) {
-        final count = await storage.getShownCount(
-          entry.id,
-          period: const Duration(days: 365),
-          surface: entry.surface,
-          variant: entry.variant,
-        );
-        if (count >= cap) continue;
-      }
-
-      result.add(entry);
-    }
-
-    return result;
+    ...
   }
 }
 ```
 
-[Full scheduling guard implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+[Full scheduling guard implementation ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/guards/scheduling_guard.dart)
 
 ### Remove ineligible guard
 
-Removes items that are no longer eligible (e.g., expired campaigns):
+Removes items that are no longer eligible (e.g., expired campaigns). This guard is generic and can be reused in any presentum:
 
 ```dart
-class RemoveIneligibleCampaignsGuard extends CampaignGuard {
-  RemoveIneligibleCampaignsGuard(this.eligibility);
+abstract base class IRemoveIneligibleCandidatesGuard<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    extends PresentumGuard<TItem, S, V> {
+  /// {@macro remove_ineligible_candidates_guard}
+  IRemoveIneligibleCandidatesGuard({required this.eligibility, super.refresh});
 
-  final EligibilityResolver<CampaignPayload> eligibility;
+  final EligibilityResolver<HasMetadata> eligibility;
 
   @override
-  FutureOr<CampaignPresentumState> call(
-    storage, history, state, candidates, context,
+  FutureOr<PresentumState<TItem, S, V>> call(
+    PresentumStorage storage,
+    List<PresentumHistoryEntry<TItem, S, V>> history,
+    PresentumState$Mutable<TItem, S, V> state,
+    List<TItem> candidates,
+    Map<String, Object?> context,
   ) async {
-    final checkedCampaigns = <String>{};
-    final ineligibleCampaigns = <String>{};
+    final checkedItems = <String>{};
+    final ineligibleItems = <String>{};
 
-    // Check eligibility for all campaigns in state
-    final lastState = history.isNotEmpty ? history.last.state : null;
-    final slots = lastState?.slots ?? state.slots;
+    // First pass: identify all ineligible items from the current state and
+    // current candidates.
+    final slots = [...state.slots.entries];
 
-    for (final entry in slots.entries) {
+    for (final entry in slots) {
       final slot = entry.value;
 
-      // Check active item
       if (slot.active case final active?) {
-        final campaignId = active.payload.id;
-        if (!checkedCampaigns.contains(campaignId)) {
-          checkedCampaigns.add(campaignId);
-          final eligible = await eligibility.isEligible(
-            active.payload,
-            context,
-          );
-          if (!eligible) ineligibleCampaigns.add(campaignId);
+        final itemId = active.id;
+
+        // Only check eligibility once per distinct campaign
+        if (checkedItems.contains(itemId)) continue;
+        checkedItems.add(itemId);
+
+        final eligible = await eligibility.isEligible(active, <String, Object?>{
+          ...context,
+        });
+
+        if (!eligible) {
+          ineligibleItems.add(itemId);
         }
       }
 
-      // Check queue
+      // Also check items in queue
       for (final queuedItem in slot.queue) {
-        final campaignId = queuedItem.payload.id;
-        if (!checkedCampaigns.contains(campaignId)) {
-          checkedCampaigns.add(campaignId);
-          final eligible = await eligibility.isEligible(
-            queuedItem.payload,
-            context,
-          );
-          if (!eligible) ineligibleCampaigns.add(campaignId);
+        final itemId = queuedItem.id;
+
+        if (checkedItems.contains(itemId)) continue;
+        checkedItems.add(itemId);
+
+        final eligible = await eligibility.isEligible(
+          queuedItem,
+          <String, Object?>{...context},
+        );
+
+        if (!eligible) {
+          ineligibleItems.add(itemId);
         }
       }
     }
 
-    // Remove ineligible campaigns from all surfaces
-    if (ineligibleCampaigns.isNotEmpty) {
-      state.removeWhere(
-        (item) => ineligibleCampaigns.contains(item.payload.id),
-      );
+    // Second pass: remove all ineligible items from all surfaces in the
+    // candidate state.
+    if (ineligibleItems.isNotEmpty) {
+      final slots = [...state.slots.entries];
+      for (final entry in slots) {
+        final surface = entry.key;
+        final slot = entry.value;
+
+        final active = slot.active;
+        final queue = slot.queue;
+
+        final activeIneligible =
+            active?.payload.id != null && ineligibleItems.contains(active!.id);
+
+        // Filter queue to remove ineligible items.
+        final filteredQueue = queue
+            .where((queuedItem) => !ineligibleItems.contains(queuedItem.id))
+            .toList();
+
+        // If nothing was ineligible for this surface, skip.
+        final hadIneligibleInQueue = filteredQueue.length != queue.length;
+        if (!activeIneligible && !hadIneligibleInQueue) continue;
+
+        // Rebuild slot in `next` with only eligible items.
+        if (activeIneligible) {
+          if (filteredQueue.isNotEmpty) {
+            // Promote first eligible item to active.
+            final nextActive = filteredQueue.first;
+            final nextQueue = filteredQueue.length > 1
+                ? filteredQueue.sublist(1)
+                : <TItem>[];
+
+            state.setActive(surface, nextActive);
+            if (nextQueue.isNotEmpty) {
+              state.setQueue(surface, nextQueue);
+            }
+          } else {
+            // No eligible items remain on this surface. Touch the surface in
+            // state so that follow‑up guards do not restore stale items.
+            state.clearSurface(surface);
+          }
+        } else {
+          // Active is still eligible, only the queue changed.
+          if (active != null) {
+            state.setActive(surface, active);
+          }
+          state.setQueue(surface, filteredQueue);
+        }
+      }
     }
 
     return state;
@@ -246,64 +342,98 @@ class RemoveIneligibleCampaignsGuard extends CampaignGuard {
 }
 ```
 
-[Full remove ineligible guard ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/remove_ineligible_campaigns_guard.dart)
+[Full remove ineligible guard ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/remove_ineligible_candidates_guard.dart)
 
 ### Sync state with candidates guard
 
-Keeps state synchronized with latest candidate data using diff algorithm:
+Keeps state synchronized with latest candidate data using diff algorithm. This 
+guard is generic and can be reused in any presentum
 
 ```dart
-class SyncStateWithCandidatesGuard extends CampaignGuard {
+abstract base class ISyncStateWithCandidatesGuard<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    extends PresentumGuard<TItem, S, V> {
+  /// {@macro sync_state_with_candidates_guard}
+  ISyncStateWithCandidatesGuard({super.refresh});
+
   @override
-  FutureOr<CampaignPresentumState> call(
-    storage, history, state, candidates, context,
+  FutureOr<PresentumState<TItem, S, V>> call(
+    PresentumStorage storage,
+    List<PresentumHistoryEntry<TItem, S, V>> history,
+    PresentumState$Mutable<TItem, S, V> state,
+    List<TItem> candidates,
+    Map<String, Object?> context,
   ) {
-    // Build map of candidates by ID for fast lookup
-    final candidateMap = <String, CampaignItem>{};
+    // Build a map of candidates by their unique key (id + surface + variant)
+    // for fast lookup.
+    final candidateMap = <String, TItem>{};
     for (final candidate in candidates) {
-      candidateMap[candidate.id] = candidate;
+      final key = candidate.id;
+      candidateMap[key] = candidate;
     }
 
-    // Process each surface's slot
-    for (final surfaceEntry in state.slots.entries) {
+    // Process each surface's slot.
+    final slots = [...state.slots.entries];
+    for (final surfaceEntry in slots) {
       final surface = surfaceEntry.key;
       final slot = surfaceEntry.value;
 
-      final currentItems = <CampaignItem>[
-        if (slot.active case final active?) active,
-        ...slot.queue,
-      ];
+      // Collect current items in this slot (active + queue).
+      final currentItems = <TItem>[?slot.active, ...slot.queue];
 
       if (currentItems.isEmpty) continue;
 
-      final syncedItems = <CampaignItem>[];
+      // Build list of items that should remain, checking against candidates.
+      final syncedItems = <TItem>[];
       var itemsChanged = false;
 
       for (final currentItem in currentItems) {
-        final candidateMatch = candidateMap[currentItem.id];
+        final key = currentItem.id;
+        final candidateMatch = candidateMap[key];
 
         if (candidateMatch == null) {
-          // Item removed from candidates
+          // Item no longer in candidates - mark for removal.
           itemsChanged = true;
           continue;
         }
 
-        // Check if content changed
-        if (!_areContentsTheSame(currentItem, candidateMatch)) {
-          syncedItems.add(candidateMatch); // Use updated version
+        // Check if content has changed using DiffUtil's content comparison.
+        final contentsChanged = !areContentsTheSame(
+          currentItem,
+          candidateMatch,
+        );
+
+        if (contentsChanged) {
+          // Replace with updated version from candidates.
+          syncedItems.add(candidateMatch);
           itemsChanged = true;
         } else {
-          syncedItems.add(currentItem); // Keep as-is
+          // Item unchanged, keep as-is.
+          syncedItems.add(currentItem);
         }
       }
 
+      // If anything changed, update the slot.
       if (itemsChanged) {
         if (syncedItems.isEmpty) {
+          // All items removed - clear the surface.
           state.clearSurface(surface);
         } else {
-          state.setActive(surface, syncedItems.first);
-          if (syncedItems.length > 1) {
-            state.setQueue(surface, syncedItems.sublist(1));
+          // Update active and queue.
+          final newActive = syncedItems.first;
+          final newQueue = syncedItems.length > 1
+              ? syncedItems.sublist(1)
+              : <TItem>[];
+
+          state.setActive(surface, newActive);
+          if (newQueue.isNotEmpty) {
+            state.setQueue(surface, newQueue);
+          } else if (slot.queue.isNotEmpty) {
+            // Clear queue if it was previously non-empty.
+            state.setQueue(surface, <TItem>[]);
           }
         }
       }
@@ -312,15 +442,12 @@ class SyncStateWithCandidatesGuard extends CampaignGuard {
     return state;
   }
 
-  bool _areContentsTheSame(CampaignItem oldItem, CampaignItem newItem) {
-    // Compare metadata and option properties
-    return oldItem.priority == newItem.priority &&
-           _areMetadataEqual(oldItem.metadata, newItem.metadata);
+  bool areContentsTheSame(TItem oldItem, TItem newItem) {
+    ...
   }
-}
 ```
 
-[Full sync guard implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/sync_state_with_candidates_guard.dart)
+[Full sync guard implementation ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/sync_state_with_candidates_guard.dart)
 
 ## Guard execution order
 
@@ -330,11 +457,11 @@ Guards run **in sequence**, with each guard receiving the state mutated by previ
 presentum = Presentum(
   storage: storage,
   guards: [
-    AppOpenedCountGuard(),        // 1. Add app context
-    AppLifecycleChangedGuard(),   // 2. Handle app lifecycle
-    SyncStateWithCandidatesGuard(), // 3. Sync with latest data
-    CampaignSchedulingGuard(),    // 4. Apply scheduling logic
-    RemoveIneligibleGuard(),      // 5. Filter out ineligible
+    AppOpenedCountGuard(),             // 1. Add app context
+    AppLifecycleGuard(refresh: ...),   // 2. Handle app lifecycle
+    SyncStateWithCandidatesGuard(),    // 3. Sync with latest data
+    CampaignSchedulingGuard(),         // 4. Apply scheduling logic
+    RemoveIneligibleCandidatesGuard(), // 5. Filter out ineligible
   ],
 );
 ```
@@ -349,7 +476,7 @@ Guards can subscribe to external changes and re-run automatically:
 
 ```dart
 class MyGuard extends PresentumGuard<Item, Surface, Variant> {
-  MyGuard({required ValueNotifier<AppLifecycle> lifecycle})
+  MyGuard({required Listenable lifecycle})
       : super(refresh: lifecycle);
 
   @override
@@ -424,6 +551,8 @@ Inside guards, you can mutate state freely:
   </Tab>
 </Tabs>
 
+See full set of short-cut commands in the [Presentum state API](https://github.com/itsezlife/presentum/tree/master/lib/src/state/state.dart).
+
 ## Context sharing
 
 Pass data between guards using the `context` parameter:
@@ -475,23 +604,25 @@ campaignPresentum = Presentum(
     ),
 
     // 2. Handle app lifecycle changes
-    AppLifecycleChangedGuard(
-      refresh: AppLifecycleChangedRefresh(),
-    ),
+    AppLifecycleGuard<
+      CampaignPresentumItem,
+      CampaignSurface,
+      CampaignVariant
+    >(refresh: AppLifecycleRefresh()),
 
     // 3. Sync with latest candidate data
-    SyncStateWithCandidatesGuard(),
+    SyncCampaignsStateWithCandidatesGuard(),
 
     // 4. Apply scheduling logic (priority, sequencing, rules)
-    CampaignSchedulingGuard(eligibilityResolver),
+    CampaignSchedulingGuard(eligibility: _eligibility),
 
     // 5. Remove items that became ineligible
-    RemoveIneligibleCampaignsGuard(eligibilityResolver),
+    RemoveIneligibleCampaignsGuard(eligibility: _eligibility),
   ],
 );
 ```
 
-[See full production initialization ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaigns_presentum_state_mixin.dart)
+[See full production initialization ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/campaigns_presentum_state_mixin.dart)
 
 <Tip>
   **Order matters!** Early guards prepare data, middle guards apply logic, late
@@ -735,7 +866,7 @@ class CampaignProvider {
   <Card
     title="Production examples"
     icon="code"
-    href="https://github.com/itsezlife/presentum/tree/master/campaigns/presentum/guards">
+    href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/campaigns/presentum/guards">
     See real-world guards
   </Card>
 </CardGroup>

@@ -11,7 +11,11 @@ import 'package:flutter/foundation.dart';
 import 'package:presentum/presentum.dart';
 import 'package:remote_config_repository/remote_config_repository.dart';
 
-/// Mock campaign provider for testing and development.
+/// Manages campaign lifecycle by syncing with Remote Config and scheduling
+/// campaigns based on eligibility rules.
+///
+/// Automatically adds/removes campaigns when Remote Config updates,
+/// schedules future campaigns, and handles eligibility changes.
 class CampaignsProvider {
   CampaignsProvider({
     required CampaignPersistentStorage storage,
@@ -46,6 +50,7 @@ class CampaignsProvider {
 
   late StreamSubscription<RemoteConfigUpdate> _remoteConfigSubscription;
 
+  /// Initialize provider by fetching campaigns and listening for updates.
   Future<void> init() async {
     await _fetchAndAddCampaign();
 

@@ -14,6 +14,94 @@ Instead of writing nested if/else statements, you compose `Eligibility` conditio
   logic. You can still use manual checks in guards if you prefer.
 </Tip>
 
+## Dynamic eligibility from JSON
+
+Most commonly, eligibility conditions come from payload metadata stored as JSON and can be updated in real-time without releasing a new app version.
+
+**Typical workflow:**
+
+1. Store eligibility conditions in Firebase Remote Config or your backend API
+2. Fetch JSON payloads with embedded eligibility metadata
+3. Extractors pull conditions from metadata
+4. Resolver evaluates conditions against runtime context
+5. Update eligibility rules remotely without app updates
+
+### Basic condition JSON
+
+Simple eligibility condition in payload metadata:
+
+```json
+{
+  "id": "black-friday-2025",
+  "priority": 100,
+  "metadata": {
+    "title": "Black Friday Sale",
+    "discount": "50%",
+    "time_range": {
+      "start": "2025-11-29T00:00:00Z",
+      "end": "2025-12-02T23:59:59Z"
+    },
+    "is_active": true
+  },
+  "options": [...]
+}
+```
+
+### Nested condition JSON
+
+Complex eligibility with multiple conditions:
+
+```json
+{
+  "id": "premium-upsell-2025",
+  "priority": 80,
+  "metadata": {
+    "title": "Upgrade to Premium",
+    "eligibility": {
+      "all_of": [
+        {
+          "time_range": {
+            "start": "2025-01-01T00:00:00Z",
+            "end": "2025-12-31T23:59:59Z"
+          }
+        },
+        {
+          "any_of": [
+            {
+              "user_segments": ["trial", "free_tier"]
+            },
+            {
+              "numeric_comparison": {
+                "key": "days_since_signup",
+                "operator": "greater_than",
+                "value": 7
+              }
+            }
+          ]
+        },
+        {
+          "not": {
+            "boolean_flag": {
+              "key": "has_premium",
+              "value": true
+            }
+          }
+        }
+      ]
+    }
+  },
+  "options": [...]
+}
+```
+
+<Info>
+  When eligibility is in Firebase Remote Config, you can update targeting rules,
+  time ranges, and conditions in real-time across all users without deploying a
+  new app version.
+</Info>
+
+[See Firebase Remote Config integration →](/recipes/remote-config)
+
 ## Quick example
 
 ```dart
@@ -228,7 +316,11 @@ final eligibility = AllOfEligibility(conditions: [
 
 ## Extractors
 
-Extractors pull eligibility conditions from your payloads:
+Extractors pull eligibility conditions from your payload metadata JSON. This is how you convert JSON from Firebase Remote Config or APIs into typed `Eligibility` objects.
+
+### Basic extractor
+
+Extract simple conditions from metadata:
 
 ```dart
 class TimeRangeExtractor
@@ -256,6 +348,84 @@ class TimeRangeExtractor
   }
 }
 ```
+
+**Extracts from JSON:**
+
+```json
+{
+  "metadata": {
+    "time_range": {
+      "start": "2025-11-29T00:00:00Z",
+      "end": "2025-12-02T23:59:59Z"
+    }
+  }
+}
+```
+
+### Nested extractor
+
+Extract complex nested conditions:
+
+```dart
+class AnyOfExtractor implements EligibilityExtractor<HasMetadata> {
+  const AnyOfExtractor({
+    required this.nestedExtractors,
+    this.metadataKey = 'any_of',
+  });
+
+  final List<EligibilityExtractor<HasMetadata>> nestedExtractors;
+  final String metadataKey;
+
+  @override
+  List<Eligibility> extract(HasMetadata subject) {
+    final anyOfList = subject.metadata[metadataKey] as List<Object?>?;
+    if (anyOfList == null) return [];
+
+    final conditions = <Eligibility>[];
+
+    for (final item in anyOfList) {
+      final itemMetadata = item as Map<String, Object?>?;
+      if (itemMetadata == null) continue;
+
+      // Create temporary payload with nested metadata
+      final nestedSubject = _NestedMetadata(itemMetadata);
+
+      // Extract conditions from nested metadata using all extractors
+      for (final extractor in nestedExtractors) {
+        conditions.addAll(extractor.extract(nestedSubject));
+      }
+    }
+
+    return conditions.isEmpty ? [] : [AnyOfEligibility(conditions: conditions)];
+  }
+}
+```
+
+**Extracts from JSON:**
+
+```json
+{
+  "metadata": {
+    "any_of": [
+      {
+        "user_segments": ["premium", "verified"]
+      },
+      {
+        "time_range": {
+          "start": "2025-12-01T00:00:00Z",
+          "end": "2025-12-31T23:59:59Z"
+        }
+      }
+    ]
+  }
+}
+```
+
+<Tip>
+  Extractors enable dynamic eligibility updates. Change the JSON in Firebase
+  Remote Config, and all clients automatically get new targeting rules without
+  an app update.
+</Tip>
 
 ## Using in guards
 
@@ -307,7 +477,7 @@ if (ineligibleCondition case TimeRangeEligibility(:final start)) {
 }
 ```
 
-[See production usage ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart)
+[See production usage ->](https://github.com/itsezlife/presentum/blob/748390c7f925a6121dd46447fbfe823dd0bc8a97/example/lib/src/campaigns/presentum/campaigns_provider.dart#L265)
 
 ## Production example
 
@@ -358,7 +528,7 @@ class SchedulingGuard extends CampaignGuard {
 }
 ```
 
-[Full scheduling guard ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+[Full scheduling guard ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/guards/scheduling_guard.dart)
 
 ## Create custom conditions
 
@@ -450,14 +620,12 @@ final resolver = DefaultEligibilityResolver(
     Use eligibility in guards
   </Card>
 
-  <Card title="API reference" icon="book" href="/api-reference/eligibility">
-    Complete eligibility API
-  </Card>
+{" "}
 
   <Card
     title="Production example"
     icon="code"
-    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaigns_presentum_state_mixin.dart">
+    href="https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/campaigns_presentum_state_mixin.dart">
     See real-world usage
   </Card>
 </CardGroup>

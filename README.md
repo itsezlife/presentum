@@ -14,60 +14,48 @@ Instead of spreading show/hide logic across your widgets, you describe **what** 
 
 ## The problem
 
-Most apps manage presentations by mixing logic across widgets and state managers:
+Managing presentations imperatively with scattered show/hide logic creates boilerplate and doesn't scale:
 
 ```dart
-// ❌ Violates SOLID, doesn't scale, hard to test
-class HomeScreen extends StatefulWidget {
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+// ❌ Imperative approach: scattered logic, repetitive patterns, hard to test
+class PresentationService {
+  Campaign? _activeCampaign;
+  AppUpdate? _activeUpdate;
 
-class _HomeScreenState extends State<HomeScreen> {
-  bool _showBanner = false;
-  Campaign? _campaign;
+  Future<Campaign?> checkCampaign() async {
+    final count = await prefs.getInt('campaign_count') ?? 0;
+    final lastShown = await prefs.getInt('campaign_last_shown');
 
-  @override
-  void initState() {
-    super.initState();
-    _checkEligibility();
-  }
-
-  Future<void> _checkEligibility() async {
-    final count = await prefs.getInt('banner_count') ?? 0;
-    final lastShown = await prefs.getInt('banner_last_shown');
-
-    final withinTimeRange =
-            DateTime.now().difference(DateTime.prase(lastShown)).inHours > 24;
-    if (count < 3 && (lastShown == null || withinTimeRange)) {
+    if (count < 3 && (lastShown == null ||
+        DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(lastShown)).inHours > 24)) {
       final campaign = await fetchCampaign();
-      if (campaign case final campaign?
-          when campaign.isActive && !userIsPremium) {
-        setState(() {
-          _showBanner = true;
-          _campaign = campaign;
-        });
+      if (campaign != null && campaign.isActive && !userIsPremium) {
+        _activeCampaign = campaign;
+        await prefs.setInt('campaign_count', count + 1);
+        return campaign;
       }
     }
+    return null;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        if (_campaign case final campaign? when _showBanner)
-          BannerWidget(
-            campaign: _campaign,
-            onClose: () => _handleDismiss(),
-          ),
-        // other content
-      ],
-    );
+  Future<AppUpdate?> checkUpdate() async {
+    final dismissed = await prefs.getBool('update_dismissed') ?? false;
+    if (!dismissed) {
+      final update = await fetchUpdate();
+      if (update != null && update.isRequired) {
+        _activeUpdate = update;
+        return update;
+      }
+    }
+    return null;
   }
+
+  // What shows first? How do we prioritize?
+  // This logic gets duplicated across every screen...
 }
 ```
 
-This doesn't scale. With multiple presentation types, surfaces, eligibility rules, and A/B tests, complexity grows fast.
+**The imperative approach creates systemic issues:** eligibility checks scattered across widgets, impression tracking duplicated everywhere, testing requires mocking widget lifecycle for each case, and coordinating multiple competing presentations becomes a maintenance burden. With multiple presentation types, surfaces, eligibility rules, and A/B tests, this complexity compounds rapidly.
 
 ## The solution
 
