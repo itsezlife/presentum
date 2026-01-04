@@ -1,5 +1,5 @@
 name: presentum
-description: "A declarative cross-platform Flutter engine with focus on state to display presentations, such as campaigns, banners, notifications, etc., anywhere, anytime."
+description: "Presentum is a declarative Flutter engine for building dynamic, conditional UI at scale. It helps you manage campaigns, app updates, special offers, tips, notifications and so much more with clean, testable, type-safe code."
 version: 0.3.6
 
 homepage: https://docs.presentum.dev/
