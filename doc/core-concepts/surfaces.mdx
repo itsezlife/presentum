@@ -46,7 +46,7 @@ enum CampaignSurface with PresentumSurface {
 }
 ```
 
-[See source ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/surfaces.dart)
+[See source ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/surfaces.dart)
 
 ## Variants
 
@@ -77,6 +77,12 @@ PresentumOption(
   // ...
 )
 ```
+
+<Note>
+  `PresentumOption` is generic and must be extended with a concrete implementation.
+  For example, create `CampaignOption extends PresentumOption<CampaignSurface, CampaignVariant>`.
+</Note>
+
 
 ## Surface naming
 
@@ -154,34 +160,6 @@ enum AppSurface with PresentumSurface {
 }
 ```
 
-## Advanced: String conversion
-
-Add helper methods for serialization:
-
-```dart
-enum CampaignSurface with PresentumSurface {
-  popup,
-  watchlistHeader,
-  watchlistFooter,
-  menuTile;
-
-  static CampaignSurface fromName(
-    String name, {
-    CampaignSurface? fallback,
-  }) {
-    return switch (name) {
-      'popup' => CampaignSurface.popup,
-      'watchlistHeader' => CampaignSurface.watchlistHeader,
-      'watchlistFooter' => CampaignSurface.watchlistFooter,
-      'menuTile' => CampaignSurface.menuTile,
-      _ => fallback ?? (throw ArgumentError.value(name)),
-    };
-  }
-}
-```
-
-[See production implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/surfaces.dart)
-
 ## Surface independence
 
 Each surface has its own slot. They don't interfere unless your guards coordinate them:
@@ -230,7 +208,7 @@ class SequencingGuard extends CampaignGuard {
 }
 ```
 
-[See production sequencing ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
+[See production sequencing ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/guards/scheduling_guard.dart)
 
 ## Next steps
 

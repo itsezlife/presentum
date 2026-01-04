@@ -21,9 +21,9 @@ In this guide, you'll create a campaign banner system that:
 
 ## Step 1: Define surfaces and variants
 
-Create `lib/presentation/surfaces.dart`:
+Create `lib/campaigns/presentum/surfaces.dart`:
 
-```dart lib/presentation/surfaces.dart
+```dart lib/campaigns/presentum/surfaces.dart
 import 'package:presentum/presentum.dart';
 
 /// Where presentations can appear
@@ -48,11 +48,11 @@ enum CampaignVariant with PresentumVisualVariant {
 
 ## Step 2: Create payload and option classes
 
-Create `lib/presentation/payload.dart`:
+Create `lib/campaigns/presentum/payload.dart`:
 
-```dart lib/presentation/payload.dart
+```dart lib/campaigns/presentum/payload.dart
 import 'package:presentum/presentum.dart';
-import '../docs/surfaces.dart';
+import 'surfaces.dart';
 
 class CampaignPresentumOption
     extends PresentumOption<AppSurface, CampaignVariant> {
@@ -125,120 +125,179 @@ class CampaignPresentumItem
 }
 ```
 
-[See production payload with JSON serialization ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+[See production payload with JSON serialization ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/payload.dart)
 
 ## Step 3: Implement storage
 
-Create `lib/presentation/storage.dart`:
+Create `lib/campaigns/presentum/storage.dart`:
 
-```dart lib/presentation/storage.dart
+```dart lib/campaigns/presentum/storage.dart
 import 'dart:async';
+
 import 'package:presentum/presentum.dart';
-import '../docs/surfaces.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class InMemoryStorage implements PresentumStorage<AppSurface, CampaignVariant> {
-  final Map<String, DateTime> _lastShown = {};
-  final Map<String, int> _shownCount = {};
-  final Map<String, DateTime> _dismissedAt = {};
+typedef PersistentPresentumStorageKey<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+> = (String itemId, S surface, V variant);
+
+extension type PersistentPresentumStorageKeys<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>(PersistentPresentumStorageKey<S, V> key) {
+  String get shownCount =>
+      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_count_key__';
+  String get lastShown =>
+      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_last_shown_key__';
+  String get timestamps =>
+      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_timestamps_key__';
+  String get dismissedAt =>
+      '__dismissed_${key.$1}_${key.$2.name}_${key.$3.name}_at_key__';
+  String get convertedAt =>
+      '__converted_${key.$1}_${key.$2.name}_${key.$3.name}_at_key__';
+
+  List<String> get allKeys => [
+    shownCount,
+    lastShown,
+    timestamps,
+    dismissedAt,
+    convertedAt,
+  ];
+}
+
+class PersistentPresentumStorage<
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    implements PresentumStorage<S, V> {
+  PersistentPresentumStorage({required SharedPreferencesWithCache prefs})
+    : _prefs = prefs;
+
+  final SharedPreferencesWithCache _prefs;
 
   @override
-  Future<void> init() async {}
+  Future<void> clearItem(
+    String itemId, {
+    required S surface,
+    required V variant,
+  }) => Future.wait(
+    PersistentPresentumStorageKeys((
+      itemId,
+      surface,
+      variant,
+    )).allKeys.map(_prefs.remove),
+  );
 
   @override
-  Future<void> clear() async {
-    _lastShown.clear();
-    _shownCount.clear();
-    _dismissedAt.clear();
+  FutureOr<DateTime?> getLastShown(
+    String itemId, {
+    required S surface,
+    required V variant,
+  }) async {
+    final key = PersistentPresentumStorageKeys((
+      itemId,
+      surface,
+      variant,
+    )).lastShown;
+    final timestampStr = _prefs.getString(key);
+    return timestampStr != null ? DateTime.parse(timestampStr) : null;
   }
 
   @override
   FutureOr<void> recordShown(
     String itemId, {
-    required AppSurface surface,
-    required CampaignVariant variant,
+    required S surface,
+    required V variant,
     required DateTime at,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    _lastShown[key] = at;
-    _shownCount[key] = (_shownCount[key] ?? 0) + 1;
-  }
+  }) async {
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    final countKey = keys.shownCount;
+    final lastShownKey = keys.lastShown;
+    final timestampsKey = keys.timestamps;
 
-  @override
-  FutureOr<DateTime?> getLastShown(
-    String itemId, {
-    required AppSurface surface,
-    required CampaignVariant variant,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    return _lastShown[key];
+    final currentCount = _prefs.getInt(countKey) ?? 0;
+    final currentTimestamps = _prefs.getStringList(timestampsKey) ?? [];
+
+    await _prefs.setInt(countKey, currentCount + 1);
+    await _prefs.setString(lastShownKey, at.toIso8601String());
+    await _prefs.setStringList(timestampsKey, [
+      ...currentTimestamps,
+      at.toIso8601String(),
+    ]);
   }
 
   @override
   FutureOr<int> getShownCount(
     String itemId, {
     required Duration period,
-    required AppSurface surface,
-    required CampaignVariant variant,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    return _shownCount[key] ?? 0;
-  }
+    required S surface,
+    required V variant,
+  }) async {
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    final timestampsKey = keys.timestamps;
+    final timestampStrings = _prefs.getStringList(timestampsKey) ?? [];
+    final timestamps = timestampStrings.map(DateTime.parse).toList();
+    final cutoff = DateTime.now().subtract(period);
+    final count = timestamps.where((t) => t.isAfter(cutoff)).length;
 
-  @override
-  FutureOr<void> recordDismissed(
-    String itemId, {
-    required AppSurface surface,
-    required CampaignVariant variant,
-    required DateTime at,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    _dismissedAt[key] = at;
+    return count;
   }
 
   @override
   FutureOr<DateTime?> getDismissedAt(
     String itemId, {
-    required AppSurface surface,
-    required CampaignVariant variant,
-  }) {
-    final key = _makeKey(itemId, surface, variant);
-    return _dismissedAt[key];
+    required S surface,
+    required V variant,
+  }) async {
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    final timestampStr = _prefs.getString(keys.dismissedAt);
+    return timestampStr != null ? DateTime.parse(timestampStr) : null;
+  }
+
+  @override
+  FutureOr<void> recordDismissed(
+    String itemId, {
+    required S surface,
+    required V variant,
+    required DateTime at,
+  }) async {
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    await _prefs.setString(keys.dismissedAt, at.toIso8601String());
   }
 
   @override
   FutureOr<void> recordConverted(
     String itemId, {
-    required AppSurface surface,
-    required CampaignVariant variant,
+    required S surface,
+    required V variant,
     required DateTime at,
-  }) {
-    // Implement conversion tracking
+  }) async {
+    final keys = PersistentPresentumStorageKeys((itemId, surface, variant));
+    await _prefs.setString(keys.convertedAt, at.toIso8601String());
   }
-
-  String _makeKey(String itemId, Enum surface, Enum variant) =>
-      '$itemId::${surface.name}::${variant.name}';
 }
 ```
 
-<Warning>
-  This is an in-memory implementation for demo purposes. For production, use
-  SharedPreferences or a backend.
-</Warning>
-
-[See production SharedPreferences storage ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_storage.dart)
+<Tip>
+This storage implementation is **generic and reusable** across any Presentum instance. The type parameters `<S, V>` make it work with any surface and variant enums you define.
+</Tip>
 
 ## Step 4: Create a guard
 
-Create `lib/presentation/guards.dart`:
+Create `lib/campaigns/presentum/eligibility_scheduling_guard.dart`:
 
-```dart lib/presentation/guards.dart
-import 'dart:async';
-import 'package:presentum/presentum.dart';
-import '../docs/payload.dart';
-import '../docs/surfaces.dart';
-
-class CampaignGuard
+```dart lib/campaigns/presentum/eligibility_scheduling_guard.dart
+class CampaignSchedulingGuard
     extends PresentumGuard<CampaignPresentumItem, AppSurface, CampaignVariant> {
+  CampaignSchedulingGuard({
+    required this.eligibilityResolver,
+    super.refresh,
+  });
+
+  /// The eligibility resolver to use for filtering items.
+  final EligibilityResolver<HasMetadata> eligibilityResolver;
+
   @override
   FutureOr<PresentumState<CampaignPresentumItem, AppSurface, CampaignVariant>> call(
     PresentumStorage storage,
@@ -247,35 +306,36 @@ class CampaignGuard
     List<CampaignPresentumItem> candidates,
     Map<String, Object?> context,
   ) async {
-    for (final candidate in candidates) {
-      final option = candidate.option;
+    final filtered = <CampaignPresentumItem>[];
 
-      // Check impression limit
-      if (option.maxImpressions case final max?) {
-        final count = await storage.getShownCount(
-          candidate.id,
-          period: const Duration(days: 365),
-          surface: candidate.surface,
-          variant: candidate.variant,
-        );
-        if (count >= max) continue;
-      }
+    for (final item in candidates) {
+      // Check eligibility
+      final isEligible = await eligibilityResolver.isEligible(item, context);
+      if (!isEligible) continue;
 
-      // Check cooldown
-      if (option.cooldownMinutes case final cooldown?) {
-        final lastShown = await storage.getLastShown(
-          candidate.id,
-          surface: candidate.surface,
-          variant: candidate.variant,
-        );
-        if (lastShown case final last?) {
-          final minutesSince = DateTime.now().difference(last).inMinutes;
-          if (minutesSince < cooldown) continue;
-        }
-      }
+      filtered.add(item);
+    }
 
-      // All checks passed
-      state.setActive(candidate.surface, candidate);
+    state.clearAll();
+
+    final bySurface = <AppSurface, List<FeatureItem>>{};
+    for (final item in filtered) {
+      (bySurface[item.surface] ??= <FeatureItem>[]).add(item);
+    }
+
+    for (final entry in bySurface.entries) {
+      final surface = entry.key;
+      final items = entry.value;
+
+      int stageOf(FeatureItem i) => i.stage ?? 0;
+
+      items.sort((a, b) {
+        final stageCmp = stageOf(a).compareTo(stageOf(b));
+        if (stageCmp != 0) return stageCmp;
+        return b.priority.compareTo(a.priority);
+      });
+
+      state.addAll(surface, items);
     }
 
     return state;
@@ -283,41 +343,105 @@ class CampaignGuard
 }
 ```
 
-[See production guards ->](https://github.com/itsezlife/presentum/tree/master/campaigns/presentum/guards)
+[See production guards ->](https://github.com/itsezlife/presentum/tree/master/example/lib/src/campaigns/presentum/guards)
 
 ## Step 5: Initialize Presentum
+
+Create a mixin for Presentum initialization:
+
+```dart lib/campaigns/presentum/presentum_state_mixin.dart
+import 'package:flutter/widgets.dart';
+import 'package:presentum/presentum.dart';
+import 'surfaces.dart';
+import 'payload.dart';
+import 'storage.dart';
+import 'guards.dart';
+
+mixin CampaignPresentumMixin<T extends StatefulWidget> on State<T> {
+  late final Presentum<CampaignPresentumItem, AppSurface, CampaignVariant>
+      campaignPresentum;
+  late final PresentumStorage<AppSurface, CampaignVariant> _storage;
+  late final EligibilityResolver<HasMetadata> _eligibility;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final deps = Dependencies.of(context);
+
+    // Note: DO NOT asyncronously initilize shared preferences
+
+    _storage = PersistentPresentumStorage<AppSurface, CampaignVariant>(pref: deps.sharedPreferences);
+
+    _eligibility = DefaultEligibilityResolver<HasMetadata>(
+      rules: [...createStandardRules()],
+      extractors: const [
+        TimeRangeExtractor(),
+        ConstantExtractor(metadataKey: 'is_active'),
+        AnyOfExtractor(
+          nestedExtractors: [
+            TimeRangeExtractor(),
+            ConstantExtractor(metadataKey: 'is_active'),
+          ],
+        ),
+      ],
+    );
+
+    campaignPresentum = Presentum(
+      storage: _storage,
+      eventHandlers: [
+        PresentumStorageEventHandler(storage: _storage),
+      ],
+      guards: [
+        SyncStateWithCandidatesGuard<CampaignPresentumItem, AppSurface, CampaignVariant>(),
+        CampaignSchedulingGuard(eligibility: _eligibility),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    campaignPresentum.dispose();
+    super.dispose();
+  }
+}
+```
+
+Create a wrapper widget:
+
+```dart lib/campaigns/presentum/campaign_presentum_widget.dart
+import 'package:flutter/material.dart';
+import 'presentum_state_mixin.dart';
+
+class CampaignPresentumWidget extends StatefulWidget {
+  const CampaignPresentumWidget({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<CampaignPresentumWidget> createState() => _CampaignPresentumWidgetState();
+}
+
+class _CampaignPresentumWidgetState extends State<CampaignPresentumWidget>
+    with CampaignPresentumMixin {
+  @override
+  Widget build(BuildContext context) {
+    // Use config.engine.build, or explicitly use InheritedPresentum.value(value: campaignPresentum)
+    return campaignPresentum.config.engine.build(
+      context,
+      widget.child,
+    );
+  }
+}
+```
 
 Update `lib/main.dart`:
 
 ```dart lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:presentum/presentum.dart';
-import '../docs/presentation/surfaces.dart';
-import '../docs/presentation/payload.dart';
-import '../docs/presentation/storage.dart';
-import '../docs/presentation/guards.dart';
+import 'campaigns/presentum/campaign_presentum_widget.dart';
 
-late final Presentum<CampaignPresentumItem, AppSurface, CampaignVariant>
-    campaignPresentum;
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize storage
-  final storage = InMemoryStorage();
-  await storage.init();
-
-  // Create Presentum instance
-  campaignPresentum = Presentum(
-    storage: storage,
-    eventHandlers: [
-      PresentumStorageEventHandler(storage: storage),
-    ],
-    guards: [
-      CampaignGuard(),
-    ],
-  );
-
+void main() {
   runApp(const MyApp());
 }
 
@@ -326,29 +450,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wrap app with Presentum engine
-    return campaignPresentum.config.engine.build(
-      context,
-      MaterialApp(
+    return CampaignPresentumWidget(
+      child: MaterialApp(
         title: 'Presentum Quickstart',
-        home: const HomeScreen(),
+        home: const HomeView(),
       ),
     );
   }
 }
 ```
 
-[See production initialization ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaigns_presentum_state_mixin.dart)
+[See production initialization ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/campaigns_presentum_state_mixin.dart)
 
 ## Step 6: Create an outlet
 
-Create `lib/widgets/campaign_outlet.dart`:
+Create `lib/campaigns/presentum/campaign_outlet.dart`:
 
-```dart lib/widgets/campaign_outlet.dart
+```dart lib/campaigns/presentum/campaign_outlet.dart
 import 'package:flutter/material.dart';
 import 'package:presentum/presentum.dart';
-import '../presentation/surfaces.dart';
-import '../presentation/payload.dart';
+import 'surfaces.dart';
+import 'payload.dart';
 
 class HomeTopBannerOutlet extends StatelessWidget {
   const HomeTopBannerOutlet({super.key});
@@ -398,12 +520,12 @@ class HomeTopBannerOutlet extends StatelessWidget {
 
 Add the outlet to your home screen:
 
-```dart lib/screens/home_screen.dart
+```dart lib/home/view/home_view.dart
 import 'package:flutter/material.dart';
-import '../widgets/campaign_outlet.dart';
+import 'campaign_outlet.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeView extends StatelessWidget {
+  const HomeView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -461,26 +583,6 @@ class HomeScreen extends StatelessWidget {
 }
 ```
 
-## Step 8: Run your app
-
-<Steps>
-  <Step title="Run the app">```bash flutter run ```</Step>
-
-  <Step title="Tap the + button">
-    This creates and displays a test campaign banner.
-  </Step>
-
-  <Step title="Dismiss the banner">Click the X to dismiss it.</Step>
-
-  <Step title="Try again">
-    Notice cooldown and impression limits work automatically!
-  </Step>
-</Steps>
-
-<Check>
-  **Congratulations!** You've built your first Presentum presentation.
-</Check>
-
 ## Next steps
 
 <CardGroup cols={2}>
@@ -488,24 +590,25 @@ class HomeScreen extends StatelessWidget {
     Deep dive into architecture
   </Card>
 
-  <Card
-    title="Production storage"
-    icon="database"
-    href="/guides/implementing-storage">
-    Implement persistent storage
-  </Card>
+{" "}
 
-  <Card
-    title="Advanced guards"
-    icon="shield"
-    href="/guides/implementing-guards">
-    Build complex eligibility rules
-  </Card>
+<Card
+  title="Production storage"
+  icon="database"
+  href="/guides/implementing-storage">
+  Implement persistent storage
+</Card>
+
+{" "}
+
+<Card title="Advanced guards" icon="shield" href="/guides/implementing-guards">
+  Build complex eligibility rules
+</Card>
 
   <Card
     title="Real example"
     icon="code"
-    href="https://github.com/itsezlife/presentum/tree/master/campaigns">
+    href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/">
     See production implementation
   </Card>
 </CardGroup>
@@ -519,13 +622,10 @@ class HomeScreen extends StatelessWidget {
     for a complete example.
   </Accordion>
 
-  <Accordion title="Can I use multiple Presentum instances?">
-    Yes! Create separate instances for different presentation types (campaigns,
-    tips, app updates). Each has independent state.
-  </Accordion>
+{" "}
 
-  <Accordion title="How do I test guards?">
-    Guards are functions - easy to test! Mock storage and verify state
-    mutations. See [Testing guide](/guides/testing).
-  </Accordion>
+<Accordion title="Can I use multiple Presentum instances?">
+  Yes! Create separate instances for different presentation types (campaigns,
+  tips, app updates). Each has independent state.
+</Accordion>
 </AccordionGroup>

@@ -28,14 +28,14 @@ import 'package:presentum/presentum.dart';
 /// if you need to compare the content of the items in a different way,
 /// specific to your [TItem] type.
 /// {@endtemplate}
-abstract base class SyncStateWithCandidatesGuard<
+abstract base class ISyncStateWithCandidatesGuard<
   TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
     extends PresentumGuard<TItem, S, V> {
   /// {@macro sync_state_with_candidates_guard}
-  SyncStateWithCandidatesGuard({super.refresh});
+  ISyncStateWithCandidatesGuard({super.refresh});
 
   @override
   FutureOr<PresentumState<TItem, S, V>> call(
@@ -204,4 +204,19 @@ abstract base class SyncStateWithCandidatesGuard<
 
     return true;
   }
+}
+
+/// Guard that syncs the state with the candidates.
+///
+/// - See [ISyncStateWithCandidatesGuard] for more details.
+/// 
+/// {@macro sync_state_with_candidates_guard}
+final class SyncStateWithCandidatesGuard<
+  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
+  S extends PresentumSurface,
+  V extends PresentumVisualVariant
+>
+    extends ISyncStateWithCandidatesGuard<TItem, S, V> {
+  /// {@macro sync_state_with_candidates_guard}
+  SyncStateWithCandidatesGuard({super.refresh});
 }

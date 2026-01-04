@@ -99,6 +99,172 @@ PresentumOutlet$Composition2<
 )
 ```
 
+## Cross-presentum composition with animations
+
+`PresentumOutlet$Composition2` supports combining items from **different Presentum instances** (cross-universe composition), allowing seamless coordination between multiple presentation systems with smooth animated transitions.
+
+### Production example
+
+Here's a real-world outlet that combines campaigns and feature flags, showing the highest-priority item with smooth fade and size transitions:
+
+```dart
+class BannerOutlet extends StatelessWidget {
+  const BannerOutlet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PresentumOutlet$Composition2<
+      CampaignPresentumItem,
+      FeatureItem,
+      CampaignSurface,
+      CampaignVariant,
+      AppSurface,
+      AppVariant
+    >(
+      surface1: CampaignSurface.homeTopBanner,
+      surface2: AppSurface.homeHeader,
+      resolverMode: OutletGroupMode.custom,
+      resolver: (campaignItems, featureItems) {
+        // Combine items from both Presentum instances
+        final allItems = <PresentumItem>[...campaignItems, ...featureItems]
+          ..sort((a, b) => b.priority.compareTo(a.priority));
+
+        if (allItems.isEmpty) {
+          return <PresentumItem>[];
+        }
+
+        // Show only the highest-priority item
+        return [allItems.first];
+      },
+      compositeBuilder: (context, items) {
+        return FadeSizeTransitionSwitcher(
+          isForwardMove: true,
+          child: switch (items.firstOrNull) {
+            CampaignPresentumItem(:final surface) => CampaignOutlet(
+              key: ValueKey('campaign_banner_$surface'),
+              surface: surface,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            FeatureItem() => const NewYearBanner(
+              key: ValueKey('new_year_banner'),
+              padding: EdgeInsets.symmetric(vertical: 16),
+            ),
+            _ => const SizedBox.shrink(key: ValueKey('empty_banner')),
+          },
+        );
+      },
+    );
+  }
+}
+```
+
+### How it works
+
+1. **Cross-universe composition**: Combines items from two separate Presentum instances:
+
+   - Campaign presentations (`CampaignPresentumItem`)
+   - Feature flag presentations (`FeatureItem`)
+
+2. **Priority resolution**: The resolver merges both lists and sorts by priority, selecting only the highest-priority item to display
+
+3. **Animated transitions**: `FadeSizeTransitionSwitcher` provides smooth animations when:
+   - A campaign is dismissed and a feature banner appears
+   - A feature is disabled and a campaign takes its place
+   - Items change priority dynamically
+
+### Smooth transition widget
+
+The `FadeSizeTransitionSwitcher` combines fade and size animations:
+
+```dart
+class FadeSizeTransitionSwitcher extends StatelessWidget {
+  const FadeSizeTransitionSwitcher({
+    required this.child,
+    this.sizeDuration = const Duration(milliseconds: 300),
+    this.fadeDuration = const Duration(milliseconds: 300),
+    this.isForwardMove = true,
+    super.key,
+  });
+
+  final Widget child;
+  final Duration sizeDuration;
+  final Duration fadeDuration;
+  final bool isForwardMove;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      alignment: Alignment.topLeft,
+      duration: sizeDuration,
+      curve: Curves.fastOutSlowIn,
+      child: AnimatedSwitcher(
+        duration: fadeDuration,
+        layoutBuilder: (currentChild, previousChildren) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Stack previous children during transition
+              ...previousChildren.map(
+                (child) => Positioned(left: 0, right: 0, child: child),
+              ),
+              if (currentChild != null) currentChild,
+            ],
+          );
+        },
+        transitionBuilder: (child, animation) {
+          final isIncoming = child.key == this.child.key;
+
+          if (isIncoming) {
+            // Fade in new content
+            return FadeTransition(opacity: animation, child: child);
+          } else {
+            // Fade out old content
+            return FadeTransition(
+              opacity: Tween(begin: 1.0, end: 0.0).animate(animation),
+              child: child,
+            );
+          }
+        },
+        child: child,
+      ),
+    );
+  }
+}
+```
+
+### Key benefits
+
+<CardGroup cols={2}>
+  <Card title="Seamless coordination" icon="link">
+    Multiple Presentum instances can compete for the same UI slot without conflicts. The outlet handles priority resolution automatically.
+  </Card>
+
+{" "}
+
+<Card title="Smooth transitions" icon="wand-magic-sparkles">
+  When one banner is dismissed, the next highest-priority item smoothly animates
+  in with fade and size transitions.
+</Card>
+
+{" "}
+
+<Card title="Declarative priority" icon="ranking-star">
+  Priority logic is centralized in the resolver. Guards don't need to know about
+  other presentation types.
+</Card>
+
+  <Card title="Type-safe composition" icon="shield-check">
+    Despite combining different item types, the outlet remains type-safe with pattern matching.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Use unique `ValueKey`s for each widget variant to ensure `AnimatedSwitcher`
+  correctly animates between different content types.
+</Tip>
+
+[See full production example →](https://github.com/itsezlife/presentum/blob/master/example/lib/src/main/widgets/banner_outlet.dart)
+
 ## Popup hosts
 
 For dialogs and overlays, use a **popup host** that watches a surface and shows dialogs:
@@ -114,56 +280,70 @@ class CampaignPopupHost extends StatefulWidget {
 }
 
 class _CampaignPopupHostState extends State<CampaignPopupHost>
-    with PresentumPopupSurfaceStateMixin<
-      CampaignItem,
-      AppSurface,
-      CampaignVariant,
-      CampaignPopupHost
-    > {
+    with
+        PresentumActiveSurfaceItemObserverMixin<
+          CampaignPresentumItem,
+          CampaignSurface,
+          CampaignVariant,
+          CampaignPopupHost
+        >,
+        PresentumPopupSurfaceStateMixin<
+          CampaignPresentumItem,
+          CampaignSurface,
+          CampaignVariant,
+          CampaignPopupHost
+        > {
 
   @override
-  AppSurface get surface => AppSurface.popup;
+  CampaignSurface get surface => CampaignSurface.popup;
 
   @override
-  Future<void> markDismissed({required CampaignItem entry, bool pop = false}) async {
-    await context.campaigns.markDismissed(entry);
-    if (pop) {
-      await Navigator.maybePop(context, true);
-    }
-  }
-
-  @override
-  Future<void> present(CampaignItem entry) async {
-    if (!mounted) return;
-
-    // Record impression
-    await context.campaigns.markShown(entry);
-
-    if (!mounted) return;
-
-    final result = await showDialog<bool?>(
-      context: context,
-      builder: (context) => InheritedPresentum.value(
-        value: context.campaigns,
-        child: InheritedPresentumItem(
-          item: entry,
-          child: CampaignDialogWidget(entry),
-        ),
-      ),
-      barrierDismissible: false,
-    );
-
-    if (result == null || result == false) {
-      await markDismissed(entry: entry);
-    }
-  }
+  bool get ignoreDuplicates => true;
 
   @override
   Widget build(BuildContext context) => widget.child;
+
+  @override
+  Future<PopupPresentResult> present(CampaignPresentumItem entry) async {
+    if (!mounted) return PopupPresentResult.notPresented;
+
+    // Record impression
+    final campaigns = context.campaignsPresentum;
+    await campaigns.markShown(entry);
+
+    if (!mounted) return PopupPresentResult.notPresented;
+
+    final factory = campaignsPresentationWidgetFactory;
+
+    final fullscreenDialog =
+        entry.option.variant == CampaignVariant.fullscreenDialog;
+
+    // Result is true if dismissed by user, null if dismissed by system
+    final result = await showDialog<bool?>(
+      context: context,
+      builder: (context) => InheritedPresentum.value(
+        value: campaigns,
+        child: InheritedPresentumItem<
+          CampaignPresentumItem,
+          CampaignSurface,
+          CampaignVariant
+        >(
+          item: entry,
+          child: factory.buildPopup(context, entry),
+        ),
+      ),
+      barrierDismissible: false,
+      fullscreenDialog: fullscreenDialog,
+    );
+
+    return result == true
+        ? PopupPresentResult.userDismissed
+        : PopupPresentResult.systemDismissed;
+  }
 }
 ```
 
-[See production popup host ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart)
+[See production popup host ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/widgets/campaign_popup_host.dart)
 
 <Tip>
   Use the `PresentumPopupSurfaceStateMixin` for automatic dialog lifecycle
@@ -477,18 +657,22 @@ PresentumOutlet<CampaignItem, AppSurface, CampaignVariant>(
     Step-by-step outlet creation
   </Card>
 
-  <Card title="Popup hosts" icon="window-maximize" href="/advanced/popup-hosts">
-    Advanced dialog management
-  </Card>
+{" "}
 
-  <Card title="Auto-tracking" icon="eye" href="/features/auto-tracking">
-    Automatic impression tracking
-  </Card>
+<Card title="Popup hosts" icon="window-maximize" href="/advanced/popup-hosts">
+  Advanced dialog management
+</Card>
+
+{" "}
+
+<Card title="Auto-tracking" icon="eye" href="/features/auto-tracking">
+  Automatic impression tracking
+</Card>
 
   <Card
     title="Production example"
     icon="code"
-    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/widgets/campaign_popup_host.dart">
+    href="https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/widgets/campaign_popup_host.dart">
     See real popup host
   </Card>
 </CardGroup>

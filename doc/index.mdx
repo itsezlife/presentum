@@ -88,130 +88,75 @@ PresentumOutlet(
 
 ## What you can build
 
-<Tabs>
-  <Tab title="App updates">
+Check out the [comprehensive example application](https://github.com/itsezlife/presentum/tree/master/example) source code.
+
+<CardGroup cols={3}>
+  <Card
+    title="Maintenance"
+    icon="wrench"
+    href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/maintenance">
+    Maintenance mode dialogs and system status notifications
+  </Card>
+  <Card
+    title="App updates"
+    icon="arrow-up"
+    href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/updates">
     Force update dialogs, optional upgrade prompts, changelog announcements
-    using Shorebird or CodePush.
-  </Tab>
-  <Tab title="Marketing">
+  </Card>
+  <Card
+    title="Marketing campaigns"
+    icon="megaphone"
+    href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/campaigns">
     Special offers with discount codes, limited-time sales, seasonal campaigns,
-    A/B tests.
-  </Tab>
-  <Tab title="Onboarding">
-    Feature discovery tips, contextual tutorials, progressive disclosure,
-    completion tracking.
-  </Tab>
-  <Tab title="Messaging">
-    User-specific promotions, survey requests, upgrade prompts, time-sensitive
-    alerts.
-  </Tab>
-</Tabs>
-
-## Production example
-
-Real-world implementation from a live app:
-
-<CodeGroup>
-
-```dart Initialization
-final presentum = Presentum(
-  storage: CampaignStorage(),
-  eventHandlers: [
-    PresentumStorageEventHandler(storage: storage),
-  ],
-  guards: [
-    AppOpenedCountGuard(
-      appOpenedCount: userRepository.fetchAppOpenedCount,
-    ),
-    AppLifecycleChangedGuard(
-      refresh: AppLifecycleChangedRefresh(),
-    ),
-    SyncStateWithCandidatesGuard(),
-    CampaignSchedulingGuard(eligibility),
-    RemoveIneligibleCampaignsGuard(eligibility),
-  ],
-);
-```
-
-```dart Firebase provider
-class CampaignProvider {
-  Future<void> init() async {
-    await _fetchFromRemoteConfig();
-
-    remoteConfig.onConfigUpdated.listen((_) async {
-      await remoteConfig.activate();
-      await _fetchFromRemoteConfig();
-    });
-  }
-
-  Future<void> _fetchFromRemoteConfig() async {
-    final json = remoteConfig.getString('campaigns');
-    final campaigns = (jsonDecode(json) as List)
-        .map((j) => CampaignPayload.fromJson(j))
-        .toList();
-
-    await _diffAndUpdate(campaigns);
-  }
-}
-```
-
-```dart Popup host
-class CampaignPopupHost extends StatefulWidget {
-  @override
-  State createState() => _CampaignPopupHostState();
-}
-
-class _CampaignPopupHostState extends State
-    with PresentumPopupSurfaceStateMixin {
-
-  @override
-  CampaignSurface get surface => CampaignSurface.popup;
-
-  @override
-  Future<void> present(CampaignItem entry) async {
-    await context.campaigns.markShown(entry);
-
-    final result = await showDialog<bool?>(
-      context: context,
-      builder: (context) => CampaignDialog(entry),
-    );
-
-    if (result == null || result == false) {
-      await markDismissed(entry: entry);
-    }
-  }
-
-  // ... markDismissed implementation
-}
-```
-
-</CodeGroup>
-
-[See complete implementation ->](https://github.com/itsezlife/presentum/tree/master/campaigns)
+    A/B tests
+  </Card>
+  <Card
+    title="Feature toggles"
+    icon="toggle-on"
+    href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/feature">
+    User-configurable feature flags, toggleable from settings, with dependency
+    chains and feature-aware widgets that adapt UI based on enabled features
+  </Card>
+  <Card
+    title="User preferences"
+    icon="sliders"
+    href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/settings">
+    Settings, user preferences, and feature toggles
+  </Card>
+</CardGroup>
 
 ## Guides
 
 <CardGroup cols={2}>
-  <Card title="Basic setup" icon="wrench" href="/guides/basic-setup">
-    Complete setup walkthrough
-  </Card>
+<Card
+  title="Implementing guards"
+  icon="shield"
+  href="/guides/implementing-guards">
+  Build eligibility logic
+</Card>
 
-  <Card
-    title="Implementing guards"
-    icon="shield"
-    href="/guides/implementing-guards">
-    Build eligibility logic
-  </Card>
+{" "}
 
-  <Card
-    title="Implementing storage"
-    icon="database"
-    href="/guides/implementing-storage">
-    Persistent tracking layer
-  </Card>
+<Card
+  title="Implementing storage"
+  icon="database"
+  href="/guides/implementing-storage">
+  Persistent tracking layer
+</Card>
 
-  <Card title="Building outlets" icon="tv" href="/guides/building-outlets">
-    Create presentation widgets
+{" "}
+
+<Card title="Building outlets" icon="tv" href="/guides/building-outlets">
+  Create presentation widgets
+</Card>
+
+{" "}
+
+<Card
+    title="State management"
+    icon="layer-group"
+    href="/guides/state-management">
+    Integrate with your state solution
   </Card>
 </CardGroup>
 
@@ -225,13 +170,17 @@ class _CampaignPopupHostState extends State
     Dynamic campaign management
   </Card>
 
-  <Card title="App update dialogs" icon="arrow-up" href="/recipes/app-updates">
-    Force and optional updates
-  </Card>
+{" "}
 
-  <Card title="A/B testing" icon="flask" href="/recipes/ab-testing">
-    Multi-variant experiments
-  </Card>
+<Card title="App update dialogs" icon="arrow-up" href="/recipes/app-updates">
+  Force and optional updates
+</Card>
+
+{" "}
+
+<Card title="A/B testing" icon="flask" href="/recipes/ab-testing">
+  Multi-variant experiments
+</Card>
 
   <Card
     title="Analytics integration"
@@ -240,49 +189,6 @@ class _CampaignPopupHostState extends State
     Track impressions and conversions
   </Card>
 </CardGroup>
-
-## Powerful features
-
-<Tabs>
-  <Tab title="Eligibility system">
-    Build complex targeting rules with conditions and extractors:
-    ```dart
-    AllOfEligibility(conditions: [
-      TimeRangeEligibility(start: start, end: end),
-      AnySegmentEligibility(requiredSegments: {"premium"}),
-      NumericComparisonEligibility(
-        contextKey: 'app_version',
-        comparison: NumericComparison.greaterThanOrEqual,
-        threshold: 2.0,
-      ),
-    ])
-    ```
-    [Learn more ->](/features/eligibility-system)
-  </Tab>
-
-  <Tab title="Event system">
-    React to user interactions with flexible handlers:
-    ```dart
-    eventHandlers: [
-      PresentumStorageEventHandler(storage: storage),
-      AnalyticsEventHandler(analytics),
-      BlocEventHandler(bloc),
-    ]
-    ```
-    [Learn more ->](/features/events)
-  </Tab>
-
-  <Tab title="Transition observers">
-    Monitor state changes with comprehensive diffs:
-    ```dart
-    transitionObservers: [
-      BlocTransitionObserver(bloc),
-      LoggingObserver(),
-    ]
-    ```
-    [Learn more ->](/features/transition-observers)
-  </Tab>
-</Tabs>
 
 ## Community
 

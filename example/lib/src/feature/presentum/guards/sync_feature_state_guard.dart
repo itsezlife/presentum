@@ -5,10 +5,10 @@ import 'package:shared/shared.dart';
 /// {@template sync_feature_state_guard}
 /// This guard keeps the feature state in sync with the latest candidates.
 ///
-/// - See [SyncStateWithCandidatesGuard] for more details.
+/// - See [ISyncStateWithCandidatesGuard] for more details.
 /// {@endtemplate}
 final class SyncFeatureStateGuard
-    extends SyncStateWithCandidatesGuard<FeatureItem, AppSurface, AppVariant> {
+    extends ISyncStateWithCandidatesGuard<FeatureItem, AppSurface, AppVariant> {
   /// {@macro sync_feature_state_guard}
   SyncFeatureStateGuard({super.refresh});
 

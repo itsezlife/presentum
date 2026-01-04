@@ -141,11 +141,16 @@ abstract base class IRemoveIneligibleCandidatesGuard<
   }
 }
 
+/// Guard that removes ineligible items from the state.
+///
+/// - See [IRemoveIneligibleCandidatesGuard] for more details.
+/// {@macro remove_ineligible_candidates_guard}
 final class RemoveIneligibleCandidatesGuard<
   TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
     extends IRemoveIneligibleCandidatesGuard<TItem, S, V> {
+  /// {@macro remove_ineligible_candidates_guard}
   RemoveIneligibleCandidatesGuard({required super.eligibility, super.refresh});
 }

@@ -327,15 +327,7 @@ state.insertAll(surface, 1, [item1, item2]);
 State can be serialized for persistence or debugging:
 
 ```dart
-final json = state.toJson(
-  encodeItem: (item) => {
-    'id': item.id,
-    'priority': item.priority,
-    'surface': item.surface.name,
-    'variant': item.variant.name,
-    'metadata': item.metadata,
-  },
-);
+final json = state.toJson();
 ```
 
 Result:
@@ -378,15 +370,7 @@ Enable time-travel debugging, analytics, or restoration after login.
 
 ## Next steps
 
-<CardGroup cols={2}>
-  <Card
-    title="Engine"
-    href="/core-concepts/engine"
-    icon="engine"
-  >
-    How the engine processes state
-  </Card>
-  
+<CardGroup cols={2}>  
   <Card
     title="State management guide"
     href="/guides/state-management"

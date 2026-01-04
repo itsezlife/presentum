@@ -10,7 +10,7 @@ Firebase Remote Config lets you update campaigns without deploying app updates. 
 <Info>
   This example is based on a real production implementation. See the [full
   source
-  code](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart).
+  code](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/campaigns_provider.dart).
 </Info>
 
 ## Setup
@@ -206,7 +206,7 @@ class CampaignProvider {
 }
 ```
 
-[Full production implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart)
+[Full production implementation ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/campaigns_provider.dart)
 
 ## Remote Config JSON structure
 
@@ -221,12 +221,17 @@ Structure your campaigns in Firebase Remote Config:
       "title": "Black Friday Sale",
       "message": "50% off all premium features",
       "imageUrl": "https://...",
-      "time_range": {
-        "start": "2025-11-29T00:00:00Z",
-        "end": "2025-12-02T23:59:59Z"
-      },
-      "required_segments": ["active_users"],
-      "is_active": true
+      "any_of": [
+        {
+          "time_range": {
+            "start": "2025-11-29T00:00:00Z",
+            "end": "2025-12-02T23:59:59Z"
+          }
+        },
+        {
+          "is_active": true
+        }
+      ]
     },
     "options": [
       {
@@ -290,7 +295,7 @@ class CampaignPresentumOption
 }
 ```
 
-[See production payload implementation ->](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/payload.dart)
+[See production payload implementation ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/payload.dart)
 
 ## Initialize in app
 
@@ -356,6 +361,8 @@ class _MyAppState extends State<MyApp> {
 }
 ```
 
+[See proper presentum initialization ->](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/campaigns_presentum_state_mixin.dart)
+
 ## Testing Remote Config locally
 
 Use Remote Config defaults for local testing:
@@ -409,7 +416,7 @@ await remoteConfig.setDefaults({
   <Card
     title="Production code"
     icon="code"
-    href="https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/campaign_provider.dart">
+    href="https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/campaigns_provider.dart">
     See complete implementation
   </Card>
 </CardGroup>

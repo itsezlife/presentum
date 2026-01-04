@@ -12,18 +12,67 @@ Guards are where your presentation business logic lives. This guide shows you ho
 Start with a simple guard that sets the highest priority item as active:
 
 ```dart
-class SimpleCampaignGuard extends PresentumGuard<CampaignItem, AppSurface, CampaignVariant> {
+final class FeatureSchedulingGuard
+    extends PresentumGuard<FeatureItem, AppSurface, AppVariant> {
+  FeatureSchedulingGuard({
+    required this.eligibilityResolver,
+    super.refresh,
+  });
+
+  final EligibilityResolver<FeatureItem> eligibilityResolver;
+
   @override
-  FutureOr<PresentumState> call(
-    PresentumStorage storage,
-    List<PresentumHistoryEntry> history,
-    PresentumState$Mutable state,
-    List<CampaignItem> candidates,
+  Future<PresentumState<FeatureItem, AppSurface, AppVariant>> call(
+    PresentumStorage<AppSurface, AppVariant> storage,
+    List<PresentumHistoryEntry<FeatureItem, AppSurface, AppVariant>> history,
+    PresentumState$Mutable<FeatureItem, AppSurface, AppVariant> state,
+    List<FeatureItem> candidates,
     Map<String, Object?> context,
   ) async {
-    for (final candidate in candidates) {
-      state.setActive(candidate.surface, candidate);
+    // 1) Filter: if feature is gone, disabled, ineligible, or dismissed,
+    // exclude it from UI.
+    final filtered = <FeatureItem>[];
+
+    for (final item in candidates) {
+      // Check eligibility (time ranges, segments, etc.)
+      final isEligible = await eligibilityResolver.isEligible(item, context);
+      if (!isEligible) continue;
+
+      // Check if feature is dismissed
+      final dismissedAt = await storage.getDismissedAt(
+        item.id,
+        surface: item.surface,
+        variant: item.variant,
+      );
+      if (dismissedAt != null) continue;
+
+      filtered.add(item);
     }
+
+    // 3) Project candidates -> slots (active + queue)
+    // This is what makes Settings rows and UI banners actually appear.
+    state.clearAll();
+
+    final bySurface = <AppSurface, List<FeatureItem>>{};
+    for (final item in filtered) {
+      (bySurface[item.surface] ??= <FeatureItem>[]).add(item);
+    }
+
+    for (final entry in bySurface.entries) {
+      final surface = entry.key;
+      final items = entry.value;
+
+      int stageOf(FeatureItem i) => i.stage ?? 0;
+
+        items.sort((a, b) {
+          final stageCmp = stageOf(a).compareTo(stageOf(b));
+          if (stageCmp != 0) return stageCmp;
+          return b.priority.compareTo(a.priority);
+        });
+
+      state.addAll(surface, items);
+    }
+
     return state;
   }
 }
@@ -32,16 +81,26 @@ class SimpleCampaignGuard extends PresentumGuard<CampaignItem, AppSurface, Campa
 ## Production guard examples
 
 See real implementations:
-- [Scheduling guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/scheduling_guard.dart)
-- [Remove ineligible guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/remove_ineligible_campaigns_guard.dart)
-- [Sync state guard](https://github.com/itsezlife/presentum/blob/master/campaigns/presentum/guards/sync_state_with_candidates_guard.dart)
+- [Scheduling guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/guards/scheduling_guard.dart)
+- [Remove ineligible guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/guards/remove_ineligible_candidates_guard.dart)
+- [Feature enabled and scheduling guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/feature/presentum/guards/feature_scheduling_guard.dart)
+- [Sync state guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/sync_state_with_candidates_guard.dart)
 
 <Card
   title="See all production guards"
   icon="code"
-  href="https://github.com/itsezlife/presentum/tree/master/campaigns/presentum/guards"
+  href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/campaigns/presentum/guards"
   horizontal
 >
   Complete guard implementations from a live app
+</Card>
+
+<Card
+  title="See all reusable guards"
+  icon="puzzle-piece"
+  href="https://github.com/itsezlife/presentum/tree/master/example/lib/src/common/presentum/"
+  horizontal
+>
+  Generic guards to sync state, remove ineligible candidates and simple eligibility scheduling
 </Card>
 
