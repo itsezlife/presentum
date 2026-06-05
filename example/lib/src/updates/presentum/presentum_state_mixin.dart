@@ -5,6 +5,7 @@ import 'package:example/src/updates/presentum/guards/updates_scheduling_guard.da
 import 'package:example/src/updates/presentum/payload.dart';
 import 'package:example/src/updates/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 
@@ -44,7 +45,7 @@ mixin AppUpdatesPresentumStateMixin<T extends StatefulWidget> on State<T> {
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
     // Eligibility resolver
-    final eligibilityResolver = DefaultEligibilityResolver<AppUpdatesItem>(
+    final eligibilityResolver = EligibilityResolver<AppUpdatesItem>(
       rules: [...createStandardRules(), const UpdateStatusRule()],
       extractors: [
         const TimeRangeExtractor(),

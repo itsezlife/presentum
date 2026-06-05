@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:shared/src/utils/platform/error_util_vm.dart'
-    if (dart.library.io) 'package:shared/src/utils/platform/error_util_js.dart';
+    if (dart.library.html) 'package:shared/src/utils/platform/error_util_js.dart';
 
 /// Error util.
 abstract final class ErrorUtil {

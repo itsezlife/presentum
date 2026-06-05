@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:presentum/presentum.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 /// Eligibility condition that checks if update status matches required status

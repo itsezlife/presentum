@@ -8,6 +8,7 @@ import 'package:example/src/campaigns/camapigns.dart';
 import 'package:example/src/campaigns/presentum/campaigns_storage.dart';
 import 'package:firebase_remote_config_client/firebase_remote_config_client.dart';
 import 'package:flutter/foundation.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 import 'package:remote_config_repository/remote_config_repository.dart';
 

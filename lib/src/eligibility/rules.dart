@@ -1,19 +1,16 @@
-import 'package:presentum/src/eligibility/conditions.dart';
-import 'package:presentum/src/eligibility/resolver.dart';
+import 'package:presentum/src/eligibility/eligibility.dart';
+import 'package:presentum/src/eligibility/eligibility_conditions.dart';
 
 /// Evaluates [TimeRangeEligibility] conditions.
 ///
 /// Checks if the current UTC time falls within [start, end).
-final class TimeRangeRule implements EligibilityRule<TimeRangeEligibility> {
+final class TimeRangeRule extends EligibilityRule<TimeRangeEligibility> {
   /// {@macro time_range_rule}
   const TimeRangeRule({this.timeProvider});
 
   /// Optional custom time provider (useful for testing).
   /// Defaults to DateTime.now().toUtc().
   final DateTime Function()? timeProvider;
-
-  @override
-  bool supports(Eligibility eligibility) => eligibility is TimeRangeEligibility;
 
   @override
   Future<bool> evaluate(
@@ -35,13 +32,9 @@ final class TimeRangeRule implements EligibilityRule<TimeRangeEligibility> {
 ///
 /// Checks if a value from context is present in the allowed set.
 final class SetMembershipRule
-    implements EligibilityRule<SetMembershipEligibility> {
+    extends EligibilityRule<SetMembershipEligibility> {
   /// {@macro set_membership_rule}
   const SetMembershipRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is SetMembershipEligibility;
 
   @override
   Future<bool> evaluate(
@@ -68,13 +61,9 @@ final class SetMembershipRule
 /// Evaluates [AnySegmentEligibility] conditions.
 ///
 /// Checks if user segments (from context) overlap with required segments.
-final class AnySegmentRule implements EligibilityRule<AnySegmentEligibility> {
+final class AnySegmentRule extends EligibilityRule<AnySegmentEligibility> {
   /// {@macro any_segment_rule}
   const AnySegmentRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is AnySegmentEligibility;
 
   @override
   Future<bool> evaluate(
@@ -106,13 +95,9 @@ final class AnySegmentRule implements EligibilityRule<AnySegmentEligibility> {
 /// Evaluates [BooleanFlagEligibility] conditions.
 ///
 /// Checks if a boolean flag in context matches the required value.
-final class BooleanFlagRule implements EligibilityRule<BooleanFlagEligibility> {
+final class BooleanFlagRule extends EligibilityRule<BooleanFlagEligibility> {
   /// {@macro boolean_flag_rule}
   const BooleanFlagRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is BooleanFlagEligibility;
 
   @override
   Future<bool> evaluate(
@@ -141,13 +126,9 @@ final class BooleanFlagRule implements EligibilityRule<BooleanFlagEligibility> {
 ///
 /// Compares a numeric value from context against a threshold.
 final class NumericComparisonRule
-    implements EligibilityRule<NumericComparisonEligibility> {
+    extends EligibilityRule<NumericComparisonEligibility> {
   /// {@macro numeric_comparison_rule}
   const NumericComparisonRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is NumericComparisonEligibility;
 
   @override
   Future<bool> evaluate(
@@ -178,13 +159,9 @@ final class NumericComparisonRule
 /// Evaluates [StringMatchEligibility] conditions.
 ///
 /// Checks if a string value from context matches a regex pattern.
-final class StringMatchRule implements EligibilityRule<StringMatchEligibility> {
+final class StringMatchRule extends EligibilityRule<StringMatchEligibility> {
   /// {@macro string_match_rule}
   const StringMatchRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is StringMatchEligibility;
 
   @override
   Future<bool> evaluate(
@@ -217,15 +194,12 @@ final class StringMatchRule implements EligibilityRule<StringMatchEligibility> {
 /// Evaluates [AllOfEligibility] conditions (AND combinator).
 ///
 /// Requires an [EligibilityResolver] to recursively evaluate nested conditions.
-final class AllOfRule implements EligibilityRule<AllOfEligibility> {
+final class AllOfRule extends EligibilityRule<AllOfEligibility> {
   /// {@macro all_of_rule}
   const AllOfRule(this.rules);
 
   /// Rules to use for evaluating nested conditions.
   final List<EligibilityRule> rules;
-
-  @override
-  bool supports(Eligibility eligibility) => eligibility is AllOfEligibility;
 
   @override
   Future<bool> evaluate(
@@ -257,15 +231,12 @@ final class AllOfRule implements EligibilityRule<AllOfEligibility> {
 }
 
 /// Evaluates [AnyOfEligibility] conditions (OR combinator).
-final class AnyOfRule implements EligibilityRule<AnyOfEligibility> {
+final class AnyOfRule extends EligibilityRule<AnyOfEligibility> {
   /// {@macro any_of_rule}
   const AnyOfRule(this.rules);
 
   /// Rules to use for evaluating nested conditions.
   final List<EligibilityRule> rules;
-
-  @override
-  bool supports(Eligibility eligibility) => eligibility is AnyOfEligibility;
 
   @override
   Future<bool> evaluate(
@@ -297,15 +268,12 @@ final class AnyOfRule implements EligibilityRule<AnyOfEligibility> {
 }
 
 /// Evaluates [NotEligibility] conditions (NOT combinator).
-final class NotRule implements EligibilityRule<NotEligibility> {
+final class NotRule extends EligibilityRule<NotEligibility> {
   /// {@macro not_rule}
   const NotRule(this.rules);
 
   /// Rules to use for evaluating the nested condition.
   final List<EligibilityRule> rules;
-
-  @override
-  bool supports(Eligibility eligibility) => eligibility is NotEligibility;
 
   @override
   Future<bool> evaluate(
@@ -340,12 +308,9 @@ final class NotRule implements EligibilityRule<NotEligibility> {
 /// Evaluates [ConstantEligibility] conditions.
 ///
 /// Simply returns the constant boolean value.
-final class ConstantRule implements EligibilityRule<ConstantEligibility> {
+final class ConstantRule extends EligibilityRule<ConstantEligibility> {
   /// {@macro constant_rule}
   const ConstantRule();
-
-  @override
-  bool supports(Eligibility eligibility) => eligibility is ConstantEligibility;
 
   @override
   Future<bool> evaluate(
@@ -363,17 +328,13 @@ final class ConstantRule implements EligibilityRule<ConstantEligibility> {
 /// - Handles midnight crossover (e.g., 10pm-2am)
 /// - Empty daysOfWeek means "all days"
 final class RecurringTimePatternRule
-    implements EligibilityRule<RecurringTimePatternEligibility> {
+    extends EligibilityRule<RecurringTimePatternEligibility> {
   /// {@macro recurring_time_pattern_rule}
   const RecurringTimePatternRule({this.timeProvider});
 
   /// Optional custom time provider (useful for testing).
   /// Defaults to DateTime.now() (local time).
   final DateTime Function()? timeProvider;
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is RecurringTimePatternEligibility;
 
   @override
   Future<bool> evaluate(

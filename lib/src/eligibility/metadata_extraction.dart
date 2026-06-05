@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:presentum/src/eligibility/conditions.dart';
+import 'package:presentum/src/eligibility/eligibility_conditions.dart';
 import 'package:presentum/src/eligibility/metadata_keys.dart';
 
 /// {@template metadata_extraction}

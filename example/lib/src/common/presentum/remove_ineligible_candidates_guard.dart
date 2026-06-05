@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 
 /// {@template remove_ineligible_candidates_guard}

@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:presentum/src/eligibility/eligibility.dart';
+import 'package:presentum/src/eligibility/extractors.dart';
+import 'package:presentum/src/eligibility/rules.dart';
 
 void main() {
   group('RecurringTimePatternEligibility Integration Tests', () {
@@ -23,7 +25,7 @@ void main() {
       final mondayRule = RecurringTimePatternRule(
         timeProvider: () => DateTime(2025, 12, 22, 14, 0), // Monday 2pm
       );
-      final resolverMonday = DefaultEligibilityResolver<_TestSubject>(
+      final resolverMonday = EligibilityResolver<_TestSubject>(
         rules: [mondayRule],
         extractors: [const RecurringTimePatternExtractor()],
       );
@@ -33,7 +35,7 @@ void main() {
       final saturdayRule = RecurringTimePatternRule(
         timeProvider: () => DateTime(2025, 12, 27, 14, 0), // Saturday 2pm
       );
-      final resolverSaturday = DefaultEligibilityResolver<_TestSubject>(
+      final resolverSaturday = EligibilityResolver<_TestSubject>(
         rules: [saturdayRule],
         extractors: [const RecurringTimePatternExtractor()],
       );
@@ -50,7 +52,7 @@ void main() {
       final rule11pm = RecurringTimePatternRule(
         timeProvider: () => DateTime(2025, 12, 27, 23, 30),
       );
-      final resolver11pm = DefaultEligibilityResolver<_TestSubject>(
+      final resolver11pm = EligibilityResolver<_TestSubject>(
         rules: [rule11pm],
         extractors: [const RecurringTimePatternExtractor()],
       );
@@ -60,7 +62,7 @@ void main() {
       final rule1am = RecurringTimePatternRule(
         timeProvider: () => DateTime(2025, 12, 28, 1, 0),
       );
-      final resolver1am = DefaultEligibilityResolver<_TestSubject>(
+      final resolver1am = EligibilityResolver<_TestSubject>(
         rules: [rule1am],
         extractors: [const RecurringTimePatternExtractor()],
       );
@@ -70,7 +72,7 @@ void main() {
       final rule3pm = RecurringTimePatternRule(
         timeProvider: () => DateTime(2025, 12, 27, 15, 0),
       );
-      final resolver3pm = DefaultEligibilityResolver<_TestSubject>(
+      final resolver3pm = EligibilityResolver<_TestSubject>(
         rules: [rule3pm],
         extractors: [const RecurringTimePatternExtractor()],
       );

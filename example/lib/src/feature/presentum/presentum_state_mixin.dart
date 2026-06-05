@@ -5,6 +5,7 @@ import 'package:example/src/feature/presentum/guards/sync_feature_state_guard.da
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/feature/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 
@@ -40,7 +41,7 @@ mixin FeaturePresentumStateMixin<T extends StatefulWidget> on State<T> {
     // of the feature items.
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
-    final eligibilityResolver = DefaultEligibilityResolver<FeatureItem>(
+    final eligibilityResolver = EligibilityResolver<FeatureItem>(
       // Standar set of rules that covers most of the common cases.
       rules: createStandardRules(),
       extractors: [

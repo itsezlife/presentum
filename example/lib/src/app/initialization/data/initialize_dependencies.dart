@@ -154,9 +154,7 @@ _initializationSteps = <String, _InitializationStep>{
     dependencies.remoteConfigRepository = remoteConfigRepository;
   },
   'Initialize feature preferences': (dependencies) async {
-    final prefs = await SharedPreferencesWithCache.create(
-      cacheOptions: const SharedPreferencesWithCacheOptions(),
-    );
+    final prefs = dependencies.sharedPreferences;
 
     // await prefs.clear();
 

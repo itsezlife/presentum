@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:presentum/presentum.dart';
+import 'package:presentum/src/state/payload.dart';
 
 /// Null object reference for copyWith method to distinguish null state updates
 /// from no new state updates.

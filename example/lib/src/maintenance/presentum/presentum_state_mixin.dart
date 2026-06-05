@@ -7,6 +7,7 @@ import 'package:example/src/maintenance/presentum/maintenance_transition_observe
 import 'package:example/src/maintenance/presentum/payload.dart';
 import 'package:example/src/maintenance/presentum/provider.dart';
 import 'package:flutter/widgets.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 
@@ -53,7 +54,7 @@ mixin MaintaincePresentumStateMixin<T extends StatefulWidget> on State<T> {
     // Presentum storage
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
-    final eligibilityResolver = DefaultEligibilityResolver<MaintenanceItem>(
+    final eligibilityResolver = EligibilityResolver<MaintenanceItem>(
       rules: [...createStandardRules()],
       extractors: [
         const TimeRangeExtractor(),

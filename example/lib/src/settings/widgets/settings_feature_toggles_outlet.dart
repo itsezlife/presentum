@@ -43,6 +43,7 @@ class SettingsFeatureTogglesOutlet extends StatelessWidget {
             ListenableBuilder(
               listenable: prefs,
               builder: (context, child) => SettingToggleRow(
+                key: ValueKey(item.payload.featureKey),
                 title: _titleFor(item.payload.featureKey, l10n),
                 description: _descriptionFor(item.payload.featureKey, l10n),
                 value: _valueFor(item.payload.featureKey),

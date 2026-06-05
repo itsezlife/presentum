@@ -3,6 +3,7 @@ import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:flutter/foundation.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 

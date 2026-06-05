@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:example/src/campaigns/camapigns.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 
 /// Filters eligible campaigns and selects per-surface presentations.

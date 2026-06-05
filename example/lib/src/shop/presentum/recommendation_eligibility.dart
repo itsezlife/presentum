@@ -4,7 +4,7 @@ import 'package:example/src/common/constant/config.dart';
 import 'package:example/src/shop/model/recommendation.dart';
 import 'package:example/src/shop/presentum/recommendation_payload.dart';
 import 'package:flutter/foundation.dart';
-import 'package:presentum/presentum.dart';
+import 'package:presentum/eligibility.dart';
 
 /// {@template recommendation_expired_eligibility}
 /// Condition: Recommendations must not be expired
@@ -299,7 +299,7 @@ final class RecommendationEligibilityResolver
     Duration maxAge = const Duration(
       seconds: Config.recommendationMaxAgeSeconds,
     ),
-  }) : _delegate = DefaultEligibilityResolver<RecommendationItem>(
+  }) : _delegate = EligibilityResolver<RecommendationItem>(
          rules: [
            // Include standard rules for combinator support
            ...createStandardRules(),
@@ -320,7 +320,7 @@ final class RecommendationEligibilityResolver
          ],
        );
 
-  final DefaultEligibilityResolver<RecommendationItem> _delegate;
+  final EligibilityResolver<RecommendationItem> _delegate;
 
   @override
   Future<Eligibility?> getIneligibleCondition(

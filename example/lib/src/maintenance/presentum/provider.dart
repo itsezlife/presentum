@@ -4,6 +4,7 @@ import 'package:example/src/maintenance/data/maintenance_store.dart';
 import 'package:example/src/maintenance/presentum/inherited_provider.dart';
 import 'package:example/src/maintenance/presentum/payload.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 import 'package:shared/shared.dart';
 

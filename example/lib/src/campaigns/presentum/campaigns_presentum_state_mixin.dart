@@ -9,6 +9,7 @@ import 'package:example/src/campaigns/presentum/guards/sync_state_with_candidate
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/common/presentum/app_lifecycle_guard.dart';
 import 'package:flutter/widgets.dart';
+import 'package:presentum/eligibility.dart';
 import 'package:presentum/presentum.dart';
 
 mixin CampaignsPresentumStateMixin<T extends StatefulWidget> on State<T> {
@@ -44,7 +45,7 @@ mixin CampaignsPresentumStateMixin<T extends StatefulWidget> on State<T> {
 
     _storage = CampaignPersistentStorage(prefs: deps.sharedPreferences);
 
-    _eligibility = DefaultEligibilityResolver<HasMetadata>(
+    _eligibility = EligibilityResolver<HasMetadata>(
       rules: [...createStandardRules()],
       extractors: const [
         TimeRangeExtractor(),

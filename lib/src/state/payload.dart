@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:presentum/presentum.dart';
+import 'package:presentum/src/eligibility/extractors.dart';
+import 'package:presentum/src/state/state.dart';
 
 /// {@template presentum_option}
 /// One renderable option of an item for a given `surface` and visual `variant`
