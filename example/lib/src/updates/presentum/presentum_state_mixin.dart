@@ -46,7 +46,7 @@ mixin AppUpdatesPresentumStateMixin<T extends StatefulWidget> on State<T> {
 
     // Eligibility resolver
     final eligibilityResolver = EligibilityResolver<AppUpdatesItem>(
-      rules: [...createStandardRules(), const UpdateStatusRule()],
+      rules: const [UpdateStatusRule()],
       extractors: [
         const TimeRangeExtractor(),
         const ConstantExtractor(metadataKey: 'is_active'),

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:example/src/common/constant/config.dart';
 import 'package:example/src/shop/model/recommendation.dart';
 import 'package:example/src/shop/presentum/recommendation_payload.dart';
 import 'package:flutter/foundation.dart';
@@ -121,23 +120,22 @@ final class RecommendationContextEligibility extends Eligibility {
 
 /// Evaluates [RecommendationExpiredEligibility] conditions
 final class RecommendationExpiredRule
-    implements EligibilityRule<RecommendationExpiredEligibility> {
+    extends EligibilityRule<RecommendationExpiredEligibility> {
   /// Creates a recommendation expired rule
   const RecommendationExpiredRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is RecommendationExpiredEligibility;
 
   @override
   Future<bool> evaluate(
     RecommendationExpiredEligibility eligibility,
     Map<String, dynamic> context,
   ) async {
-    final item = context['_item'];
+    final item = context['_subject'];
     if (item is! RecommendationItem) {
-      throw const EvaluationException(
-        'RecommendationExpiredRule requires RecommendationItem in context["_item"]',
+      Error.throwWithStackTrace(
+        const EvaluationException(
+          'RecommendationExpiredRule requires RecommendationItem in context["_subject"]',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -148,23 +146,22 @@ final class RecommendationExpiredRule
 
 /// Evaluates [RecommendationMinimumCountEligibility] conditions
 final class RecommendationMinimumCountRule
-    implements EligibilityRule<RecommendationMinimumCountEligibility> {
+    extends EligibilityRule<RecommendationMinimumCountEligibility> {
   /// Creates a recommendation minimum count rule
   const RecommendationMinimumCountRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is RecommendationMinimumCountEligibility;
 
   @override
   Future<bool> evaluate(
     RecommendationMinimumCountEligibility eligibility,
     Map<String, dynamic> context,
   ) async {
-    final item = context['_item'];
+    final item = context['_subject'];
     if (item is! RecommendationItem) {
-      throw const EvaluationException(
-        'RecommendationMinimumCountRule requires RecommendationItem in context["_item"]',
+      Error.throwWithStackTrace(
+        const EvaluationException(
+          'RecommendationMinimumCountRule requires RecommendationItem in context["_subject"]',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -174,23 +171,22 @@ final class RecommendationMinimumCountRule
 
 /// Evaluates [RecommendationQualityThresholdEligibility] conditions
 final class RecommendationQualityThresholdRule
-    implements EligibilityRule<RecommendationQualityThresholdEligibility> {
+    extends EligibilityRule<RecommendationQualityThresholdEligibility> {
   /// Creates a recommendation quality threshold rule
   const RecommendationQualityThresholdRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is RecommendationQualityThresholdEligibility;
 
   @override
   Future<bool> evaluate(
     RecommendationQualityThresholdEligibility eligibility,
     Map<String, dynamic> context,
   ) async {
-    final item = context['_item'];
+    final item = context['_subject'];
     if (item is! RecommendationItem) {
-      throw const EvaluationException(
-        'RecommendationQualityThresholdRule requires RecommendationItem in context["_item"]',
+      Error.throwWithStackTrace(
+        const EvaluationException(
+          'RecommendationQualityThresholdRule requires RecommendationItem in context["_subject"]',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -206,23 +202,22 @@ final class RecommendationQualityThresholdRule
 
 /// Evaluates [RecommendationFreshnessEligibility] conditions
 final class RecommendationFreshnessRule
-    implements EligibilityRule<RecommendationFreshnessEligibility> {
+    extends EligibilityRule<RecommendationFreshnessEligibility> {
   /// Creates a recommendation freshness rule
   const RecommendationFreshnessRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is RecommendationFreshnessEligibility;
 
   @override
   Future<bool> evaluate(
     RecommendationFreshnessEligibility eligibility,
     Map<String, dynamic> context,
   ) async {
-    final item = context['_item'];
+    final item = context['_subject'];
     if (item is! RecommendationItem) {
-      throw const EvaluationException(
-        'RecommendationFreshnessRule requires RecommendationItem in context["_item"]',
+      Error.throwWithStackTrace(
+        const EvaluationException(
+          'RecommendationFreshnessRule requires RecommendationItem in context["_subject"]',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -232,23 +227,22 @@ final class RecommendationFreshnessRule
 
 /// Evaluates [RecommendationContextEligibility] conditions
 final class RecommendationContextRule
-    implements EligibilityRule<RecommendationContextEligibility> {
+    extends EligibilityRule<RecommendationContextEligibility> {
   /// Creates a recommendation context rule
   const RecommendationContextRule();
-
-  @override
-  bool supports(Eligibility eligibility) =>
-      eligibility is RecommendationContextEligibility;
 
   @override
   Future<bool> evaluate(
     RecommendationContextEligibility eligibility,
     Map<String, dynamic> context,
   ) async {
-    final item = context['_item'];
+    final item = context['_subject'];
     if (item is! RecommendationItem) {
-      throw const EvaluationException(
-        'RecommendationContextRule requires RecommendationItem in context["_item"]',
+      Error.throwWithStackTrace(
+        const EvaluationException(
+          'RecommendationContextRule requires RecommendationItem in context["_subject"]',
+        ),
+        StackTrace.current,
       );
     }
 
@@ -287,54 +281,4 @@ final class RecommendationEligibilityExtractor
     RecommendationQualityThresholdEligibility(minScore: minAverageScore),
     RecommendationFreshnessEligibility(maxAge: maxAge),
   ];
-}
-
-/// Wrapper resolver that injects the item into context for rule evaluation
-final class RecommendationEligibilityResolver
-    implements EligibilityResolver<RecommendationItem> {
-  /// Creates a recommendation eligibility resolver
-  RecommendationEligibilityResolver({
-    int minRecommendationCount = 3,
-    double minAverageScore = 0.3,
-    Duration maxAge = const Duration(
-      seconds: Config.recommendationMaxAgeSeconds,
-    ),
-  }) : _delegate = EligibilityResolver<RecommendationItem>(
-         rules: [
-           // Include standard rules for combinator support
-           ...createStandardRules(),
-
-           /// Creates a standard set of recommendation eligibility rules
-           const RecommendationExpiredRule(),
-           const RecommendationMinimumCountRule(),
-           const RecommendationQualityThresholdRule(),
-           const RecommendationFreshnessRule(),
-           const RecommendationContextRule(),
-         ],
-         extractors: [
-           RecommendationEligibilityExtractor(
-             minRecommendationCount: minRecommendationCount,
-             minAverageScore: minAverageScore,
-             maxAge: maxAge,
-           ),
-         ],
-       );
-
-  final EligibilityResolver<RecommendationItem> _delegate;
-
-  @override
-  Future<Eligibility?> getIneligibleCondition(
-    RecommendationItem subject,
-    Map<String, dynamic> context,
-  ) {
-    // Inject the item into context so rules can access it
-    final contextWithItem = <String, dynamic>{...context, '_item': subject};
-    return _delegate.getIneligibleCondition(subject, contextWithItem);
-  }
-
-  @override
-  Future<bool> isEligible(
-    RecommendationItem subject,
-    Map<String, dynamic> context,
-  ) => getIneligibleCondition(subject, context).then((c) => c == null);
 }

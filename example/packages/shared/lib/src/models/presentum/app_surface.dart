@@ -25,6 +25,9 @@ enum AppSurface with PresentumSurface {
   /// Product recommendations surface
   productRecommendations;
 
+  @override
+  String get key => name;
+
   /// The name of the surface.
   ///
   /// Throws [ArgumentError] if the name is not valid.

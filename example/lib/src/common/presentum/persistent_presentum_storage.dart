@@ -13,15 +13,15 @@ extension type PersistentPresentumStorageKeys<
   V extends PresentumVisualVariant
 >(PersistentPresentumStorageKey<S, V> key) {
   String get shownCount =>
-      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_count_key__';
+      '__shown_${key.$1}_${key.$2.key}_${key.$3.key}_count_key__';
   String get lastShown =>
-      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_last_shown_key__';
+      '__shown_${key.$1}_${key.$2.key}_${key.$3.key}_last_shown_key__';
   String get timestamps =>
-      '__shown_${key.$1}_${key.$2.name}_${key.$3.name}_timestamps_key__';
+      '__shown_${key.$1}_${key.$2.key}_${key.$3.key}_timestamps_key__';
   String get dismissedAt =>
-      '__dismissed_${key.$1}_${key.$2.name}_${key.$3.name}_at_key__';
+      '__dismissed_${key.$1}_${key.$2.key}_${key.$3.key}_at_key__';
   String get convertedAt =>
-      '__converted_${key.$1}_${key.$2.name}_${key.$3.name}_at_key__';
+      '__converted_${key.$1}_${key.$2.key}_${key.$3.key}_at_key__';
 
   List<String> get allKeys => [
     shownCount,

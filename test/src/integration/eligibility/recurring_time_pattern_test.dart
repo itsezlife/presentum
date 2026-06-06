@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:presentum/src/eligibility/eligibility.dart';
-import 'package:presentum/src/eligibility/extractors.dart';
+import 'package:presentum/src/eligibility/metadata_extractors.dart';
+import 'package:presentum/src/eligibility/resolver.dart';
 import 'package:presentum/src/eligibility/rules.dart';
 
 void main() {

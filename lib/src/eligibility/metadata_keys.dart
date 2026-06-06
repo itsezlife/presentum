@@ -2,66 +2,66 @@
 ///
 /// This provides a single source of truth for metadata structure,
 /// enabling IDE autocomplete and preventing typos.
-extension type MetadataKeys(String key) {
+extension type const MetadataKeys(String key) implements String {
   /// Logical operator for combining conditions with OR logic.
-  static const anyOf = 'any_of';
+  static const anyOf = MetadataKeys('any_of');
 
   /// Logcal operator for combining conditions with AND logic.
-  static const allOf = 'all_of';
+  static const allOf = MetadataKeys('all_of');
 
   /// Time-based condition
-  static const timeRange = 'time_range';
+  static const timeRange = MetadataKeys('time_range');
 
   /// Recurring time pattern condition
-  static const recurringTimePattern = 'recurring_time_pattern';
+  static const recurringTimePattern = MetadataKeys('recurring_time_pattern');
 
   /// Boolean flags
-  static const isActive = 'is_active';
+  static const isActive = MetadataKeys('is_active');
 
   /// Membership and matching conditions
-  static const requiredSegments = 'required_segments';
+  static const requiredSegments = MetadataKeys('required_segments');
 
   /// Membership and matching conditions
-  static const requiredStatus = 'required_status';
+  static const requiredStatus = MetadataKeys('required_status');
 
   /// Platform pattern condition
-  static const platformPattern = 'platform_pattern';
+  static const platformPattern = MetadataKeys('platform_pattern');
 
   /// Minimum version condition
-  static const minVersion = 'min_version';
+  static const minVersion = MetadataKeys('min_version');
 
   /// Start time sub-field
-  static const start = 'start';
+  static const start = MetadataKeys('start');
 
   /// End time sub-field
-  static const end = 'end';
+  static const end = MetadataKeys('end');
 
   /// Recurring time start sub-field
-  static const timeStart = 'time_start';
+  static const timeStart = MetadataKeys('time_start');
 
   /// Recurring time end sub-field
-  static const timeEnd = 'time_end';
+  static const timeEnd = MetadataKeys('time_end');
 
   /// Days of week sub-field
-  static const daysOfWeek = 'days_of_week';
+  static const daysOfWeek = MetadataKeys('days_of_week');
 
   /// Context key sub-field
-  static const contextKey = 'context_key';
+  static const contextKey = MetadataKeys('context_key');
 
   /// Allowed values sub-field
-  static const allowedValues = 'allowed_values';
+  static const allowedValues = MetadataKeys('allowed_values');
 
   /// Pattern sub-field
-  static const pattern = 'pattern';
+  static const pattern = MetadataKeys('pattern');
 
   /// Case sensitive sub-field
-  static const caseSensitive = 'case_sensitive';
+  static const caseSensitive = MetadataKeys('case_sensitive');
 
   /// Operator sub-field
-  static const operator = 'operator';
+  static const operator = MetadataKeys('operator');
 
   /// Threshold sub-field
-  static const threshold = 'threshold';
+  static const threshold = MetadataKeys('threshold');
 
   /// All metadata keys
   static const all = {

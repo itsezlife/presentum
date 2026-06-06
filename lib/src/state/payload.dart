@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:presentum/src/eligibility/extractors.dart';
+import 'package:presentum/src/eligibility/metadata_extractors.dart';
 import 'package:presentum/src/state/state.dart';
 
 /// {@template presentum_option}
@@ -38,8 +38,8 @@ abstract class PresentumOption<
 
   /// Serialize the option to a JSON map.
   Map<String, Object?> toJson() => {
-    'surface': surface.name,
-    'variant': variant.name,
+    'surface': surface.key,
+    'variant': variant.key,
     'is_dismissible': isDismissible,
     'stage': ?stage,
     'max_impressions': ?maxImpressions,
@@ -155,7 +155,7 @@ abstract class PresentumItem<
 
   /// The unique identifier of the item.
   String get id =>
-      '${payload.id}::${option.variant.name}::${option.surface.name}';
+      '${payload.id}::${option.variant.key}::${option.surface.key}';
 
   /// The priority of the item.
   int get priority => payload.priority;

@@ -48,18 +48,18 @@ enum PresentumStateIntention {
 ///
 /// Implement this on your surface enums:
 /// `enum AppSurface with PresentumSurface { ... }`
-mixin PresentumSurface on Enum {
+abstract mixin class PresentumSurface {
   /// The key of the surface.
-  String get key => name;
+  String get key;
 }
 
 /// Marker for all presentum visual styles.
 ///
 /// Implement this on your visual enums:
 /// `enum AppVariant with PresentumVisualVariant { ... }`
-mixin PresentumVisualVariant on Enum {
-  /// The key of the visual style.
-  String get key => name;
+abstract mixin class PresentumVisualVariant {
+  /// The key of the visual variant.
+  String get key;
 }
 
 /// {@template presentum_slot}
@@ -205,7 +205,7 @@ class PresentumSlot<
 
   /// Serialize the slot to a JSON map.
   Map<String, Object?> toJson() => <String, Object?>{
-    'surface': surface.name,
+    'surface': surface.key,
     'active': active?.option.toJson(),
     'queue': <Map<String, Object?>>[for (final q in queue) q.option.toJson()],
   };
@@ -226,11 +226,12 @@ class PresentumSlot<
     return other is PresentumSlot<TItem, S, V> &&
         other.surface == surface &&
         other.active == active &&
-        other.queue == queue;
+        ListEquality<TItem>().equals(queue, other.queue);
   }
 
   @override
-  int get hashCode => Object.hash(surface, active, queue);
+  int get hashCode =>
+      Object.hash(surface, active, ListEquality<TItem>().hash(queue));
 
   @override
   String toString() =>

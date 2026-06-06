@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:presentum/src/eligibility/eligibility.dart';
+import 'package:presentum/src/eligibility/exceptions.dart';
+import 'package:presentum/src/eligibility/resolver.dart';
 
 @internal
 final class EligibilityResolver$Impl<S> implements EligibilityResolver<S> {
@@ -17,6 +19,8 @@ final class EligibilityResolver$Impl<S> implements EligibilityResolver<S> {
     S subject,
     Map<String, dynamic> context,
   ) async {
+    context['_subject'] = subject;
+
     // Extract all eligibility conditions from the subject
     final conditions = <Eligibility>[];
     for (final extractor in _extractors) {

@@ -98,8 +98,8 @@ class InMemoryPresentumStorage<
   }) {
     _shownStorage
         .putIfAbsent(itemId, () => {})
-        .putIfAbsent(surface.name, () => {})
-        .putIfAbsent(variant.name, () => [])
+        .putIfAbsent(surface.key, () => {})
+        .putIfAbsent(variant.key, () => [])
         .add(at);
   }
 
@@ -109,7 +109,7 @@ class InMemoryPresentumStorage<
     required S surface,
     required V variant,
   }) {
-    final timestamps = _shownStorage[itemId]?[surface.name]?[variant.name];
+    final timestamps = _shownStorage[itemId]?[surface.key]?[variant.key];
     if (timestamps == null || timestamps.isEmpty) return null;
 
     return timestamps.reduce((a, b) => a.isAfter(b) ? a : b);
@@ -122,7 +122,7 @@ class InMemoryPresentumStorage<
     required S surface,
     required V variant,
   }) {
-    final timestamps = _shownStorage[itemId]?[surface.name]?[variant.name];
+    final timestamps = _shownStorage[itemId]?[surface.key]?[variant.key];
     if (timestamps == null || timestamps.isEmpty) return 0;
 
     final cutoff = DateTime.now().subtract(period);
@@ -138,7 +138,7 @@ class InMemoryPresentumStorage<
   }) {
     _dismissedStorage
             .putIfAbsent(itemId, () => {})
-            .putIfAbsent(surface.name, () => {})[variant.name] =
+            .putIfAbsent(surface.key, () => {})[variant.key] =
         at;
   }
 
@@ -147,7 +147,7 @@ class InMemoryPresentumStorage<
     String itemId, {
     required S surface,
     required V variant,
-  }) => _dismissedStorage[itemId]?[surface.name]?[variant.name];
+  }) => _dismissedStorage[itemId]?[surface.key]?[variant.key];
 
   @override
   FutureOr<void> recordConverted(
@@ -158,8 +158,8 @@ class InMemoryPresentumStorage<
   }) {
     _convertedStorage
         .putIfAbsent(itemId, () => {})
-        .putIfAbsent(surface.name, () => {})
-        .putIfAbsent(variant.name, () => [])
+        .putIfAbsent(surface.key, () => {})
+        .putIfAbsent(variant.key, () => [])
         .add(at);
   }
 }

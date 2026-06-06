@@ -38,6 +38,9 @@ enum AppVariant with PresentumVisualVariant {
     catalogRecentlyViewedProductsSection,
   ];
 
+  @override
+  String get key => name;
+
   /// The name of the variant.
   ///
   /// Throws [ArgumentError] if the name is not valid.

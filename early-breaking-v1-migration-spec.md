@@ -92,9 +92,12 @@ Consumers never reference concrete `*$Impl` classes. Interfaces expose factory c
 // eligibility/resolver.dart — already exists
 abstract interface class EligibilityResolver<S> {
   factory EligibilityResolver({
-    required List<EligibilityRule> rules,
     required List<EligibilityExtractor<S>> extractors,
-  }) = EligibilityResolver$Impl<S>;
+    List<EligibilityRule>? rules,
+  }) {
+    final $rules = [...createStandardRules(), ...?rules];
+    return EligibilityResolver$Impl(rules: $rules, extractors: extractors);
+  }
   ...
 }
 
@@ -494,67 +497,42 @@ Removing from slot state alone does **not** persist dismissal. Both are required
 
 ---
 
-## 7. Tracked State Mixins & Widget
+## 7. Tracked Item Mixins & Widget (implemented as-is)
 
-Two-layer mixin hierarchy on `State`. Widget delegates to mixins — no duplicated PageStorage logic.
+Three-type mixin stack. Widget + State delegate to mixins — **no duplicated PageStorage logic** in `_PresentumTrackedWidgetState`.
 
-### Layer 1 — `PresentumTrackableStateMixin` (config contract)
+### Layer 1 — `ITrackedItemSourceMixin` (contract)
 
-Defines what to track. Used by custom widgets or by `PresentumTrackedStateMixin`.
+Abstract mixin class on the **widget** side. Defines `item`, `onShown`, `trackVisibility` as `abstract final` fields.
+
+### Layer 2 — `TrackedItemHostMixin` (widget host)
 
 ```dart
-mixin PresentumTrackableStateMixin<
-  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
-  S extends PresentumSurface,
-  V extends PresentumVisualVariant,
-  T extends StatefulWidget,
-> on State<T> {
-  /// Item to track — implement from widget field.
-  TItem get trackedItem;
-
-  /// Called once on first visible frame.
-  void onPresentumShown(TItem item);
-
-  /// Whether to fire [onPresentumShown]. Default: true.
-  bool get trackVisibility => true;
-
-  /// Default PageStorage key. Override for custom scoping.
-  String presentumTrackedStorageKey(TItem item) =>
-      'presentum_tracked_${item.id}';
+mixin TrackedItemHostMixin<TItem, S, V> on StatefulWidget
+    implements ITrackedItemSourceMixin<TItem, S, V> {
+  String get pageStorageKey => 'presentum_tracked_item:${item.id}';
 }
 ```
 
-### Layer 2 — `PresentumTrackedStateMixin` (PageStorage + post-frame)
+Custom widgets: `extends StatefulWidget with TrackedItemHostMixin<...>` and declare `@override final` fields.
 
-Depends on `PresentumTrackableStateMixin`. Overrides `initState` to call tracking setup.
+### Layer 3 — `TrackedItemStateMixin` (State + PageStorage)
 
 ```dart
-mixin PresentumTrackedStateMixin<
-  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
-  S extends PresentumSurface,
-  V extends PresentumVisualVariant,
-  T extends StatefulWidget,
-> on State<T>, PresentumTrackableStateMixin<TItem, S, V, T> {
+mixin TrackedItemStateMixin<TItem, S, V, W extends TrackedItemHostMixin<TItem, S, V>>
+    on State<W> {
   @override
-  void initState() {
-    super.initState();
-    _initPresentumTracking();
-  }
-
-  void _initPresentumTracking() { ... }  // PageStorage read + postFrameCallback
+  void initState() { ... }  // post-frame → widget.onShown(widget.item)
 }
 ```
+
+Reads/writes PageStorage via `widget.pageStorageKey`. **State subclass must not override `initState` without `super.initState()`.**
 
 ### `PresentumTrackedWidget`
 
-StatefulWidget with `final` constructor params (not getters). State uses both mixins.
-
 ```dart
-class PresentumTrackedWidget<
-  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
-  S extends PresentumSurface,
-  V extends PresentumVisualVariant,
-> extends StatefulWidget {
+class PresentumTrackedWidget<TItem, S, V> extends StatefulWidget
+    with TrackedItemHostMixin<TItem, S, V> {
   const PresentumTrackedWidget({
     required this.item,
     required this.onShown,
@@ -563,39 +541,34 @@ class PresentumTrackedWidget<
     super.key,
   });
 
-  final TItem item;
-  final void Function(TItem item) onShown;
-  final bool trackVisibility;
+  @override final TItem item;
+  @override final void Function(TItem item) onShown;
+  @override final bool trackVisibility;
   final Widget Function(BuildContext context, TItem item) builder;
-
-  @override
-  State<PresentumTrackedWidget<TItem, S, V>> createState() =>
-      _PresentumTrackedWidgetState<TItem, S, V>();
 }
 
-class _PresentumTrackedWidgetState<
-  TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
-  S extends PresentumSurface,
-  V extends PresentumVisualVariant,
-> extends State<PresentumTrackedWidget<TItem, S, V>>
-    with
-        PresentumTrackableStateMixin<TItem, S, V, PresentumTrackedWidget<TItem, S, V>>,
-        PresentumTrackedStateMixin<TItem, S, V, PresentumTrackedWidget<TItem, S, V>> {
-  @override
-  TItem get trackedItem => widget.item;
-
-  @override
-  void onPresentumShown(TItem item) => widget.onShown(item);
-
-  @override
-  bool get trackVisibility => widget.trackVisibility;
-
+class _PresentumTrackedWidgetState<...> extends State<PresentumTrackedWidget<...>>
+    with TrackedItemStateMixin<..., PresentumTrackedWidget<...>> {
   @override
   Widget build(BuildContext context) => widget.builder(context, widget.item);
 }
 ```
 
-Host wires `onShown` to dispatcher or storage. Custom widgets can mix in `PresentumTrackableStateMixin` + `PresentumTrackedStateMixin` directly.
+### Wiring (v1.0.0)
+
+Host owns persistence — mixins only call `onShown`:
+
+```dart
+PresentumTrackedWidget(
+  item: item,
+  onShown: (item) => _events.dispatch(
+    PresentumShownEvent(item: item, timestamp: DateTime.now()),
+  ),
+  builder: (context, item) => CampaignBanner(item: item),
+)
+```
+
+**Files:** `lib/src/widgets/tracked_item_state_mixin.dart`, `lib/src/widgets/tracked_widget.dart` — exported from `presentum.dart`.
 
 **Removes:** `context.presentum().markShown()`.
 
@@ -852,7 +825,7 @@ No `TransitionAnalyticsStep` in v1.0.0 unless a concrete mid-pipeline use case e
 5. `PresentumResolverStep` + built-in steps + `PresentumStepsPipeline` (with `onTransition` post-hook)
 6. `PresentumEventDispatcher` + `PresentumStorageEventHandler` + `PresentumAnalyticsEventHandler`
 7. Adapt `PresentumOutlet` + composition variants
-8. `PresentumTrackableStateMixin` + `PresentumTrackedStateMixin` + `PresentumTrackedWidget`
+8. `ITrackedItemSourceMixin` + `TrackedItemHostMixin` + `TrackedItemStateMixin` + `PresentumTrackedWidget`
 9. `PresentumSlotListener` + `PresentumPopupHost` (replace observer/popup mixins)
 10. Adapt transitions to `PresentumSlotState`
 11. Remove engine, guards, controller, inherited presentum, observer/popup mixins
@@ -888,9 +861,8 @@ lib/src/
     outlet.dart
     slot_listener.dart
     popup_host.dart
-    tracked_widget.dart
-    trackable_state_mixin.dart
-    tracked_state_mixin.dart
+    tracked_item_state_mixin.dart  # ITrackedItemSourceMixin, TrackedItemHostMixin, TrackedItemStateMixin
+    tracked_widget.dart            # PresentumTrackedWidget
 ```
 
 ### Milestone 2 — later
@@ -1024,7 +996,7 @@ BlocBuilder<CampaignsBloc, CampaignsState>(
 │  EligibilityResolver(*)    PresentumStepsPipeline                │
 │  PresentumEvent*           PresentumEventDispatcher              │
 │  PresentumStateTransition  Built-in steps                        │
-│  Trackable/Tracked mixins                                        │
+│  Trackable/Tracked mixins → ITrackedItemSource / TrackedItem*     │
 │                                                               │
 │  (*) factory → X$Impl, not public                                │
 └──────────────────────────────────────────────────────────────┘

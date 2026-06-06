@@ -115,8 +115,8 @@ class _ResetFeaturePresentumItemsStorageState
             builder: (context, child) => ListTile(
               title: Text(
                 l10n.resetPresentumItemSurfaceVariant(
-                  item.surface.name,
-                  item.variant.name,
+                  item.surface.key,
+                  item.variant.key,
                 ),
               ),
               subtitle: Text(l10n.resetPresentumItemId(item.id)),

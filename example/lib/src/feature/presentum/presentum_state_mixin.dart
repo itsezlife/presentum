@@ -42,8 +42,6 @@ mixin FeaturePresentumStateMixin<T extends StatefulWidget> on State<T> {
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
     final eligibilityResolver = EligibilityResolver<FeatureItem>(
-      // Standar set of rules that covers most of the common cases.
-      rules: createStandardRules(),
       extractors: [
         /// Extracts the `time_range` from the feature item.
         const TimeRangeExtractor(),

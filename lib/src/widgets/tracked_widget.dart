@@ -1,45 +1,80 @@
+// ignore_for_file: lines_longer_than_80_chars
+
 import 'package:flutter/widgets.dart';
 import 'package:presentum/src/state/payload.dart';
 import 'package:presentum/src/state/state.dart';
-import 'package:presentum/src/widgets/build_context_extension.dart';
+import 'package:presentum/src/widgets/tracked_item_state_mixin.dart';
 
+/// Ready-made wrapper that tracks when a [PresentumItem] is first shown.
+///
 /// {@template presentum_tracked_widget}
-/// A widget that automatically tracks presentation lifecycle events.
+/// Delegates tracking to [TrackedItemHostMixin] + [TrackedItemStateMixin].
+/// Calls [onShown] once per [item] (per [pageStorageKey]) after the first
+/// frame when [trackVisibility] is true.
 ///
-/// This widget automatically calls [markShown] when it first builds,
-/// if [trackVisibility] is true.
+/// ```dart
+/// PresentumTrackedWidget(
+///   item: item,
+///   onShown: (item) => storage.recordShown(
+///     item.id,
+///     surface: item.surface,
+///     variant: item.variant,
+///     at: DateTime.now(),
+///   ),
+///   builder: (context, item) => CampaignBanner(item: item),
+/// )
+/// ```
 ///
-/// This widget uses [PageStorage] to remember whether it has already
-/// tracked the "shown" event to avoid duplicate tracking when the widget is
-/// rebuilt.
+/// **Custom widget** — same mixins, no wrapper:
+///
+/// ```dart
+/// class CampaignBanner extends StatefulWidget
+///     with TrackedItemHostMixin<CampaignItem, CampaignSurface, CampaignVariant> {
+///   const CampaignBanner({required this.item, required this.onShown, super.key});
+///   @override final CampaignItem item;
+///   @override final void Function(CampaignItem item) onShown;
+///   @override final bool trackVisibility = true;
+/// }
+///
+/// class _CampaignBannerState extends State<CampaignBanner>
+///     with TrackedItemStateMixin<
+///       CampaignItem,
+///       CampaignSurface,
+///       CampaignVariant,
+///       CampaignBanner
+///     > {
+///   @override
+///   Widget build(BuildContext context) => ...;
+/// }
+/// ```
 /// {@endtemplate}
 class PresentumTrackedWidget<
   TItem extends PresentumItem<PresentumPayload<S, V>, S, V>,
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends StatefulWidget {
+    extends StatefulWidget
+    with TrackedItemHostMixin<TItem, S, V> {
   /// {@macro presentum_tracked_widget}
   const PresentumTrackedWidget({
     required this.item,
+    required this.onShown,
     required this.builder,
-    this.onDismiss,
     this.trackVisibility = true,
     super.key,
   });
 
-  /// The presentum item to track.
+  @override
   final TItem item;
 
-  /// Builder for the child widget.
-  final Widget Function(BuildContext context, TItem item) builder;
+  @override
+  final void Function(TItem item) onShown;
 
-  /// Callback when the widget is dismissed (if using dismissible wrapper).
-  final VoidCallback? onDismiss;
-
-  /// Whether to automatically track when the widget is shown.
-  /// Defaults to true.
+  @override
   final bool trackVisibility;
+
+  /// Builds the visible presentation UI for [item].
+  final Widget Function(BuildContext context, TItem item) builder;
 
   @override
   State<PresentumTrackedWidget<TItem, S, V>> createState() =>
@@ -51,31 +86,14 @@ class _PresentumTrackedWidgetState<
   S extends PresentumSurface,
   V extends PresentumVisualVariant
 >
-    extends State<PresentumTrackedWidget<TItem, S, V>> {
-  late bool _hasTrackedShown;
-
-  String get _pageStorageKey => 'presentum_tracked_widget_${widget.item.id}';
-
-  @override
-  void initState() {
-    super.initState();
-    final hasTrackedShown =
-        PageStorage.of(context).readState(context, identifier: _pageStorageKey)
-            as bool? ??
-        false;
-    _hasTrackedShown = hasTrackedShown;
-    if (widget.trackVisibility && !_hasTrackedShown) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.presentum<TItem, S, V>().markShown(widget.item);
-        _hasTrackedShown = true;
-        PageStorage.of(
-          context,
-        ).writeState(context, true, identifier: _pageStorageKey);
-      });
-    }
-  }
-
+    extends State<PresentumTrackedWidget<TItem, S, V>>
+    with
+        TrackedItemStateMixin<
+          TItem,
+          S,
+          V,
+          PresentumTrackedWidget<TItem, S, V>
+        > {
   @override
   Widget build(BuildContext context) => widget.builder(context, widget.item);
 }

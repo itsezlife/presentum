@@ -6,6 +6,9 @@ enum CampaignSurface with PresentumSurface {
   homeFooterBanner,
   menuTile;
 
+  @override
+  String get key => name;
+
   static CampaignSurface fromName(String name, {CampaignSurface? fallback}) =>
       switch (name) {
         'popup' => CampaignSurface.popup,
@@ -21,6 +24,9 @@ enum CampaignVariant with PresentumVisualVariant {
   dialog,
   banner,
   inline;
+
+  @override
+  String get key => name;
 
   static CampaignVariant fromName(String name, {CampaignVariant? fallback}) =>
       switch (name) {

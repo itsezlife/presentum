@@ -2,7 +2,9 @@
 
 import 'package:presentum/src/eligibility/eligibility.dart';
 import 'package:presentum/src/eligibility/eligibility_conditions.dart';
+import 'package:presentum/src/eligibility/exceptions.dart';
 import 'package:presentum/src/eligibility/metadata_keys.dart';
+import 'package:presentum/src/eligibility/resolver.dart';
 
 /// Interface for subjects that have metadata.
 ///

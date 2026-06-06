@@ -46,7 +46,6 @@ mixin CampaignsPresentumStateMixin<T extends StatefulWidget> on State<T> {
     _storage = CampaignPersistentStorage(prefs: deps.sharedPreferences);
 
     _eligibility = EligibilityResolver<HasMetadata>(
-      rules: [...createStandardRules()],
       extractors: const [
         TimeRangeExtractor(),
         ConstantExtractor(metadataKey: 'is_active'),

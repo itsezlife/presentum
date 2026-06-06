@@ -1,9 +1,22 @@
 // Test types for the transition system
 import 'package:presentum/presentum.dart';
 
-enum FakeSurface with PresentumSurface { banner, modal, tooltip }
+enum FakeSurface with PresentumSurface {
+  banner,
+  modal,
+  tooltip;
 
-enum FakeVariant with PresentumVisualVariant { variantA, variantB }
+  @override
+  String get key => name;
+}
+
+enum FakeVariant with PresentumVisualVariant {
+  variantA,
+  variantB;
+
+  @override
+  String get key => name;
+}
 
 class FakeOption extends PresentumOption<FakeSurface, FakeVariant> {
   const FakeOption({

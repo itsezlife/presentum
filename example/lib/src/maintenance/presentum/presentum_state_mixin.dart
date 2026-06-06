@@ -55,7 +55,6 @@ mixin MaintaincePresentumStateMixin<T extends StatefulWidget> on State<T> {
     _storage = PersistentPresentumStorage(prefs: deps.sharedPreferences);
 
     final eligibilityResolver = EligibilityResolver<MaintenanceItem>(
-      rules: [...createStandardRules()],
       extractors: [
         const TimeRangeExtractor(),
         const ConstantExtractor(metadataKey: 'is_active'),
