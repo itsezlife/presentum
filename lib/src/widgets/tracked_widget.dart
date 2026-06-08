@@ -2,7 +2,7 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:presentum/src/state/payload.dart';
-import 'package:presentum/src/state/state.dart';
+import 'package:presentum/src/state/surface.dart';
 import 'package:presentum/src/widgets/tracked_item_state_mixin.dart';
 
 /// Ready-made wrapper that tracks when a [PresentumItem] is first shown.

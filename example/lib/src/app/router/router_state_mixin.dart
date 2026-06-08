@@ -4,13 +4,9 @@ import 'package:example/src/app/router/route_tracker.dart';
 import 'package:example/src/app/router/routes.dart';
 import 'package:example/src/app/router/tabs_guard.dart';
 import 'package:example/src/common/model/dependencies.dart';
-import 'package:example/src/maintenance/presentum/payload.dart';
-import 'package:example/src/maintenance/presentum/provider.dart';
 import 'package:example/src/shop/data/shop_tabs_cache_service.dart';
 import 'package:flutter/material.dart';
 import 'package:octopus/octopus.dart';
-import 'package:presentum/presentum.dart';
-import 'package:shared/shared.dart';
 
 mixin RouterStateMixin<T extends StatefulWidget> on State<T> {
   late final Octopus router;
@@ -25,14 +21,8 @@ mixin RouterStateMixin<T extends StatefulWidget> on State<T> {
           <({Object error, StackTrace stackTrace})>[],
         );
 
-    final maintenancePresentum = context
-        .presentum<MaintenanceItem, AppSurface, AppVariant>();
-
-    final provider = MaintenanceProvider.of(context);
-
-    final observer = maintenancePresentum.observer;
-
     final deps = Dependencies.of(context);
+    final maintenanceController = deps.maintenanceController;
 
     // Create cache for shop tabs.
     final shopTabCache = ShopTabsCacheService(
@@ -48,17 +38,10 @@ mixin RouterStateMixin<T extends StatefulWidget> on State<T> {
       guards: [
         // Maintenance guard to check if the maintenance mode is active.
         MaintenanceModeGuard(
-          eligibilityResolver: provider.eligibilityResolver,
-          // Get the maintenance state from the observer.
-          maintenanceState: () => observer.value,
-
-          /// We must evaluate initial candidates to effectively identify
-          /// initial maintenance mode. Further updates would be delvivered
-          /// via the observer, if the maintenance payload changes
-          /// in the [MaintenanceProvider].
-          initialMaintenanceCandidates: () => provider.candidates,
-          // Refresh the guard when the maintenance state changes.
-          refresh: observer,
+          eligibilityResolver: maintenanceController.eligibilityResolver,
+          slots: () => maintenanceController.state.slots,
+          candidates: () => maintenanceController.state.candidates,
+          refresh: maintenanceController,
         ),
         // Home route should be always on top.
         HomeGuard(),

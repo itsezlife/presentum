@@ -5,10 +5,12 @@ import 'package:example/firebase_options.dart';
 import 'package:example/src/app/data/user_repository.dart';
 import 'package:example/src/app/initialization/data/platform/platform_initialization.dart';
 import 'package:example/src/common/model/dependencies.dart';
+import 'package:example/src/common/presentum/persistent_presentum_storage.dart';
 import 'package:example/src/feature/data/feature_catalog_repository.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_repository.dart';
 import 'package:example/src/feature/data/feature_store.dart';
+import 'package:example/src/maintenance/controller/maintenance_controller.dart';
 import 'package:example/src/maintenance/data/maintenance_store.dart';
 import 'package:example/src/shop/controller/favorite_controller.dart';
 import 'package:example/src/shop/controller/shop_controller.dart';
@@ -179,6 +181,14 @@ _initializationSteps = <String, _InitializationStep>{
     await maintenanceStore.initialize();
     dependencies.maintenanceStore = maintenanceStore;
   },
+  'Prepare maintenance controller': (dependencies) =>
+      dependencies.maintenanceController = MaintenanceController(
+        storage: PersistentPresentumStorage(
+          prefs: dependencies.sharedPreferences,
+        ),
+        maintenanceStore: dependencies.maintenanceStore,
+        updatesStore: dependencies.shorebirdUpdatesStore,
+      ),
   'Initialize localization': (_) {},
   'Migrate app from previous version': (_) {},
   'Collect logs': (_) {},

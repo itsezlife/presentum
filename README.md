@@ -1,16 +1,15 @@
-# [Presentum: A Declarative Presentation Engine for Flutter](https://docs.presentum.dev)
+# [Presentum: Conditional UI for Flutter](https://docs.presentum.dev)
 
 [![License: MIT][license_badge]][license_link]
 [![Linter][linter_badge]][linter_link]
 [![GitHub stars](https://img.shields.io/github/stars/itsezlife/presentum?style=social)](https://github.com/itsezlife/presentum/)
 
-**Presentum** is a declarative Flutter engine for building dynamic, conditional UI at scale. It helps you manage campaigns, app updates, special offers, tips, notifications and so much more with clean, testable, type-safe code.
+**Presentum** is a Flutter **domain library** for building dynamic, conditional UI at scale — campaigns, app updates, maintenance, banners, popups, and more. It provides typed payloads, slot state, eligibility, storage contracts, pipeline steps, and slot-driven widgets.
 
-Modern apps need personalized, adaptive experiences: show the right message to the right user at the right time, with impression limits, cooldowns, A/B testing, and analytics. Presentum handles all of that.
+**Your controller owns reactive state.** Presentum does not ship a runtime engine, global instance, or `context.presentum()`. You hold `PresentumSlotState` and `PresentumSlotsHistory`, run a `PresentumStepsPipeline` when inputs change, and bind slots to `PresentumOutlet` / `PresentumPopupHost`.
 
-Instead of spreading show/hide logic across your widgets, you describe **what** should be shown as data, and Presentum’s engine, guards, and outlets handle **where**, **when**, and **how** it appears.
-
-**📚 [Full Documentation](https://docs.presentum.dev)** · **🚀 [Quick Start](https://docs.presentum.dev/quickstart)**
+> **v1 migration:** The repo targets **v1.0.0** (breaking). Published docs at [docs.presentum.dev](https://docs.presentum.dev) still describe v0.3.6.
+**📚 [Published docs (v0.3.6)](https://docs.presentum.dev)** · **🚀 [Example app (v1)](example/)**
 
 ## The problem
 
@@ -59,92 +58,57 @@ class PresentationService {
 
 ## The solution
 
-Presentum separates **what** (payloads), **when** (guards), **where** (surfaces), and **how** (outlets):
+Presentum separates **what** (payloads), **when** (pipeline steps), **where** (surfaces), and **how** (outlets):
 
 ```dart
-// ✅ Declarative, testable, maintainable
+// ✅ Domain library + host controller (v1)
 
-// 1. Define domain data
-class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> {
-  final String id;
-  final int priority;
-  final Map<String, Object?> metadata;
-  final List<PresentumOption<AppSurface, CampaignVariant>> options;
-  // Extend as needed, add whatever else you might need...
-}
+// 1. Domain data
+class CampaignPayload extends PresentumPayload<AppSurface, CampaignVariant> { … }
 
-// 2. Define logic in guards
-class CampaignGuard extends PresentumGuard<CampaignItem, AppSurface> {
+// 2. Scheduling in a pipeline step (replaces guards)
+class CampaignSchedulingStep extends PresentumResolverStep<CampaignItem, …> {
   @override
-  FutureOr<PresentumState<CampaignItem, AppSurface>> call(
-    storage, history, state, candidates, context,
-  ) async {
-    for (final candidate in candidates) {
-      // Check impression count
-      final count = await storage.getShownCount(
-        candidate.id,
-        surface: candidate.surface,
-        variant: candidate.variant,
-      );
-      if (count >= 3) continue;
-
-      // Check cooldown
-      final lastShown = await storage.getLastShown(
-        candidate.id,
-        surface: candidate.surface,
-        variant: candidate.variant,
-      );
-      if (lastShown case final lastShown?) {
-        final hoursSince = DateTime.now().difference(lastShown).inHours;
-        if (hoursSince < candidate.cooldownHours) continue;
-      }
-
-      // Check user eligibility
-      if (!await _isEligible(candidate)) continue;
-
-      // All checks passed
-      state.setActive(candidate.surface, candidate);
+  Future<PresentumSlotState<…>> call(PresentumStepInput<…> input) async {
+    var slots = input.current;
+    for (final candidate in input.candidates) {
+      if (!await _isEligible(candidate, input)) continue;
+      slots = slots.withActive(candidate.surface, candidate);
     }
-    return state;
+    return slots;
   }
 }
 
-// 3. Display widget with built-in outlet
-class HomeTopBannerOutlet extends StatelessWidget {
-  const HomeTopBannerOutlet({
-    super.key,
-  });
-
+// 3. Controller owns slots; outlet receives them
+class CampaignOutlet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PresentumOutlet<CampaignItem, AppSurface>(
-      surface: AppSurface.homeTopBanner,
-      builder: (context, item) {
-        return BannerWidget(
+    final controller = context.controllerOf<CampaignsController>();
+    return ValueListenableBuilder(
+      valueListenable: controller.select((s) => s.slots),
+      builder: (context, slots, _) => PresentumOutlet(
+        slots: slots,
+        surface: AppSurface.homeTopBanner,
+        builder: (context, item) => BannerWidget(
           campaign: item.payload,
-          onClose: () => context
-              .presentum<CampaignItem, AppSurface>()
-              .markDismissed(item),
-        );
-      },
+          onClose: () => controller.markDismissed(item),
+        ),
+      ),
     );
   }
 }
 ```
 
-**All eligibility logic is centralized.** The outlet renders. The payload is data. Guards contain business rules. Everything is testable.
+**Business rules live in steps and eligibility.** Slots are immutable snapshots. The host decides when to revalidate.
 
 ## How it works
 
-Presentum coordinates the flow between your data sources, eligibility rules, and UI:
-
-1. **Data Fetching**: Your app fetches candidates from Supabase, Firebase Remote config, APIs, or local sources
-2. **Engine Processing**: The Presentum Engine receives candidates and runs eligibility checks through guards
-3. **State Management**: Engine updates state, manages slots per surface, and tracks history/transitions
-4. **UI Rendering**: Outlets render active items based on current state
-5. **User Interaction**: Users interact with presented items (dismiss, convert, etc.)
-6. **Event Recording**: Storage layer records all user interactions and state changes
-7. **Re-evaluation**: Guards re-evaluate eligibility as needed based on new data or interactions
+1. **Fetch candidates** from remote config, APIs, or local sources
+2. **Listen** to lifecycle, config, or user streams → `controller.revalidate()`
+3. **Pipeline** runs custom steps → returns new `PresentumSlotState`
+4. **History** records each commit for step gates and debugging
+5. **Outlets / popup host** render active items from `slots`
+6. **Lifecycle** (`PresentumLifecycle.shown` / `.dismiss`) updates storage and handlers
 
 ## What you can build
 
@@ -210,8 +174,7 @@ Presentum handles ANY condition you need:
 - Feature flags (is_active)
 - Custom business logic
 
-The engine is flexible and scalable - if you can write a rule for it, Presentum can handle it.
-The only limit is your imagination.
+The library is flexible and composable — if you can express a rule in a step or eligibility condition, Presentum can support it.
 
 ## [Installation](https://docs.presentum.dev/installation)
 
@@ -292,48 +255,38 @@ class MyOutlet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PresentumOutlet<MyItem, MySurface>(
+      slots: mySlots, // from your controller state
       surface: surface,
-      builder: (context, item) {
-        return MyWidget(item);
-      },
+      builder: (context, item) => MyWidget(item),
     );
   }
 }
 ```
 
-[Example: Popup host for dialog presentations](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/widgets/campaign_popup_host.dart)
+[Example: Campaign popup host](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/widgets/campaign_popup_host.dart)
 
-## [How to present](https://docs.presentum.dev/guides/state-management)
+## Pipeline steps (replaces guards)
 
-Use the `context.presentum.setState((state) => ...)` method as a basic presentum method.
-
-And realize any presentum logic inside the callback as you please.
+Port guard logic into `PresentumResolverStep` implementations and register them on a `PresentumStepsPipeline`. The host calls the pipeline on revalidation:
 
 ```dart
-context.presentum.setState((state) {
-  state.setActive(AppSurface.homeTopBanner, campaignItem);
-  state.enqueue(AppSurface.profileAlert, alertItem);
-  return state;
-});
+final newSlots = await _pipeline(
+  candidates: state.candidates,
+  context: await _buildContext(),
+  current: state.slots,
+  history: state.history,
+);
+setState(state.copyWith(
+  slots: newSlots,
+  history: state.history.record(slots: newSlots, current: state.slots),
+));
 ```
 
-You can truly do anything you want.
-Just change the state, slots, active items, and queues as you please.
-Everything is in your hands and just works fine, that's a declarative approach as it should be.
+**Example steps:**
 
-However, guards should be your primary tool for scheduling presentations, removing ineligible items, periodic refreshes, and complex eligibility rules. Use direct state changes when you need a very explicit controll.
-
-## [Guards](https://docs.presentum.dev/core-concepts/guards)
-
-Guards are a powerful tool for controlling presentations.
-They allow you to check the state and mutate/filter items based on eligibility rules.
-For example, you can check user preferences, storage, history, impression limits, cooldowns, or A/B test segments to determine what should be shown.
-
-**Examples:**
-
-1. [Scheduling guard with priority and sequencing](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/guards/scheduling_guard.dart)
-2. [Remove ineligible campaigns guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/remove_ineligible_candidates_guard.dart)
-3. [Sync state with candidates guard](https://github.com/itsezlife/presentum/blob/master/example/lib/src/common/presentum/sync_state_with_candidates_guard.dart)
+1. [Campaign scheduling](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/steps/campaign_scheduling_step.dart)
+2. [Remove ineligible campaigns](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/steps/remove_ineligible_campaigns_step.dart)
+3. [Sync slots with candidates](https://github.com/itsezlife/presentum/blob/master/example/lib/src/campaigns/presentum/steps/sync_campaigns_slots_step.dart)
 
 ## [Eligibility system](https://docs.presentum.dev/features/eligibility-system)
 
@@ -379,40 +332,18 @@ if (isEligible) {
 }
 ```
 
-## [Transition observers](https://docs.presentum.dev/features/transition-observers)
+## Transition diffs
 
-React to state changes with comprehensive diff snapshots. Useful for integrating with BLoC, Provider, or other state management:
+Compare slot snapshots with `PresentumSlotsTransition` / `PresentumSlotsDiff` after a pipeline commit — useful for analytics or cross-domain coordination:
 
 ```dart
-class StateChangeObserver implements IPresentumTransitionObserver<Item, Surface, Variant> {
-  StateChangeObserver(this.bloc);
-
-  final MyBloc bloc;
-
-  @override
-  FutureOr<void> call(PresentumStateTransition<Item, Surface, Variant> transition) {
-    final diff = transition.diff;
-
-    // Fire events to your business logic layer
-    for (final change in diff.activated) {
-      bloc.add(PresentationActivated(change.item, change.surface));
-    }
-
-    for (final change in diff.deactivated) {
-      bloc.add(PresentationDeactivated(change.item, change.surface));
-    }
-
-    for (final change in diff.queued) {
-      bloc.add(PresentationQueued(change.item, change.surface));
-    }
-  }
-}
-
-presentum = Presentum(
-  storage: storage,
-  guards: guards,
-  transitionObservers: [StateChangeObserver(myBloc)],
+final transition = PresentumSlotsTransition(
+  before: previousSlots,
+  after: newSlots,
 );
+for (final change in transition.diff.activated) {
+  analytics.logActivated(change.item.id, change.surface);
+}
 ```
 
 ## [Event system](https://docs.presentum.dev/features/events)
@@ -441,19 +372,16 @@ class AnalyticsEventHandler implements IPresentumEventHandler<Item, Surface, Var
   }
 }
 
-// Register event handlers
-presentum = Presentum(
+// Wire handlers into PresentumLifecycle
+final lifecycle = PresentumLifecycle(
   storage: storage,
-  guards: guards,
-  eventHandlers: [
-    PresentumStorageEventHandler(storage: storage), // Built-in storage handler
-    AnalyticsEventHandler(analyticsService),
-    // Add more handlers as needed
+  handlers: [
+    PresentumStorageEventHandler(storage: storage),
+    PresentumAnalyticsEventHandler(analytics: analyticsService),
   ],
 );
 
-// Manually add custom events
-await context.presentum.addEvent(MyCustomEvent(item: item, timestamp: DateTime.now()));
+await lifecycle.dismiss(slots: slots, item: item, updateSlots: controller.markDismissed);
 ```
 
 ## [Auto-tracking widgets](https://docs.presentum.dev/features/auto-tracking)
@@ -462,10 +390,9 @@ Widgets that automatically call `markShown` when widget renders and persists
 `showed` value in `PageStorage` to prevent any redundant calls:
 
 ```dart
-TrackedWidget(
-  presentum: presentum,
+PresentumTrackedWidget(
   item: campaignItem,
-  trackVisibility: true,
+  onShown: () => controller.markShown(campaignItem),
   builder: (context) => MyCampaignWidget(),
 )
 ```
@@ -618,7 +545,7 @@ homeTopBanner
 └─ queue: ["Swipe to refresh"]
 ```
 
-This happens automatically via `state.clearActive(surface)` or when you call `context.presentum.markDismissed(item)`.
+This happens via `PresentumSlotState.withDismissed` or `PresentumLifecycle.dismiss` from your controller.
 
 ## Changelog
 

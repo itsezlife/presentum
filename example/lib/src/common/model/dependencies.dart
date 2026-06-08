@@ -2,6 +2,7 @@ import 'package:example/src/app/data/user_repository.dart';
 import 'package:example/src/app/initialization/widget/inherited_dependencies.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
+import 'package:example/src/maintenance/controller/maintenance_controller.dart';
 import 'package:example/src/maintenance/data/maintenance_store.dart';
 import 'package:example/src/shop/controller/favorite_controller.dart';
 import 'package:example/src/shop/controller/shop_controller.dart';
@@ -56,4 +57,7 @@ class Dependencies {
 
   /// Recommendation store
   late final RecommendationStore recommendationStore;
+
+  /// Maintenance controller
+  late final MaintenanceController maintenanceController;
 }

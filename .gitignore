@@ -51,3 +51,12 @@ coverage/
 
 # SpecStory
 .specstory/
+
+# Internal
+goals.md
+milestones.md
+AGENTS.md
+docs/
+.cursorindexingignore
+archive/
+early-breaking-v1-migration-spec.md

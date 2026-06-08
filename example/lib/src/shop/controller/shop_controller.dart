@@ -1,14 +1,13 @@
 import 'package:collection/collection.dart';
-import 'package:example/src/common/controller/sequential_controller_concurrency.dart';
-import 'package:example/src/common/controller/state_controller.dart';
+import 'package:control/control.dart';
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/shop/controller/shop_state.dart';
 import 'package:example/src/shop/data/product_repository.dart';
 import 'package:example/src/shop/model/product.dart';
 import 'package:flutter/material.dart';
 
-final class ShopController extends StateController<ShopState>
-    with SequentialControllerConcurrency {
+class ShopController extends StateController<ShopState>
+    with SequentialControllerHandler {
   ShopController({
     required IProductRepository repository,
     super.initialState = const ShopState.idle(
@@ -46,14 +45,14 @@ final class ShopController extends StateController<ShopState>
         ),
       );
     },
-    (error, _) => setState(
+    error: (error, _) async => setState(
       ShopState.idle(
         products: state.products,
         categories: state.categories,
         message: 'Error: $error', // ErrorUtil.formatMessage(error)
       ),
     ),
-    () => setState(
+    done: () async => setState(
       ShopState.idle(
         products: state.products,
         categories: state.categories,

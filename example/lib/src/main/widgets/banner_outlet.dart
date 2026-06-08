@@ -1,6 +1,8 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:control/control.dart';
 import 'package:example/src/campaigns/camapigns.dart';
 import 'package:example/src/common/widgets/fade_size_transition_switcher.dart';
+import 'package:example/src/feature/controller/feature_controller.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/main/widgets/new_year_banner.dart';
 import 'package:flutter/material.dart';
@@ -14,42 +16,58 @@ class BannerOutlet extends StatelessWidget {
   const BannerOutlet({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      PresentumOutlet$Composition2<
-        CampaignPresentumItem,
-        FeatureItem,
-        CampaignSurface,
-        CampaignVariant,
-        AppSurface,
-        AppVariant
-      >(
-        surface1: CampaignSurface.homeTopBanner,
-        surface2: AppSurface.homeHeader,
-        resolverMode: OutletGroupMode.custom,
-        resolver: (campaignItems, featureItems) {
-          final allItems = <PresentumItem>[...campaignItems, ...featureItems]
-            ..sort((a, b) => b.priority.compareTo(a.priority));
+  Widget build(BuildContext context) {
+    final campaignsController = context.controllerOf<CampaignsController>();
+    final featureController = context.controllerOf<FeatureController>();
 
-          if (allItems.isEmpty) {
-            return <PresentumItem>[];
-          }
+    return ValueListenableBuilder(
+      valueListenable: campaignsController.select((s) => s.slots),
+      builder: (context, campaignSlots, _) => ValueListenableBuilder(
+        valueListenable: featureController.select((s) => s.slots),
+        builder: (context, featureSlots, _) =>
+            PresentumOutlet$Composition2<
+              CampaignPresentumItem,
+              FeatureItem,
+              CampaignSurface,
+              CampaignVariant,
+              AppSurface,
+              AppVariant
+            >(
+              slots1: campaignSlots,
+              slots2: featureSlots,
+              surface1: CampaignSurface.homeTopBanner,
+              surface2: AppSurface.homeHeader,
+              combiner: PresentumCompositionItemsCombiner2.custom((
+                campaignItems,
+                featureItems,
+              ) {
+                final allItems = <PresentumItem>[
+                  ...campaignItems,
+                  ...featureItems,
+                ]..sort((a, b) => b.priority.compareTo(a.priority));
 
-          return [allItems.first];
-        },
-        compositeBuilder: (context, items) => FadeSizeTransitionSwitcher(
-          isForwardMove: true,
-          child: switch (items.firstOrNull) {
-            CampaignPresentumItem(:final surface) => CampaignOutlet(
-              key: ValueKey('campaign_banner_$surface'),
-              surface: surface,
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                if (allItems.isEmpty) return <PresentumItem>[];
+                return [allItems.first];
+              }),
+              compositeBuilder: (context, items) => FadeSizeTransitionSwitcher(
+                isForwardMove: true,
+                child: switch (items.firstOrNull) {
+                  CampaignPresentumItem(:final surface) => CampaignOutlet(
+                    key: ValueKey('campaign_banner_$surface'),
+                    surface: surface,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.lg,
+                    ),
+                  ),
+                  FeatureItem() => const NewYearBanner(
+                    key: ValueKey('new_year_banner'),
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                  ),
+                  _ => const SizedBox.shrink(key: ValueKey('empty_banner')),
+                },
+              ),
             ),
-            FeatureItem() => const NewYearBanner(
-              key: ValueKey('new_year_banner'),
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-            ),
-            _ => const SizedBox.shrink(key: ValueKey('empty_banner')),
-          },
-        ),
-      );
+      ),
+    );
+  }
 }

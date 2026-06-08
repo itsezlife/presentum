@@ -1,9 +1,11 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:control/control.dart';
 import 'package:example/src/app/router/octopus_extension.dart';
 import 'package:example/src/app/router/routes.dart';
 import 'package:example/src/common/model/dependencies.dart';
 import 'package:example/src/common/widgets/common_actions.dart';
 import 'package:example/src/common/widgets/scaffold_padding.dart';
+import 'package:example/src/feature/controller/feature_controller.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/l10n/l10n.dart';
 import 'package:example/src/shop/model/category.dart';
@@ -41,55 +43,84 @@ class CatalogScreen extends StatelessWidget {
           /// Top padding
           const SliverPadding(padding: EdgeInsets.only(top: 16)),
 
-          PresentumOutlet$Composition<FeatureItem, AppSurface, AppVariant>(
-            surface: AppSurface.catalogView,
-            surfaceMode: OutletGroupMode.custom,
-            resolver: (items) => items
-                .where((e) => AppVariant.catalogSections.contains(e.variant))
-                .toList(),
-            placeholderBuilder: (context) =>
-                const SliverToBoxAdapter(child: SizedBox.shrink()),
-            builder: (context, items) => SliverMainAxisGroup(
-              slivers: [
-                for (final item in items)
-                  switch (item.variant) {
-                    AppVariant.catalogCategoriesSection => SliverMainAxisGroup(
-                      slivers: [
-                        const _CatalogDivider('Categories'),
-
-                        // Catalog root categories
-                        SliverPadding(
-                          padding: ScaffoldPadding.of(context),
-                          sliver: SliverFixedExtentList.list(
-                            itemExtent: 84,
-                            children: <Widget>[
-                              for (var i = 0; i < categories.length; i++)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  child: _CatalogTile(
-                                    categories[i],
-                                    color: colors[i],
-                                    key: ValueKey<CategoryID>(categories[i].id),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    AppVariant.catalogRecentlyViewedProductsSection =>
-                      const SliverMainAxisGroup(
+          Builder(
+            builder: (context) {
+              final controller = context.controllerOf<FeatureController>();
+              return ValueListenableBuilder(
+                valueListenable: controller.select((s) => s.slots),
+                builder: (context, slots, _) =>
+                    PresentumOutlet$Composition<
+                      FeatureItem,
+                      AppSurface,
+                      AppVariant
+                    >(
+                      slots: slots,
+                      surface: AppSurface.catalogView,
+                      collector: PresentumSlotItemsCollector.custom(
+                        (items) => items
+                            .where(
+                              (e) => AppVariant.catalogSections.contains(
+                                e.variant,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      placeholderBuilder: (context) =>
+                          const SliverToBoxAdapter(child: SizedBox.shrink()),
+                      builder: (context, items) => SliverMainAxisGroup(
                         slivers: [
-                          _CatalogDivider('Recently viewed products'),
-                          _RecentlyViewedProducts(),
+                          for (final item in items)
+                            switch (item.variant) {
+                              AppVariant.catalogCategoriesSection =>
+                                SliverMainAxisGroup(
+                                  slivers: [
+                                    const _CatalogDivider('Categories'),
+
+                                    // Catalog root categories
+                                    SliverPadding(
+                                      padding: ScaffoldPadding.of(context),
+                                      sliver: SliverFixedExtentList.list(
+                                        itemExtent: 84,
+                                        children: <Widget>[
+                                          for (
+                                            var i = 0;
+                                            i < categories.length;
+                                            i++
+                                          )
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
+                                              child: _CatalogTile(
+                                                categories[i],
+                                                color: colors[i],
+                                                key: ValueKey<CategoryID>(
+                                                  categories[i].id,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              AppVariant.catalogRecentlyViewedProductsSection =>
+                                const SliverMainAxisGroup(
+                                  slivers: [
+                                    _CatalogDivider('Recently viewed products'),
+                                    _RecentlyViewedProducts(),
+                                  ],
+                                ),
+                              _ => const SliverToBoxAdapter(
+                                child: SizedBox.shrink(),
+                              ),
+                            },
                         ],
                       ),
-                    _ => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                  },
-              ],
-            ),
+                    ),
+              );
+            },
           ),
 
           /// Bottom padding

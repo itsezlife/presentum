@@ -42,6 +42,23 @@ void main() {
       expect(await resolverSaturday.isEligible(campaign, {}), isFalse);
     });
 
+    test('does not mutate read-only context', () async {
+      const context = <String, dynamic>{};
+      final campaign = _TestSubject({
+        'recurring_time_pattern': {'time_start': '09:00', 'time_end': '17:00'},
+      });
+      final rule = RecurringTimePatternRule(
+        timeProvider: () => DateTime(2025, 12, 22, 14, 0),
+      );
+      final resolver = EligibilityResolver<_TestSubject>(
+        rules: [rule],
+        extractors: [const RecurringTimePatternExtractor()],
+      );
+
+      expect(await resolver.isEligible(campaign, context), isTrue);
+      expect(context, isEmpty);
+    });
+
     test('complete workflow: night owl promotion (crosses midnight)', () async {
       // Setup: Campaign that runs every day 10pm-2am
       final campaign = _TestSubject({

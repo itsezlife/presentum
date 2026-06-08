@@ -1,7 +1,7 @@
 import 'package:example/src/feature/data/feature_repository.dart';
 import 'package:flutter/foundation.dart';
 
-final class FeaturePreferencesStore extends ChangeNotifier {
+final class FeaturePreferencesStore with ChangeNotifier {
   FeaturePreferencesStore({required this.repo});
 
   final IFeaturePreferencesRepository repo;

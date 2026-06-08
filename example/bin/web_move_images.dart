@@ -9,9 +9,9 @@ void main() {
 
   // Move images
   final src = io.Directory(p.join(current.path, 'assets', 'data', 'images'));
-  final dst =
-      io.Directory(p.join(current.path, 'web', 'assets', 'data', 'images'))
-        ..createSync(recursive: true);
+  final dst = io.Directory(
+    p.join(current.path, 'web', 'assets', 'data', 'images'),
+  )..createSync(recursive: true);
   final files = src
       .listSync(recursive: false)
       .whereType<io.File>()
@@ -28,8 +28,9 @@ void main() {
 
   // Change pubspec.yaml
   final pubspec = io.File(p.join(current.path, 'pubspec.yaml'));
-  final content = pubspec
-      .readAsStringSync()
-      .replaceAll(RegExp(r'\s+\-\s*assets\/data\/images.*'), '');
+  final content = pubspec.readAsStringSync().replaceAll(
+    RegExp(r'\s+\-\s*assets\/data\/images.*'),
+    '',
+  );
   pubspec.writeAsStringSync(content);
 }

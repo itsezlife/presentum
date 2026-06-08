@@ -27,8 +27,8 @@ topics:
 version: 2.0.2
 
 environment:
-  sdk: ">=3.8.0"
-  flutter: ">=3.24.0"
+  sdk: ">=3.11.0"
+  flutter: ">=3.41.2"
 
 dependencies:
   flutter:
@@ -66,6 +66,10 @@ dependencies:
     git:
       url: https://github.com/itsezlife/octopus.git
       ref: master
+
+  ## State management
+  control: ^1.0.0-dev.1
+  equatable: any
 
   ## Utilities
   collection: any

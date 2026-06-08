@@ -19,7 +19,10 @@ final class EligibilityResolver$Impl<S> implements EligibilityResolver<S> {
     S subject,
     Map<String, dynamic> context,
   ) async {
-    context['_subject'] = subject;
+    // PresentumContext is read-only for callers — copy before injecting
+    // subject.
+    final evalContext = Map<String, dynamic>.of(context)
+      ..['_subject'] = subject;
 
     // Extract all eligibility conditions from the subject
     final conditions = <Eligibility>[];
@@ -48,7 +51,7 @@ final class EligibilityResolver$Impl<S> implements EligibilityResolver<S> {
       // Evaluate the condition
       // We use a type-unsafe cast here because rules use covariant generics.
       // The rule.supports() check ensures type safety at runtime.
-      final isEligible = await _evaluateUnsafe(rule, condition, context);
+      final isEligible = await _evaluateUnsafe(rule, condition, evalContext);
       if (!isEligible) return condition;
     }
 

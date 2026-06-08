@@ -1,11 +1,10 @@
-import 'package:example/src/common/controller/sequential_controller_concurrency.dart';
-import 'package:example/src/common/controller/state_controller.dart';
+import 'package:control/control.dart';
 import 'package:example/src/shop/controller/favorite_state.dart';
 import 'package:example/src/shop/data/product_repository.dart';
 import 'package:example/src/shop/model/product.dart';
 
-final class FavoriteController extends StateController<FavoriteState>
-    with SequentialControllerConcurrency {
+class FavoriteController extends StateController<FavoriteState>
+    with SequentialControllerHandler {
   FavoriteController({
     required IProductRepository repository,
     super.initialState = const FavoriteState.idle(
@@ -27,13 +26,13 @@ final class FavoriteController extends StateController<FavoriteState>
         FavoriteState.successful(products: products, message: 'Successful'),
       );
     },
-    (error, _) => setState(
+    error: (error, _) async => setState(
       FavoriteState.idle(
         products: state.products,
         message: 'Error: $error', // ErrorUtil.formatMessage(error)
       ),
     ),
-    () =>
+    done: () async =>
         setState(FavoriteState.idle(products: state.products, message: 'Idle')),
   );
 
@@ -49,13 +48,13 @@ final class FavoriteController extends StateController<FavoriteState>
         FavoriteState.successful(products: products, message: 'Successful'),
       );
     },
-    (error, _) => setState(
+    error: (error, _) async => setState(
       FavoriteState.idle(
         products: state.products,
         message: 'Error: $error', // ErrorUtil.formatMessage(error)
       ),
     ),
-    () =>
+    done: () async =>
         setState(FavoriteState.idle(products: state.products, message: 'Idle')),
   );
 
@@ -71,13 +70,13 @@ final class FavoriteController extends StateController<FavoriteState>
         FavoriteState.successful(products: products, message: 'Successful'),
       );
     },
-    (error, _) => setState(
+    error: (error, _) async => setState(
       FavoriteState.idle(
         products: state.products,
         message: 'Error: $error', // ErrorUtil.formatMessage(error)
       ),
     ),
-    () =>
+    done: () async =>
         setState(FavoriteState.idle(products: state.products, message: 'Idle')),
   );
 }

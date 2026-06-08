@@ -65,6 +65,7 @@ analyzer:
     avoid_types_as_parameter_names: error
     valid_regexps: error
     always_require_non_null_named_parameters: error
+    experimental_member_use: ignore
 
 linter:
   rules:
@@ -165,7 +166,6 @@ linter:
     annotate_overrides: true
     avoid_empty_else: true
     avoid_init_to_null: true
-    avoid_null_checks_in_equality_operators: true
     avoid_return_types_on_setters: true
     avoid_shadowing_type_parameters: true
     avoid_types_as_parameter_names: true

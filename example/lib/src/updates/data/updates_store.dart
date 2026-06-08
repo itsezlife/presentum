@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
-class ShorebirdUpdatesStore extends ChangeNotifier {
+class ShorebirdUpdatesStore with ChangeNotifier {
   ShorebirdUpdatesStore({required this.updater});
 
   final ShorebirdUpdater updater;

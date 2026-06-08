@@ -1,24 +1,31 @@
-/// A declarative cross-platform Flutter engine with focus on state to display
-/// presentations, such as campaigns, banners, notifications, etc., anywhere,
-/// anytime.
+/// Domain library for conditional UI presentations.
+///
+/// Campaigns, banners, popups, and related slot-driven widgets.
 library;
 
-export 'src/controller/controller.dart';
-export 'src/controller/engine.dart';
-export 'src/controller/events.dart';
-export 'src/controller/guard.dart';
-export 'src/controller/observer.dart';
-export 'src/controller/storage.dart';
-export 'src/controller/transitions.dart';
+export 'src/events/analytics.dart';
+export 'src/events/event_handler.dart';
+export 'src/events/events.dart';
+export 'src/events/lifecycle.dart';
+export 'src/resolver/context.dart';
+export 'src/resolver/pipeline.dart';
+export 'src/resolver/presentum_resolver.dart';
+export 'src/resolver/presentum_resolver_step.dart';
+export 'src/resolver/step_input.dart';
 export 'src/state/payload.dart';
-export 'src/state/state.dart';
+export 'src/state/slot.dart';
+export 'src/state/slot_state.dart';
+export 'src/state/slots_history.dart';
+export 'src/state/surface.dart';
+export 'src/storage/storage.dart';
+export 'src/transitions/slots_diff.dart';
+export 'src/transitions/slots_transition.dart';
 export 'src/utils/diff_util.dart';
 export 'src/utils/diff_util_helpers.dart';
-export 'src/widgets/active_surface_item_observer_mixin.dart';
 export 'src/widgets/build_context_extension.dart';
-export 'src/widgets/inherited_presentum.dart';
 export 'src/widgets/outlet.dart';
-export 'src/widgets/popup_surface_state_mixin.dart';
+export 'src/widgets/popup_host.dart';
 export 'src/widgets/presentum_context.dart';
+export 'src/widgets/slot_listener.dart';
 export 'src/widgets/tracked_item_state_mixin.dart';
 export 'src/widgets/tracked_widget.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:presentum/src/state/payload.dart';
-import 'package:presentum/src/state/state.dart';
+import 'package:presentum/src/state/surface.dart';
 
 /// {@template tracked_item_source_mixin}
 /// Source mixin for deferred "shown" tracking.
@@ -44,7 +44,7 @@ mixin TrackedItemHostMixin<
 
 /// {@template tracked_item_state_mixin}
 /// State mixin that fires [ITrackedItemSourceMixin.onShown] once per item.
-/// 
+///
 /// Uses [PageStorage] to avoid duplicate [onShown] when the widget rebuilds or
 /// remounts in the same route. Tracking runs in a post-frame callback so layout
 /// has completed before the shown side-effect fires.
@@ -65,11 +65,9 @@ mixin TrackedItemStateMixin<
           as bool?;
 
   void _writeShownFlag(BuildContext context, {required bool value}) =>
-      _bucketOf(context).writeState(
+      _bucketOf(
         context,
-        value,
-        identifier: widget.pageStorageKey,
-      );
+      ).writeState(context, value, identifier: widget.pageStorageKey);
 
   @override
   void initState() {

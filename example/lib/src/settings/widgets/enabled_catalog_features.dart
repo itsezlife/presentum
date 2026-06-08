@@ -1,12 +1,11 @@
 import 'package:collection/collection.dart';
+import 'package:control/control.dart';
 import 'package:example/src/common/model/dependencies.dart';
+import 'package:example/src/feature/controller/feature_controller.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
-import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/l10n/l10n.dart';
 import 'package:example/src/settings/widgets/settings_toggle_row.dart';
 import 'package:flutter/material.dart';
-import 'package:presentum/presentum.dart';
-import 'package:shared/shared.dart';
 
 class EnabledCatalogFeatures extends StatefulWidget {
   const EnabledCatalogFeatures({super.key});
@@ -21,12 +20,12 @@ class _EnabledCatalogFeaturesState extends State<EnabledCatalogFeatures> {
   /// Could've used observer to update the whole catalog whenever presentum
   /// items payload changes to reflect the latest state, but since this whole
   /// catalog scope is for a showcase only this is not needed.
-  late final Presentum<FeatureItem, AppSurface, AppVariant> _presentum;
+  late final FeatureController _controller;
 
   @override
   void initState() {
     super.initState();
-    _presentum = context.presentum<FeatureItem, AppSurface, AppVariant>();
+    _controller = context.controllerOf<FeatureController>();
 
     final deps = Dependencies.of(context);
     _catalog = deps.featureCatalog;
@@ -38,7 +37,7 @@ class _EnabledCatalogFeaturesState extends State<EnabledCatalogFeatures> {
   }
 
   String? _subtitleFor(String featureId, AppLocalizations l10n) {
-    final featureItemPayload = _presentum.config.engine.currentCandidates
+    final featureItemPayload = _controller.state.candidates
         .firstWhereOrNull((e) => e.payload.id == featureId)
         ?.payload;
     if (featureItemPayload == null) {

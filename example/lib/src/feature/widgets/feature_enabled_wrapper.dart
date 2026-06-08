@@ -1,5 +1,7 @@
 import 'package:collection/collection.dart';
+import 'package:control/control.dart';
 import 'package:example/src/common/model/dependencies.dart';
+import 'package:example/src/feature/controller/feature_controller.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
 import 'package:example/src/feature/presentum/payload.dart';
@@ -47,21 +49,28 @@ class _FeatureEnabledWrapperState extends State<FeatureEnabledWrapper> {
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: _featurePreferences,
-    builder: (context, child) =>
-        PresentumOutlet$Composition<FeatureItem, AppSurface, AppVariant>(
-          surface: widget.surface,
-          // Collect all items, both active and queue
-          surfaceMode: OutletGroupMode.custom,
-          resolver: (items) => items
-              .where((e) => e.payload.featureKey == widget.featureKey)
-              .toList(),
-          builder: (context, items) => widget.builder(
-            isEnabled: items.isNotEmpty && _isFeatureEnabled(),
-          ),
-        ),
-  );
+  Widget build(BuildContext context) {
+    final controller = context.controllerOf<FeatureController>();
+    return ListenableBuilder(
+      listenable: Listenable.merge([_featurePreferences, controller]),
+      builder: (context, _) => ValueListenableBuilder(
+        valueListenable: controller.select((s) => s.slots),
+        builder: (context, slots, _) =>
+            PresentumOutlet$Composition<FeatureItem, AppSurface, AppVariant>(
+              slots: slots,
+              surface: widget.surface,
+              collector: PresentumSlotItemsCollector.custom(
+                (items) => items
+                    .where((e) => e.payload.featureKey == widget.featureKey)
+                    .toList(),
+              ),
+              builder: (context, items) => widget.builder(
+                isEnabled: items.isNotEmpty && _isFeatureEnabled(),
+              ),
+            ),
+      ),
+    );
+  }
 }
 
 /// {@template has_feature_candidates_and_enabled_wrapper}
@@ -86,9 +95,7 @@ class HasFeatureCandidatesAndEnabledWrapper extends StatefulWidget {
 class HasFeatureCandidatesAndEnabledWrapperState
     extends State<HasFeatureCandidatesAndEnabledWrapper> {
   List<FeatureItem> _items = [];
-  late final Presentum<FeatureItem, AppSurface, AppVariant> _presentum;
-  late final PresentumStateObserver<FeatureItem, AppSurface, AppVariant>
-  _observer;
+  late final FeatureController _controller;
 
   late final FeaturePreferencesStore _featurePreferences;
   late final FeatureCatalogStore _featureCatalog;
@@ -96,8 +103,7 @@ class HasFeatureCandidatesAndEnabledWrapperState
   @override
   void initState() {
     super.initState();
-    _presentum = context.presentum<FeatureItem, AppSurface, AppVariant>();
-    _observer = _presentum.observer;
+    _controller = context.controllerOf<FeatureController>();
 
     final dependencies = Dependencies.of(context);
     _featurePreferences = dependencies.featurePreferences;
@@ -105,18 +111,15 @@ class HasFeatureCandidatesAndEnabledWrapperState
 
     _onStateChange();
 
-    _observer.addListener(_onStateChange);
+    _controller.addListener(_onStateChange);
     _featurePreferences.addListener(_onStateChange);
     _featureCatalog.addListener(_onStateChange);
   }
 
   void _onStateChange() {
-    final items = _presentum.config.engine.currentCandidates
+    final items = _controller.state.candidates
         .where((e) => e.payload.id == widget.featureKey)
         .toList();
-    if (const ListEquality<FeatureItem>().equals(_items, items)) {
-      return;
-    }
     final enabledItems = <FeatureItem>[];
     for (final item in items) {
       if (item.payload.dependsOnFeatureKey == null) {
@@ -141,7 +144,7 @@ class HasFeatureCandidatesAndEnabledWrapperState
 
   @override
   void dispose() {
-    _observer.removeListener(_onStateChange);
+    _controller.removeListener(_onStateChange);
     _featurePreferences.removeListener(_onStateChange);
     _featureCatalog.removeListener(_onStateChange);
     super.dispose();

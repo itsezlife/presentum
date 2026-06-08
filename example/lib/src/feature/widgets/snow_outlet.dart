@@ -1,4 +1,6 @@
+import 'package:control/control.dart';
 import 'package:example/src/common/widgets/snow.dart';
+import 'package:example/src/feature/controller/feature_controller.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:flutter/material.dart';
 import 'package:presentum/presentum.dart';
@@ -31,24 +33,32 @@ class SnowOutlet extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) =>
-      PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
-        surface: AppSurface.background,
-        placeholderBuilder: (_) => child,
-        builder: (context, item) => switch (item.variant) {
-          AppVariant.snow => Snow(
-            flakeCount: flakeCount,
-            minSpeed: minSpeed,
-            maxSpeed: maxSpeed,
-            minRadius: minRadius,
-            maxRadius: maxRadius,
-            windStrength: windStrength,
-            swayStrength: swayStrength,
-            meltDuration: meltDuration,
-            color: color,
-            child: child,
+  Widget build(BuildContext context) {
+    final controller = context.controllerOf<FeatureController>();
+    return ValueListenableBuilder(
+      valueListenable: controller.select((s) => s.slots),
+      child: child,
+      builder: (context, slots, child) =>
+          PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
+            slots: slots,
+            surface: AppSurface.background,
+            placeholderBuilder: (_) => child!,
+            builder: (context, item) => switch (item.variant) {
+              AppVariant.snow => Snow(
+                flakeCount: flakeCount,
+                minSpeed: minSpeed,
+                maxSpeed: maxSpeed,
+                minRadius: minRadius,
+                maxRadius: maxRadius,
+                windStrength: windStrength,
+                swayStrength: swayStrength,
+                meltDuration: meltDuration,
+                color: color,
+                child: child!,
+              ),
+              _ => child!,
+            },
           ),
-          _ => child,
-        },
-      );
+    );
+  }
 }

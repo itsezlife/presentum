@@ -1,6 +1,8 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:control/control.dart';
 import 'package:example/src/common/widgets/scaffold_padding.dart';
 import 'package:example/src/common/widgets/section_header.dart';
+import 'package:example/src/shop/controller/recommendation_controller.dart';
 import 'package:example/src/shop/model/product.dart';
 import 'package:example/src/shop/model/recommendation.dart';
 import 'package:example/src/shop/presentum/recommendation_payload.dart';
@@ -38,24 +40,37 @@ class RecommendationOutlet extends StatelessWidget {
   final void Function(BuildContext context, ProductEntity product)? onTap;
 
   @override
-  Widget build(
-    BuildContext context,
-  ) => PresentumOutlet$Composition<RecommendationItem, AppSurface, AppVariant>(
-    surface: AppSurface.productRecommendations,
-    surfaceMode: OutletGroupMode.custom,
-    resolver: (items) {
-      final filtered = items
-          .where((e) => e.sourceProductId == productId)
-          .toList();
-      return filtered;
-    },
-    placeholderBuilder: (context) =>
-        placeholder ?? const SliverToBoxAdapter(child: SizedBox.shrink()),
-    builder: (context, items) => switch (items.first.variant) {
-      AppVariant.productRecommendationsGrid => _buildGrid(context, items.first),
-      _ => placeholder ?? const SliverToBoxAdapter(child: SizedBox.shrink()),
-    },
-  );
+  Widget build(BuildContext context) {
+    final controller = context.controllerOf<RecommendationController>();
+    return ValueListenableBuilder(
+      valueListenable: controller.select((s) => s.slots),
+      builder: (context, slots, _) =>
+          PresentumOutlet$Composition<
+            RecommendationItem,
+            AppSurface,
+            AppVariant
+          >(
+            slots: slots,
+            surface: AppSurface.productRecommendations,
+            collector: PresentumSlotItemsCollector.custom(
+              (items) =>
+                  items.where((e) => e.sourceProductId == productId).toList(),
+            ),
+            placeholderBuilder: (context) =>
+                placeholder ??
+                const SliverToBoxAdapter(child: SizedBox.shrink()),
+            builder: (context, items) => switch (items.first.variant) {
+              AppVariant.productRecommendationsGrid => _buildGrid(
+                context,
+                items.first,
+              ),
+              _ =>
+                placeholder ??
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
+            },
+          ),
+    );
+  }
 
   Widget _buildGrid(BuildContext context, RecommendationItem item) {
     var recommendations = item.recommendations;

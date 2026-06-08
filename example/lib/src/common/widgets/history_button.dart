@@ -20,7 +20,7 @@ class _HistoryButtonState extends State<HistoryButton> {
   final OverlayPortalController controller = OverlayPortalController();
 
   @override
-  Widget build(BuildContext context) => OverlayPortal.targetsRootOverlay(
+  Widget build(BuildContext context) => OverlayPortal(
     controller: controller,
     overlayChildBuilder: overlayChildBuilder,
     child: IconButton(

@@ -64,7 +64,8 @@ abstract interface class EligibilityResolver<S> {
     required List<EligibilityExtractor<S>> extractors,
     List<EligibilityRule>? rules,
   }) {
-    final $rules = [...createStandardRules(), ...?rules];
+    // Caller-provided rules take precedence over the built-in defaults.
+    final $rules = [...?rules, ...createStandardRules()];
     return EligibilityResolver$Impl<S>(rules: $rules, extractors: extractors);
   }
 

@@ -1,3 +1,5 @@
+import 'package:control/control.dart';
+import 'package:example/src/feature/controller/feature_controller.dart';
 import 'package:example/src/feature/data/feature_catalog_store.dart';
 import 'package:example/src/feature/data/feature_store.dart';
 import 'package:example/src/feature/presentum/payload.dart';
@@ -33,26 +35,36 @@ class SettingsFeatureTogglesOutlet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return PresentumOutlet$Composition<FeatureItem, AppSurface, AppVariant>(
-      surface: AppSurface.settingsToggles,
-      surfaceMode: OutletGroupMode.custom,
-      resolver: (items) => items,
-      builder: (context, items) => Column(
-        children: [
-          for (final item in items)
-            ListenableBuilder(
-              listenable: prefs,
-              builder: (context, child) => SettingToggleRow(
-                key: ValueKey(item.payload.featureKey),
-                title: _titleFor(item.payload.featureKey, l10n),
-                description: _descriptionFor(item.payload.featureKey, l10n),
-                value: _valueFor(item.payload.featureKey),
-                onChanged: (enabled) =>
-                    prefs.setEnabled(item.payload.featureKey, enabled: enabled),
-              ),
+    final controller = context.controllerOf<FeatureController>();
+    return ValueListenableBuilder(
+      valueListenable: controller.select((s) => s.slots),
+      builder: (context, slots, _) =>
+          PresentumOutlet$Composition<FeatureItem, AppSurface, AppVariant>(
+            slots: slots,
+            surface: AppSurface.settingsToggles,
+            collector: const PresentumSlotItemsCollector.all(),
+            builder: (context, items) => Column(
+              children: [
+                for (final item in items)
+                  ListenableBuilder(
+                    listenable: prefs,
+                    builder: (context, child) => SettingToggleRow(
+                      key: ValueKey(item.payload.featureKey),
+                      title: _titleFor(item.payload.featureKey, l10n),
+                      description: _descriptionFor(
+                        item.payload.featureKey,
+                        l10n,
+                      ),
+                      value: _valueFor(item.payload.featureKey),
+                      onChanged: (enabled) => prefs.setEnabled(
+                        item.payload.featureKey,
+                        enabled: enabled,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
+          ),
     );
   }
 }

@@ -3,16 +3,18 @@ import 'dart:developer' as dev;
 import 'dart:io';
 
 import 'package:app_ui/app_ui.dart';
+import 'package:control/control.dart';
 import 'package:example/src/app/router/routes.dart';
 import 'package:example/src/common/constant/config.dart';
 import 'package:example/src/common/widgets/app_constrained_scroll_view.dart';
 import 'package:example/src/common/widgets/scaffold_padding.dart';
 import 'package:example/src/l10n/l10n.dart';
+import 'package:example/src/maintenance/controller/maintenance_controller.dart';
+import 'package:example/src/maintenance/controller/maintenance_state.dart';
 import 'package:example/src/maintenance/presentum/payload.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:octopus/octopus.dart';
-import 'package:presentum/presentum.dart';
 import 'package:restart_app/restart_app.dart';
 import 'package:shared/shared.dart';
 import 'package:slide_countdown/slide_countdown.dart';
@@ -26,8 +28,7 @@ class MaintenanceView extends StatefulWidget {
 }
 
 class _MaintenanceViewState extends State<MaintenanceView> {
-  late final PresentumStateObserver<MaintenanceItem, AppSurface, AppVariant>
-  _observer;
+  late final MaintenanceController _controller;
 
   Timer? _countdownTimer;
   Duration? _remainingTime;
@@ -37,20 +38,26 @@ class _MaintenanceViewState extends State<MaintenanceView> {
   @override
   void initState() {
     super.initState();
-    _observer = context
-        .presentum<MaintenanceItem, AppSurface, AppVariant>()
-        .observer;
-    _onStateChange();
-
-    _observer.addListener(_onStateChange);
+    _controller = context.controllerOf<MaintenanceController>();
+    _onSlotsChanged(_controller.state.slots);
+    _controller.addListener(_onControllerChanged);
   }
 
-  void _onStateChange() {
-    final state = _observer.value;
-    final item = state.slots[AppSurface.maintenanceView]?.active;
-    if (item == null) return;
+  void _onControllerChanged() {
+    _onSlotsChanged(_controller.state.slots);
+  }
 
+  void _onSlotsChanged(MaintenanceSlots slots) {
+    final item = slots.activeFor(AppSurface.maintenanceView);
+    if (item == null) return;
     _startCountdown(item);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   void _startCountdown(MaintenanceItem item) {
@@ -101,12 +108,6 @@ class _MaintenanceViewState extends State<MaintenanceView> {
         return;
       }
     });
-  }
-
-  @override
-  void dispose() {
-    _countdownTimer?.cancel();
-    super.dispose();
   }
 
   Future<void> _restartApp() async {

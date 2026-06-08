@@ -1,5 +1,7 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:boxy/boxy.dart';
+import 'package:control/control.dart';
+import 'package:example/src/feature/controller/feature_controller.dart';
 import 'package:example/src/feature/presentum/payload.dart';
 import 'package:example/src/l10n/l10n.dart';
 import 'package:flutter/material.dart';
@@ -13,16 +15,24 @@ class NewYearBanner extends StatelessWidget {
   final EdgeInsets? padding;
 
   @override
-  Widget build(BuildContext context) =>
-      PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
-        surface: AppSurface.homeHeader,
-        builder: (context, item) {
-          const child = RepaintBoundary(child: _NewYearBannerContent());
-          if (padding case final padding?)
-            return Padding(padding: padding, child: child);
-          return child;
-        },
-      );
+  Widget build(BuildContext context) {
+    final controller = context.controllerOf<FeatureController>();
+    return ValueListenableBuilder(
+      valueListenable: controller.select((s) => s.slots),
+      builder: (context, slots, _) =>
+          PresentumOutlet<FeatureItem, AppSurface, AppVariant>(
+            slots: slots,
+            surface: AppSurface.homeHeader,
+            builder: (context, item) {
+              const child = RepaintBoundary(child: _NewYearBannerContent());
+              if (padding case final padding?) {
+                return Padding(padding: padding, child: child);
+              }
+              return child;
+            },
+          ),
+    );
+  }
 }
 
 class _NewYearBannerContent extends StatefulWidget {
@@ -303,9 +313,7 @@ class _CloseButton extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: () {
       final item = context.presentumItem<FeatureItem, AppSurface, AppVariant>();
-      context.presentum<FeatureItem, AppSurface, AppVariant>().markDismissed(
-        item,
-      );
+      context.controllerOf<FeatureController>().markDismissed(item);
     },
     child: const Icon(Icons.close, size: 20, color: Color(0xFF2D3748)),
   );
